@@ -1,5 +1,6 @@
 import { prisma } from '../config/database';
 import { logger } from '../config/logger';
+import { emailService } from './email.service';
 
 export interface StripeWebhookEvent {
   id: string;
@@ -121,6 +122,7 @@ export class StripeWebhookService {
     });
 
     // Lizenz auf ACTIVE setzen
+    const oldStatus = tenant.licenseStatus;
     await prisma.tenant.update({
       where: { id: tenant.id },
       data: {
@@ -128,6 +130,11 @@ export class StripeWebhookService {
         offlineSince: null,
       },
     });
+
+    // E-Mail-Benachrichtigung senden, wenn Status sich geändert hat
+    if (oldStatus !== 'ACTIVE') {
+      await emailService.sendStatusChangeNotification(tenant.id, oldStatus, 'ACTIVE');
+    }
 
     logger.info(`Zahlung erfolgreich: Tenant ${tenant.tenantId}, Betrag: ${invoice.amount_paid / 100} ${invoice.currency}`);
   }
@@ -161,10 +168,17 @@ export class StripeWebhookService {
     });
 
     // Lizenz auf PAYMENT_PENDING setzen
+    const oldStatus = tenant.licenseStatus;
     await prisma.tenant.update({
       where: { id: tenant.id },
       data: { licenseStatus: 'PAYMENT_PENDING' },
     });
+
+    // E-Mail-Benachrichtigung senden
+    if (oldStatus !== 'PAYMENT_PENDING') {
+      await emailService.sendPaymentFailed(tenant.id);
+      await emailService.sendStatusChangeNotification(tenant.id, oldStatus, 'PAYMENT_PENDING');
+    }
 
     logger.warn(`Zahlung fehlgeschlagen: Tenant ${tenant.tenantId}`);
   }
@@ -252,10 +266,19 @@ export class StripeWebhookService {
     });
 
     // Tenant auf CANCELLED setzen
-    await prisma.tenant.update({
-      where: { id: existing.tenantId },
-      data: { licenseStatus: 'CANCELLED' },
-    });
+    const tenant = await prisma.tenant.findUnique({ where: { id: existing.tenantId } });
+    if (tenant) {
+      const oldStatus = tenant.licenseStatus;
+      await prisma.tenant.update({
+        where: { id: existing.tenantId },
+        data: { licenseStatus: 'CANCELLED' },
+      });
+
+      // E-Mail-Benachrichtigung senden
+      if (oldStatus !== 'CANCELLED') {
+        await emailService.sendStatusChangeNotification(existing.tenantId, oldStatus, 'CANCELLED');
+      }
+    }
 
     logger.info(`Subscription gelöscht: ${subscription.id}`);
   }

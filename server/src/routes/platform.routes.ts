@@ -4,6 +4,7 @@ import { tenantController } from '../controllers/tenant.controller';
 import { subscriptionController } from '../controllers/subscription.controller';
 import { planController } from '../controllers/plan.controller';
 import { stripeWebhookController } from '../controllers/stripeWebhook.controller';
+import { stripeController } from '../controllers/stripe.controller';
 import { platformAuthenticate } from '../middleware/platformAuth';
 
 const router = Router();
@@ -40,5 +41,10 @@ router.delete('/plans/:id', platformAuthenticate, (req, res, next) => planContro
 
 // ─── Stripe Webhooks (KEINE Authentifizierung, wird von Stripe signiert) ───
 router.post('/webhooks/stripe', (req, res, next) => stripeWebhookController.handleWebhook(req, res, next));
+
+// ─── Stripe Integration (Authentifizierung erforderlich) ───
+router.post('/stripe/checkout-session', platformAuthenticate, (req, res) => stripeController.createCheckoutSession(req, res));
+router.post('/stripe/portal-session', platformAuthenticate, (req, res) => stripeController.createPortalSession(req, res));
+router.get('/stripe/subscription/:subscriptionId', platformAuthenticate, (req, res) => stripeController.getSubscription(req, res));
 
 export default router;
