@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMS Verkaufsstrategie</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #1e40af;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            border-bottom: 3px solid #1e40af;
+            padding-bottom: 10px;
+        }
+        
+        h2 {
+            color: #1e40af;
+            font-size: 1.8em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-left: 4px solid #1e40af;
+            padding-left: 15px;
+        }
+        
+        h3 {
+            color: #1e3a8a;
+            font-size: 1.3em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        
+        p {
+            margin-bottom: 15px;
+        }
+        
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        .price-box {
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .price-box h3 {
+            color: white;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .price {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        
+        .feature-list {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .feature-list ul {
+            list-style: none;
+            margin-left: 0;
+        }
+        
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .feature-list li:before {
+            content: "✓ ";
+            color: #10b981;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .highlight {
+            background: #fef3c7;
+            padding: 15px;
+            border-left: 4px solid #f59e0b;
+            margin: 20px 0;
+        }
+        
+        .success {
+            background: #d1fae5;
+            padding: 15px;
+            border-left: 4px solid #10b981;
+            margin: 20px 0;
+        }
+        
+        .module-card {
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            transition: all 0.3s;
+        }
+        
+        .module-card:hover {
+            border-color: #1e40af;
+            box-shadow: 0 4px 12px rgba(30, 64, 175, 0.1);
+        }
+        
+        .module-card h3 {
+            margin-top: 0;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin: 5px;
+        }
+        
+        .badge-starter {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .badge-pro {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .badge-enterprise {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            border: 1px solid #e5e7eb;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background: #1e40af;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        
+        .toc {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+        
+        .toc h2 {
+            margin-top: 0;
+            border-left: none;
+            padding-left: 0;
+        }
+        
+        .toc ul {
+            list-style: none;
+            margin-left: 0;
+        }
+        
+        .toc li {
+            padding: 5px 0;
+        }
+        
+        .toc a {
+            color: #1e40af;
+            text-decoration: none;
+        }
+        
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        
+        .page-break {
+            page-break-after: always;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+            
+            .no-print {
+                display: none;
+            }
+        }
+        
+        .print-button {
+            background: #1e40af;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin: 20px 0;
+        }
+        
+        .print-button:hover {
+            background: #1e3a8a;
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="text-align: center; margin-bottom: 20px;">
+        <button class="print-button" onclick="window.print()">📄 Als PDF speichern</button>
+    </div>
+
+    <div class="container">
+        <h1>🚀 SMS Security Management System</h1>
+        <p style="font-size: 1.3em; color: #6b7280; margin-bottom: 30px;">Vollständige Verkaufsstrategie & Produktübersicht</p>
+
+        <div class="toc">
+            <h2>📋 Inhaltsverzeichnis</h2>
+            <ul>
+                <li><a href="#executive">1. Executive Summary</a></li>
+                <li><a href="#usp">2. USP & Alleinstellungsmerkmale</a></li>
+                <li><a href="#module">3. Produkt-Module im Detail</a></li>
+                <li><a href="#addons">4. Premium Add-ons</a></li>
+                <li><a href="#preise">5. Preismodelle</a></li>
+                <li><a href="#pakete">6. Pakete mit Add-ons</a></li>
+                <li><a href="#verkauf">7. Verkaufsargumente</a></li>
+                <li><a href="#einwand">8. Einwandbehandlung</a></li>
+                <li><a href="#prozess">9. Verkaufsprozess</a></li>
+                <li><a href="#kontakt">10. Kontakt</a></li>
+            </ul>
+        </div>
+
+        <div class="page-break"></div>
+
+        <h2 id="executive">1. Executive Summary</h2>
+        <p><strong>SMS (Security Management System)</strong> ist eine SaaS-Plattform für Sicherheitsdienstleister zur Verwaltung von Mitarbeitern, Kunden, Objekten, Dienstplanung und Abrechnung.</p>
+
+        <div class="success">
+            <strong>💡 Kernbotschaft:</strong> SMS ist die moderne, KI-gestützte Lösung für Sicherheitsdienstleister, die Zeit sparen, Kosten reduzieren und professionell auftreten wollen.
+        </div>
+
+        <h2 id="usp">2. USP & Alleinstellungsmerkmale</h2>
+        <div class="feature-list">
+            <ul>
+                <li><strong>🎯 White-Label:</strong> Jeder Kunde sieht sein eigenes Logo, Farben und Branding</li>
+                <li><strong>🤖 KI-gestützte Planung:</strong> Intelligente Dienstplanung die aus Ihren Daten lernt</li>
+                <li><strong>📊 Echtzeit-Dashboards:</strong> Live-Einblicke in alle Bereiche Ihres Geschäfts</li>
+                <li><strong>🔒 DSGVO-konform:</strong> Deutsche Server, maximale Sicherheit</li>
+                <li><strong>💼 DATEV-Integration:</strong> Automatischer Mitarbeiter-Import</li>
+                <li><strong>📱 Mobile App:</strong> Zeiterfassung direkt von der Baustelle</li>
+            </ul>
+        </div>
+
+        <div class="page-break"></div>
+
+        <h2 id="module">3. Produkt-Module im Detail</h2>
+
+        <div class="module-card">
+            <h3>📊 Dashboard</h3>
+            <span class="badge badge-starter">Starter</span>
+            <span class="badge badge-pro">Professional</span>
+            <span class="badge badge-enterprise">Enterprise</span>
+            <p><strong>Features:</strong></p>
+            <ul>
+                <li>Echtzeit-Übersicht aller Kennzahlen</li>
+                <li>Aktive Einsätze auf einen Blick</li>
+                <li>Mitarbeiter-Status (Verfügbar, Im Einsatz, Abwesend)</li>
+                <li>Umsatz-Entwicklung (Tages/Wochen/Monatsansicht)</li>
+                <li>Benachrichtigungen & Alarme</li>
+            </ul>
+            <p><strong>Nutzen:</strong> Sofortiger Überblick, schnelle Entscheidungen, Probleme frühzeitig erkennen</p>
+        </div>
+
+        <div class="module-card">
+            <h3>👥 Mitarbeiterverwaltung</h3>
+            <span class="badge badge-starter">Starter</span>
+            <span class="badge badge-pro">Professional</span>
+            <span class="badge badge-enterprise">Enterprise</span>
+            <p><strong>Features:</strong></p>
+            <ul>
+                <li>Vollständige Mitarbeiterprofile</li>
+                <li>Qualifikationen & Zertifikate</li>
+                <li>Verfügbarkeiten & Präferenzen</li>
+                <li>Dokumentenmanagement (Verträge, Zeugnisse)</li>
+                <li>Historie & Änderungen nachvollziehbar</li>
+                <li><strong>DATEV-Import</strong> (Premium Add-on)</li>
+            </ul>
+            <p><strong>Nutzen:</strong> Keine Excel-Listen mehr, alle Daten zentral, DSGVO-konform</p>
+        </div>
+
+        <div class="module-card">
+            <h3>🏢 Kundenverwaltung</h3>
+            <span class="badge badge-starter">Starter</span>
+            <span class="badge badge-pro">Professional</span>
+            <span class="badge badge-enterprise">Enterprise</span>
+            <p><strong>Features:</strong></p>
+            <ul>
+                <li>Kundenprofile mit Kontakten</li>
+                <li>Vertragsverwaltung</li>
+                <li>Abrechnungseinstellungen</li>
+                <li>Kommunikationshistorie</li>
+                <li>Zufriedenheits-Tracking</li>
+            </ul>
+            <p><strong>Nutzen:</strong> Bessere Kundenbeziehung, alle Verträge an einem Ort</p>
+        </div>
+
+        <div class="module-card">
+            <h3>🏗️ Objektverwaltung</h3>
+            <span class="badge badge-starter">Starter</span>
+            <span class="badge badge-pro">Professional</span>
+            <span class="badge badge-enterprise">Enterprise</span>
+            <p><strong>Features:</strong></p>
+            <ul>
+                <li>Objektprofile mit Anforderungen</li>
+                <li>Zutrittsberechtigungen</li>
+                <li>Besondere Anweisungen</li>
+                <li>Objekt-Historie</li>
+                <li>Foto-Dokumentation</li>
+            </ul>
+            <p><strong>Nutzen:</strong> Klare Anforderungen, weniger Missverständnisse</p>
+        </div>
+
+        <div class="page-break"></div>
+
+        <div class="module-card">
+            <h3>📅 Dienstplanung</h3>
+            <span class="badge badge-pro">Professional</span>
+            <span class="badge badge-enterprise">Enterprise</span>
+            <p><strong>Features:</strong></p>
+            <ul>
+                <li>Drag & Drop Planung</li>
+                <li>Automatische Vorschläge</li>
+                <li>Konflikt-Erkennung</li>
+                <li>Skill-basierte Zuordnung</li>
+                <li>Mitarbeiter-Präferenzen</li>
+                <li><strong>KI-Optimierung</strong> (nur Enterprise)</li>
+            </ul>
+            <p><strong>Nutzen:</strong> 50% weniger Planungsaufwand, optimale Besetzung</p>
+            
+            <div class="highlight">
+                <strong>🤖 KI-Planung (Enterprise):</strong><br>
+                Lernt aus historischen Daten, berücksichtigt Mitarbeiter-Präferenzen, optimiert nach Effizienz & Kosten, vermeidet Überstunden automatisch, Einhaltung gesetzlicher Vorschriften
+            </div>
+        </div>
+
+        <div class="module-card">
+            <h3>⏱️ Zeiterfassung</h3>
+            <span class="badge badge-starter">Starter</span>
+            <span class="badge badge-pro">Professional</span>
+            <span class="badge badge-enterprise">Enterprise</span>
+            <p><strong>Features:</strong></p>
+            <ul>
+                <li>Stempeln per App/Web</li>
+                <li>GPS-Standort-Erfassung</li>
+                <li>Pausenregelungen</li>
+                <li>Überstunden-Tracking</li>
+                <li>Export für Lohnabrechnung</li>
+                <li>Mobile App (Premium Add-on)</li>
+            </ul>
+            <p><strong>Nutzen:</strong> Keine manuelle Erfassung, fälschungssicher (GPS)</p>
+        </div>
+
+        <div class="module-card">
+            <h3>💰 Abrechnung</h3>
+            <span class="badge badge-pro">Professional</span>
+            <span class="badge badge-enterprise">Enterprise</span>
+            <p><strong>Features:</strong></p>
+            <ul>
+                <li>Automatische Abrechnung</li>
+                <li>Vertragsbasierte Abrechnung</li>
+                <li>Stundensätze pro Objekt</li>
+                <li>Zuschläge (Nacht, Wochenende, Feiertage)</li>
+                <li>PDF-Rechnungserstellung</li>
+                <li>DATEV-Export</li>
+            </ul>
+            <p><strong>Nutzen:</strong> Keine manuelle Abrechnung, Fehlerreduktion, schnellere Zahlung</p>
+        </div>
+
+        <div class="module-card">
+            <h3>📈 Berichte & Analysen</h3>
+            <span class="badge badge-pro">Professional</span>
+            <span class="badge badge-enterprise">Enterprise</span>
+            <p><strong>Features:</strong></p>
+            <ul>
+                <li>Standard-Berichte (Umsatz, Auslastung, etc.)</li>
+                <li>Custom Reports (nur Enterprise)</li>
+                <li>Excel/PDF-Export</li>
+                <li>Automatischer Versand</li>
+                <li>Benchmarking</li>
+            </ul>
+            <p><strong>Nutzen:</strong> Datenbasierte Entscheidungen, Trends erkennen</p>
+        </div>
+
+        <div class="page-break"></div>
+
+        <h2 id="addons">4. Premium Add-ons</h2>
+
+        <div class="price-box">
+            <h3>📊 DATEV Integration</h3>
+            <div class="price">€49,90/Monat</div>
+            <p>Automatischer Mitarbeiter-Import aus DATEV</p>
+        </div>
+
+        <div class="feature-list">
+            <ul>
+                <li>Automatischer Import</li>
+                <li>Vollständige Datenübernahme</li>
+                <li>Duplikat-Erkennung</li>
+                <li>Konfigurierbares Mapping</li>
+                <li>Fehlerprotokoll</li>
+            </ul>
+        </div>
+
+        <div class="price-box" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <h3>📱 Mobile App</h3>
+            <div class="price">€19,90/Monat</div>
+            <p>Pro 10 Mitarbeiter • iOS & Android</p>
+        </div>
+
+        <div class="feature-list">
+            <ul>
+                <li>Dienstplan ansehen</li>
+                <li>Zeiterfassung von der Baustelle</li>
+                <li>Push-Benachrichtigungen</li>
+                <li>Offline-Modus</li>
+                <li>GPS-Standort</li>
+            </ul>
+        </div>
+
+        <div class="price-box" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+            <h3>📊 Erweiterte Berichte</h3>
+            <div class="price">€39,90/Monat</div>
+            <p>Custom Reports & Benchmarking</p>
+        </div>
+
+        <div class="feature-list">
+            <ul>
+                <li>Custom Reports</li>
+                <li>Excel/PDF-Export</li>
+                <li>Automatischer Versand</li>
+                <li>Benchmarking</li>
+            </ul>
+        </div>
+
+        <div class="price-box" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+            <h3>🔌 API-Zugang</h3>
+            <div class="price">€99,90/Monat</div>
+            <p>REST API & Webhooks</p>
+        </div>
+
+        <div class="feature-list">
+            <ul>
+                <li>REST API</li>
+                <li>Webhooks</li>
+                <li>Umfassende Dokumentation</li>
+                <li>Sandbox</li>
+                <li>Priority Support</li>
+            </ul>
+        </div>
+
+        <div class="page-break"></div>
+
+        <h2 id="preise">5. Preismodelle</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th style="background: #dbeafe;">💼 Starter<br>€99/Monat</th>
+                    <th style="background: #fef3c7;">🏆 Professional<br>€299/Monat</th>
+                    <th style="background: #d1fae5;">🚀 Enterprise<br>€699/Monat</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Mitarbeiter</td>
+                    <td>Bis 10</td>
+                    <td>Bis 50</td>
+                    <td>Unbegrenzt</td>
+                </tr>
+                <tr>
+                    <td>Dashboard</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                </tr>
+                <tr>
+                    <td>Mitarbeiterverwaltung</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                </tr>
+                <tr>
+                    <td>Kundenverwaltung</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                </tr>
+                <tr>
+                    <td>Objektverwaltung</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                </tr>
+                <tr>
+                    <td>Zeiterfassung</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                </tr>
+                <tr>
+                    <td>Administration</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                </tr>
+                <tr>
+                    <td>White-Label Branding</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                </tr>
+                <tr>
+                    <td>Dienstplanung</td>
+                    <td>❌</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                </tr>
+                <tr>
+                    <td>Abrechnung</td>
+                    <td>❌</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                </tr>
+                <tr>
+                    <td>Berichte & Analysen</td>
+                    <td>❌</td>
+                    <td>✓</td>
+                    <td>✓</td>
+                </tr>
+                <tr>
+                    <td>KI-Planung</td>
+                    <td>❌</td>
+                    <td>❌</td>
+                    <td>✓</td>
+                </tr>
+                <tr>
+                    <td>Custom Reports</td>
+                    <td>❌</td>
+                    <td>❌</td>
+                    <td>✓</td>
+                </tr>
+                <tr>
+                    <td>Speicher</td>
+                    <td>5 GB</td>
+                    <td>50 GB</td>
+                    <td>500 GB</td>
+                </tr>
+                <tr>
+                    <td>Support</td>
+                    <td>E-Mail</td>
+                    <td>Priority</td>
+                    <td>Dedicated</td>
+                </tr>
+                <tr>
+                    <td>API-Zugang</td>
+                    <td>❌</td>
+                    <td>Basic</td>
+                    <td>Voll</td>
+                </tr>
+                <tr>
+                    <td>SLA</td>
+                    <td>99%</td>
+                    <td>99.5%</td>
+                    <td>99.9%</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="page-break"></div>
+
+        <h2 id="pakete">6. Pakete mit Add-ons</h2>
+
+        <div class="module-card">
+            <h3>📦 Starter Paket - €149/Monat</h3>
+            <p>Starter Plan + DATEV Integration</p>
+            <ul>
+                <li>Starter Plan (€99)</li>
+                <li>DATEV Integration (€49.90)</li>
+                <li><strong>Sie sparen €19/Monat</strong></li>
+            </ul>
+        </div>
+
+        <div class="module-card" style="border-color: #f59e0b; border-width: 3px;">
+            <h3>📦 Professional Paket - €379/Monat ⭐ BELIEBT</h3>
+            <p>Professional Plan + DATEV + Mobile App</p>
+            <ul>
+                <li>Professional Plan (€299)</li>
+                <li>DATEV Integration (€49.90)</li>
+                <li>Mobile App bis 20 MA (€19.90)</li>
+                <li><strong>Sie sparen €49/Monat</strong></li>
+            </ul>
+        </div>
+
+        <div class="module-card" style="border-color: #10b981; border-width: 3px;">
+            <h3>📦 Enterprise Paket - €799/Monat 🏆 BESTE WAHL</h3>
+            <p>Enterprise Plan + Alle Add-ons</p>
+            <ul>
+                <li>Enterprise Plan (€699)</li>
+                <li>DATEV Integration (€49.90)</li>
+                <li>Mobile App unbegrenzt (€19.90)</li>
+                <li>Erweiterte Berichte (€39.90)</li>
+                <li>API-Zugang (bereits enthalten)</li>
+                <li><strong>Sie sparen €159/Monat</strong></li>
+            </ul>
+        </div>
+
+        <div class="page-break"></div>
+
+        <h2 id="verkauf">7. Verkaufsargumente</h2>
+
+        <h3>Für Geschäftsführer</h3>
+        <div class="feature-list">
+            <ul>
+                <li><strong>Zeitersparnis:</strong> 50% weniger Verwaltungsaufwand</li>
+                <li><strong>Kostenreduktion:</strong> Weniger Überstunden, optimale Besetzung</li>
+                <li><strong>Bessere Entscheidungen:</strong> Echtzeit-Daten & Berichte</li>
+                <li><strong>Skalierbarkeit:</strong> Wächst mit Ihrem Unternehmen</li>
+                <li><strong>Professionalität:</strong> Eigenes Logo, professionelle Rechnungen</li>
+            </ul>
+        </div>
+
+        <h3>Für Personaler</h3>
+        <div class="feature-list">
+            <ul>
+                <li><strong>Einfache Verwaltung:</strong> Alle Mitarbeiterdaten zentral</li>
+                <li><strong>DATEV-Integration:</strong> Kein doppeltes Erfassen</li>
+                <li><strong>DSGVO-konform:</strong> Alle Änderungen nachvollziehbar</li>
+                <li><strong>Dokumentenmanagement:</strong> Verträge, Zeugnisse an einem Ort</li>
+            </ul>
+        </div>
+
+        <h3>Für Planer</h3>
+        <div class="feature-list">
+            <ul>
+                <li><strong>KI-Optimierung:</strong> Automatische Vorschläge</li>
+                <li><strong>Drag & Drop:</strong> Intuitive Bedienung</li>
+                <li><strong>Konflikt-Erkennung:</strong> Keine Doppelbuchungen</li>
+                <li><strong>Mobile App:</strong> Planung von überall</li>
+            </ul>
+        </div>
+
+        <h3>Für Mitarbeiter</h3>
+        <div class="feature-list">
+            <ul>
+                <li><strong>Mobile App:</strong> Zeiterfassung von der Baustelle</li>
+                <li><strong>Push-Benachrichtigungen:</strong> Sofort bei Planänderungen</li>
+                <li><strong>Transparenz:</strong> Eigene Stunden immer einsehbar</li>
+                <li><strong>Einfach:</strong> Keine Zettelwirtschaft mehr</li>
+            </ul>
+        </div>
+
+        <div class="page-break"></div>
+
+        <h2 id="einwand">8. Einwandbehandlung</h2>
+
+        <div class="module-card">
+            <h3>"Das ist zu teuer!"</h3>
+            <p><strong>Antwort:</strong></p>
+            <p>"Was kostet Sie die manuelle Verwaltung aktuell? Die meisten unserer Kunden sparen 50% Zeit und reduzieren Überstunden um 30%. Der ROI ist innerhalb von 3 Monaten erreicht."</p>
+        </div>
+
+        <div class="module-card">
+            <h3>"Wir nutzen Excel."</h3>
+            <p><strong>Antwort:</strong></p>
+            <p>"Excel ist gut für den Start, aber ab 10 Mitarbeitern wird es unübersichtlich. Unsere Kunden berichten von 80% weniger Fehlern und 50% schnellerer Abrechnung."</p>
+        </div>
+
+        <div class="module-card">
+            <h3>"Wir haben keine Zeit für Umstellung."</h3>
+            <p><strong>Antwort:</strong></p>
+            <p>"Die Einführung dauert nur 1-2 Tage. Wir unterstützen Sie dabei und bieten kostenlose Schulungen. Die meisten Kunden sind nach einer Woche produktiv."</p>
+        </div>
+
+        <div class="module-card">
+            <h3>"Ist das DSGVO-konform?"</h3>
+            <p><strong>Antwort:</strong></p>
+            <p>"Ja, 100%. Unsere Server stehen in Deutschland, alle Daten sind verschlüsselt, und wir haben einen vollständigen Audit-Log. Sie können jederzeit alle Änderungen nachvollziehen."</p>
+        </div>
+
+        <div class="module-card">
+            <h3>"Können wir es erst testen?"</h3>
+            <p><strong>Antwort:</strong></p>
+            <p>"Ja! Wir bieten eine 30-tägige Testphase an. Keine Kreditkarte nötig, keine automatische Verlängerung. Sie können alle Features in Ruhe testen."</p>
+        </div>
+
+        <div class="page-break"></div>
+
+        <h2 id="prozess">9. Verkaufsprozess</h2>
+
+        <div class="module-card">
+            <h3>1. Lead-Generierung</h3>
+            <ul>
+                <li>Website-Formular</li>
+                <li>LinkedIn-Kampagnen</li>
+                <li>Branchenveranstaltungen</li>
+                <li>Empfehlungen</li>
+            </ul>
+        </div>
+
+        <div class="module-card">
+            <h3>2. Erstgespräch (30 Min)</h3>
+            <ul>
+                <li>Bedarf analysieren</li>
+                <li>Schmerzpunkte identifizieren</li>
+                <li>Demo vereinbaren</li>
+            </ul>
+        </div>
+
+        <div class="module-card">
+            <h3>3. Produkt-Demo (60 Min)</h3>
+            <ul>
+                <li>Individuelle Präsentation</li>
+                <li>Fokus auf kundenspezifische Features</li>
+                <li>Live-Demo mit Beispieldaten</li>
+                <li>Fragen beantworten</li>
+            </ul>
+        </div>
+
+        <div class="module-card">
+            <h3>4. Testphase (30 Tage)</h3>
+            <ul>
+                <li>Onboarding & Schulung</li>
+                <li>Regelmäßige Check-ins</li>
+                <li>Support anbieten</li>
+            </ul>
+        </div>
+
+        <div class="module-card">
+            <h3>5. Abschluss</h3>
+            <ul>
+                <li>Angebot erstellen</li>
+                <li>Verhandlung</li>
+                <li>Vertrag unterzeichnen</li>
+                <li>Onboarding starten</li>
+            </ul>
+        </div>
+
+        <div class="page-break"></div>
+
+        <h2 id="kontakt">10. Kontakt</h2>
+
+        <div class="module-card">
+            <h3>📧 Sales</h3>
+            <p><strong>E-Mail:</strong> sales@sms-platform.com</p>
+            <p><strong>Telefon:</strong> +49 (0) 123 456 789</p>
+        </div>
+
+        <div class="module-card">
+            <h3>🛠️ Support</h3>
+            <p><strong>E-Mail:</strong> support@sms-platform.com</p>
+            <p><strong>Telefon:</strong> +49 (0) 123 456 799</p>
+        </div>
+
+        <div class="module-card">
+            <h3>🌐 Website</h3>
+            <p><strong>URL:</strong> www.sms-platform.com</p>
+        </div>
+
+        <div class="highlight" style="text-align: center; font-size: 1.2em; margin-top: 40px;">
+            <strong>Bereit für die Zukunft der Sicherheitsbranche?</strong><br>
+            Starten Sie noch heute mit SMS! 🚀
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 2px solid #e5e7eb;">
+            <p style="color: #6b7280;">
+                © 2026 SMS Security Management System<br>
+                Alle Preise zzgl. der gesetzlichen MwSt.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Smooth scrolling for TOC links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
