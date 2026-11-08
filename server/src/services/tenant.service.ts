@@ -2,6 +2,8 @@ import { prisma } from '../config/database';
 import { logger } from '../config/logger';
 import { ConflictError, NotFoundError } from '../middleware/errorHandler';
 import { v4 as uuidv4 } from 'uuid';
+import { emailService } from './email.service';
+import crypto from 'crypto';
 
 export interface CreateTenantInput {
   companyName: string;
@@ -158,6 +160,36 @@ export class TenantService {
           monthlyRevenue: 0,
         },
       });
+    }
+
+    // Generate temporary password for tenant admin
+    const tempPassword = crypto.randomBytes(12).toString('base64').substring(0, 12);
+
+    // Create initial admin user for tenant
+    const bcrypt = await import('bcryptjs');
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    
+    await prisma.user.create({
+      data: {
+        userId: uuidv4(),
+        tenantId: tenant.id,
+        username: input.contactEmail,
+        passwordHash: hashedPassword,
+        firstName: 'Administrator',
+        lastName: input.companyName,
+        email: input.contactEmail,
+        isActive: true,
+        roleId: (await prisma.role.findFirst({ where: { name: 'Admin' } }))?.id || '',
+      },
+    });
+
+    // Send welcome email with password setup link
+    try {
+      await emailService.sendWelcomeEmail(tenant.id, tempPassword);
+      logger.info(`Willkommens-E-Mail gesendet an: ${tenant.contactEmail}`);
+    } catch (emailError) {
+      logger.error(`Fehler beim Senden der Willkommens-E-Mail: ${emailError}`);
+      // Don't fail tenant creation if email fails
     }
 
     logger.info(`Mandant erstellt: ${tenant.companyName} (${tenant.tenantId})`);

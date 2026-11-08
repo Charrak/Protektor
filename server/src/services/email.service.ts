@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import crypto from 'crypto';
 import { prisma } from '../config/database';
 import { logger } from '../config/logger';
 
@@ -179,34 +180,49 @@ export class EmailService {
   }
 
   /**
-   * Sendet Willkommens-E-Mail für neue Mandanten
+   * Sendet Willkommens-E-Mail für neue Mandanten mit Passwort-Setup-Link
    */
-  async sendWelcomeEmail(tenantId: string) {
+  async sendWelcomeEmail(tenantId: string, adminPassword: string) {
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
     });
 
     if (!tenant) return;
 
-    const html = `
-      <h2>Willkommen beim SMS!</h2>
-      <p>Sehr geehrte Damen und Herren,</p>
-      <p>wir freuen uns, <strong>${tenant.companyName}</strong> als neuen Kunden begrüßen zu dürfen!</p>
-      <h3>Ihre Zugangsdaten:</h3>
-      <ul>
-        <li><strong>Mandanten-ID:</strong> ${tenant.tenantId}</li>
-        <li><strong>Login-URL:</strong> <a href="${process.env.APP_URL || 'https://app.example.com'}">${process.env.APP_URL || 'https://app.example.com'}</a></li>
-      </ul>
-      <p>Mit freundlichen Grüßen,<br>Ihr SMS-Team</p>
-    `;
+    // Generate password reset token (valid for 24 hours)
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Save token to tenant for password setup
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        passwordResetToken: resetToken,
+        passwordResetTokenExpiry: resetTokenExpiry,
+      },
+    });
+
+    const setupLink = `${process.env.APP_URL || 'http://localhost:5173'}/setup-password?token=${resetToken}&tenant=${tenant.tenantId}`;
+
+    // Use the template
+    const { generateTenantWelcomeEmail } = await import('../templates/emails/tenant-welcome');
+    const emailData = generateTenantWelcomeEmail({
+      companyName: tenant.companyName,
+      contactName: tenant.contactEmail.split('@')[0], // Use email prefix as name
+      contactEmail: tenant.contactEmail,
+      setupLink,
+      adminName: 'Administrator',
+      platformName: 'SMS',
+    });
 
     await this.sendEmail({
       to: tenant.contactEmail,
-      subject: 'Willkommen beim SMS - Ihre Zugangsdaten',
-      html,
+      subject: emailData.subject,
+      html: emailData.html,
+      text: emailData.text,
     });
 
-    logger.info(`Willkommens-E-Mail gesendet: ${tenant.companyName}`);
+    logger.info(`Willkommens-E-Mail mit Setup-Link gesendet: ${tenant.companyName} → ${tenant.contactEmail}`);
   }
 }
 

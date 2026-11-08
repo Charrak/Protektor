@@ -4,6 +4,7 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
 import { EmptyState } from '../../components/common/EmptyState';
+import DatevAddonBanner from '../../components/common/DatevAddonBanner';
 import { employeeService, type EmployeeListItem } from '../../services/employee.service';
 
 export function EmployeesPage() {
@@ -82,6 +83,9 @@ export function EmployeesPage() {
           </button>
         }
       />
+
+      {/* DATEV Add-on Banner */}
+      <DatevAddonBanner />
 
       {/* Suche und Filter */}
       <div className="card mb-4">
