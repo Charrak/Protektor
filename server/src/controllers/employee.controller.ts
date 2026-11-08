@@ -43,6 +43,16 @@ export class EmployeeController {
       }
 
       const employee = await employeeService.create(req.body, req.user.id);
+      
+      // Trigger webhook event
+      const { triggerWebhookEvent, WebhookEvents } = await import('../services/webhookExecution.service');
+      triggerWebhookEvent(req.user.tenantId, WebhookEvents.EMPLOYEE_CREATED, {
+        id: employee.id,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        personnelNumber: employee.personnelNumber,
+      }).catch(err => console.error('Webhook trigger failed:', err));
+      
       res.status(201).json(employee);
     } catch (error) {
       next(error);
