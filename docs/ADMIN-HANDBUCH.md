@@ -520,6 +520,113 @@ Bei kritischen Problemen:
 
 ---
 
+## Externe Kunden-API (Add-on)
+
+### Überblick
+
+Die **External Customer API** ist ein Add-on, das Kunden für **€99/Monat** buchen können. Sie ermöglicht die Integration des SMS in eigene Systeme.
+
+### API-Endpunkte
+
+```
+Basis-URL: https://ihre-domain.de/api/external
+Auth: X-API-Key Header
+Rate Limit: 10.000 Requests/Tag
+```
+
+**Verfügbare Endpunkte:**
+
+| Endpunkt | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/me` | GET | API-Key Info |
+| `/employees` | GET | Mitarbeiter auflisten |
+| `/employees` | POST | Mitarbeiter anlegen |
+| `/customers` | GET | Kunden auflisten |
+| `/customers` | POST | Kunde anlegen |
+| `/objects` | GET | Objekte auflisten |
+| `/deployments` | GET | Einsätze auflisten |
+| `/time-entries` | POST | Zeiteintrag anlegen |
+| `/webhooks` | GET | Webhooks auflisten |
+| `/webhooks` | POST | Webhook registrieren |
+
+### API-Key erstellen
+
+1. Gehen Sie zu **Entwickler → API-Keys**
+2. Klicken Sie auf **"+ Externer API-Key"**
+3. Vergeben Sie einen Namen (z.B. "Kunde Müller - ERP Integration")
+4. Key wird generiert und angezeigt
+5. **Wichtig:** Key sofort an Kunden weitergeben (wird nur einmal angezeigt!)
+
+### Beispiel-Anfrage
+
+```bash
+curl -H "X-API-Key: sms_external_abc123def456" \
+  https://ihre-domain.de/api/external/employees
+```
+
+### Vollständige Dokumentation
+
+Siehe: **docs/CUSTOMER-API.md**
+
+---
+
+## Audit-Logs & Rollback
+
+### Überblick
+
+Das **Audit-Log-System** protokolliert alle Änderungen im System. Entwickler können:
+- Logs für alle Tenant einsehen
+- Versehentliche Änderungen rückgängig machen
+- Statistiken überwachen
+
+### Audit-Logs einsehen
+
+1. Gehen Sie zu **Audit-Logs** in der Sidebar
+2. Filtern Sie nach:
+   - Tenant
+   - Aktion (CREATE, UPDATE, DELETE, LOGIN)
+   - Entity Type (Employee, Customer, etc.)
+   - Zeitraum
+3. Klicken Sie auf **Details** für vollständige Informationen
+
+### Änderung rückgängig machen (Rollback)
+
+**Wichtig:** Rollback sollte nur bei versehentlichen Änderungen verwendet werden!
+
+1. Log in der Tabelle finden
+2. Auf **Rollback** klicken
+3. Bestätigen Sie die Aktion
+4. System stellt den alten Zustand wieder her
+
+**Unterstützte Rollbacks:**
+- ✅ CREATE → Entity wird gelöscht
+- ✅ UPDATE → Alter Zustand wird wiederhergestellt
+- ✅ DELETE → Entity wird wiederhergestellt
+
+**Nicht unterstützt:**
+- ❌ LOGIN/LOGOUT (nur Informationen)
+- ❌ ROLLBACK (Rollback eines Rollbacks)
+
+### Statistiken
+
+Das Dashboard zeigt:
+- **Gesamt**: Alle Logs
+- **Letzte 24h**: Logs der letzten 24 Stunden
+- **Letzte 7 Tage**: Logs der letzten Woche
+- **Aktionen**: Verteilung nach Aktionstyp
+
+### API-Endpunkte
+
+```
+GET    /api/platform/audit-logs              - Alle Logs
+GET    /api/platform/audit-logs/tenant/:id   - Logs für Tenant
+GET    /api/platform/audit-logs/:logId       - Log-Details
+POST   /api/platform/audit-logs/:logId/rollback - Rollback
+GET    /api/platform/audit-logs/stats        - Statistiken
+```
+
+---
+
 ## Anhänge
 
 ### A. Lizenz-Status Übersicht
