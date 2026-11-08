@@ -49,6 +49,14 @@ export function AdminPage() {
           <p className="text-sm text-gray-500">Feiertage nach Bundesland verwalten (Phase 4)</p>
         </div>
 
+        <Link to="/admin/branding" className="card hover:shadow-md transition-shadow group">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-2xl">🎨</span>
+            <h3 className="font-semibold text-gray-900 group-hover:text-primary-600">White-Label Branding</h3>
+          </div>
+          <p className="text-sm text-gray-500">Firmenlogo, Farben und Willkommensnachricht anpassen</p>
+        </Link>
+
         <div className="card opacity-60 cursor-not-allowed">
           <div className="flex items-center gap-3 mb-3">
             <span className="text-2xl">⚙️</span>

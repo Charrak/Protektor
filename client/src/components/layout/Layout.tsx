@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { brandingService, BrandingSettings } from '../../services/branding.service';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: '📊' },
@@ -16,9 +17,17 @@ const navigation = [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [branding, setBranding] = useState<BrandingSettings | null>(null);
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Load branding settings
+    brandingService.getBranding()
+      .then(setBranding)
+      .catch(() => {}); // Silently fail, use defaults
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -43,11 +52,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
       `}>
         <div className="flex items-center h-16 px-6 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center font-bold text-sm">
-              S
-            </div>
+            {branding?.logoUrl ? (
+              <img
+                src={branding.logoUrl}
+                alt={branding.companyName}
+                className="h-10 max-w-[120px] object-contain"
+              />
+            ) : (
+              <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center font-bold text-sm">
+                S
+              </div>
+            )}
             <div>
-              <h1 className="text-lg font-bold">SMS</h1>
+              <h1 className="text-lg font-bold">
+                {branding?.companyName ? branding.companyName.substring(0, 15) : 'SMS'}
+              </h1>
               <p className="text-xs text-gray-400">Security Management</p>
             </div>
           </div>

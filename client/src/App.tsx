@@ -16,6 +16,7 @@ import { ReportsPage } from './pages/reports/ReportsPage';
 import { AdminPage } from './pages/admin/AdminPage';
 import { UsersPage } from './pages/admin/UsersPage';
 import { RolesPage } from './pages/admin/RolesPage';
+import BrandingSettingsPage from './pages/settings/BrandingSettingsPage';
 import { PlatformLayout } from './pages/platform/PlatformLayout';
 import { PlatformLoginPage } from './pages/platform/PlatformLoginPage';
 import { PlatformDashboardPage } from './pages/platform/PlatformDashboardPage';
@@ -91,6 +92,7 @@ function AppRoutes() {
                   <Route path="/admin" element={<AdminPage />} />
                   <Route path="/admin/users" element={<UsersPage />} />
                   <Route path="/admin/roles" element={<RolesPage />} />
+                  <Route path="/admin/branding" element={<BrandingSettingsPage />} />
 
                   {/* Fallback */}
                   <Route path="*" element={<Navigate to="/" replace />} />

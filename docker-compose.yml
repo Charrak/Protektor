@@ -71,6 +71,7 @@ services:
     volumes:
       - ./server:/app
       - /app/node_modules
+      - uploads_data:/app/uploads
     command: npm run dev
 
   # Frontend React App
@@ -96,6 +97,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  uploads_data:
 
 networks:
   sms-network:

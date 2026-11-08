@@ -4,11 +4,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
 import { config } from './config/env';
 import { logger } from './config/logger';
 import { initWebSocket } from './config/websocket';
 import { routes } from './routes';
 import platformRoutes from './routes/platform.routes';
+import brandingRoutes from './routes/branding.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { tenantMiddleware } from './middleware/tenantMiddleware';
 import { startLockCleanupJob } from './services/locking.service';
@@ -44,6 +46,9 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
+// Static Files (Uploaded Logos, Favicons)
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
 // ─── Rate Limiting ───
 app.use('/api/', apiLimiter);
 
@@ -71,6 +76,9 @@ app.use('/api/platform', platformRoutes);
 
 // ─── API Routes (für Kunden) ───
 app.use('/api/v1', tenantMiddleware, routes);
+
+// ─── Branding Routes (für Tenant-Logos) ───
+app.use('/api/v1/branding', tenantMiddleware, brandingRoutes);
 
 // ─── Error Handler ───
 app.use(errorHandler);

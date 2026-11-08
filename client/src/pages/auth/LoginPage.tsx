@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { brandingService, BrandingSettings } from '../../services/branding.service';
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -7,6 +8,14 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [branding, setBranding] = useState<BrandingSettings | null>(null);
+
+  useEffect(() => {
+    // Load branding for login page
+    brandingService.getBranding()
+      .then(setBranding)
+      .catch(() => {}); // Silently fail, use defaults
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,11 +36,28 @@ export function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo & Titel */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <span className="text-3xl font-bold text-white">S</span>
-          </div>
-          <h1 className="text-3xl font-bold text-white">SMS</h1>
+          {branding?.logoUrl ? (
+            <div className="mb-4">
+              <img
+                src={branding.logoUrl}
+                alt={branding.companyName}
+                className="h-20 max-w-[200px] object-contain mx-auto"
+              />
+            </div>
+          ) : (
+            <div className="w-16 h-16 bg-primary-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <span className="text-3xl font-bold text-white">S</span>
+            </div>
+          )}
+          <h1 className="text-3xl font-bold text-white">
+            {branding?.companyName || 'SMS'}
+          </h1>
           <p className="text-gray-400 mt-2">Security Management System</p>
+          {branding?.loginMessage && (
+            <p className="text-gray-300 mt-4 text-sm italic">
+              {branding.loginMessage}
+            </p>
+          )}
         </div>
 
         {/* Login-Formular */}

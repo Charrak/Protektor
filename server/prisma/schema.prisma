@@ -100,6 +100,12 @@ model Tenant {
   isActive            Boolean     @default(true)
   employeeLimit       Int?
   featureFlags        Json?
+  
+  // White-Label Branding
+  logoUrl             String?     @db.VarChar(500)
+  faviconUrl          String?     @db.VarChar(500)
+  brandColor          String?     @db.VarChar(7)  // Hex color e.g. "#1e40af"
+  loginMessage        String?     @db.VarChar(500)  // Custom welcome message
   offlineGraceMinutes Int         @default(1440) // 24h default
   paymentGraceDays    Int         @default(7)
   lastLicenseCheck    DateTime?
