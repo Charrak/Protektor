@@ -8,6 +8,7 @@ import { logger } from '../config/logger';
 interface LoginResult {
   user: {
     id: string;
+    tenantId: string;
     username: string;
     email: string;
     firstName: string;
@@ -137,6 +138,7 @@ export class AuthService {
     return {
       user: {
         id: user.id,
+        tenantId: user.tenantId,
         username: user.username,
         email: user.email,
         firstName: user.firstName,
@@ -235,6 +237,7 @@ export class AuthService {
 
     return {
       id: user.id,
+      tenantId: user.tenantId,
       username: user.username,
       email: user.email,
       firstName: user.firstName,

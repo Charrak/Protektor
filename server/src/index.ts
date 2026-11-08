@@ -8,7 +8,9 @@ import { config } from './config/env';
 import { logger } from './config/logger';
 import { initWebSocket } from './config/websocket';
 import { routes } from './routes';
+import platformRoutes from './routes/platform.routes';
 import { errorHandler } from './middleware/errorHandler';
+import { tenantMiddleware } from './middleware/tenantMiddleware';
 import { startLockCleanupJob } from './services/locking.service';
 
 const app = express();
@@ -49,7 +51,10 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ─── API Routes ───
+// ─── SaaS-Plattform-Routen (für Softwareanbieter) ───
+app.use('/api/platform', platformRoutes);
+
+// ─── API Routes (für Kunden) ───
 app.use('/api/v1', routes);
 
 // ─── Error Handler ───

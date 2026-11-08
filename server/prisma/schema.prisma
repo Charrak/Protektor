@@ -11,13 +11,251 @@ datasource db {
 }
 
 // ═══════════════════════════════════════════════════
+// SAAS - MIETERTUM & ABONNEMENT
+// ═══════════════════════════════════════════════════
+
+model PlatformAdmin {
+  id           String   @id @default(uuid())
+  username     String   @unique @db.VarChar(100)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @db.VarChar(255)
+  firstName    String   @db.VarChar(100)
+  lastName     String   @db.VarChar(100)
+  isActive     Boolean  @default(true)
+  lastLogin    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions         PlatformSession[]
+  notifications    PlatformNotification[]
+  auditLogs        PlatformAuditLog[]
+  createdTenants   Tenant[]            @relation("createdBy")
+  modifiedTenants  Tenant[]            @relation("modifiedBy")
+
+  @@map("platform_admins")
+}
+
+model PlatformSession {
+  id             String   @id @default(uuid())
+  adminId        String   @db.VarChar(36)
+  token          String   @unique @db.VarChar(500)
+  refreshToken   String   @unique @db.VarChar(500)
+  ipAddress      String?  @db.VarChar(45)
+  userAgent      String?  @db.Text
+  expiresAt      DateTime
+  lastActivityAt DateTime @default(now())
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  admin PlatformAdmin @relation(fields: [adminId], references: [id])
+
+  @@map("platform_sessions")
+}
+
+model PlatformNotification {
+  id        String   @id @default(uuid())
+  adminId   String   @db.VarChar(36)
+  type      String   @db.VarChar(50)
+  title     String   @db.VarChar(200)
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  admin PlatformAdmin @relation(fields: [adminId], references: [id])
+
+  @@index([adminId, isRead])
+  @@map("platform_notifications")
+}
+
+model PlatformAuditLog {
+  id           String   @id @default(uuid())
+  adminId      String?  @db.VarChar(36)
+  adminName    String?  @db.VarChar(200)
+  action       String   @db.VarChar(50)
+  resourceType String   @db.VarChar(50)
+  resourceId   String   @db.VarChar(36)
+  oldValue     Json?
+  newValue     Json?
+  ipAddress    String?  @db.VarChar(45)
+  createdAt    DateTime @default(now())
+
+  admin PlatformAdmin? @relation(fields: [adminId], references: [id])
+
+  @@index([resourceType, resourceId])
+  @@map("platform_audit_logs")
+}
+
+model Tenant {
+  id                  String      @id @default(uuid())
+  tenantId            String      @unique @db.VarChar(36)
+  companyName         String      @db.VarChar(200)
+  contactEmail        String      @db.VarChar(255)
+  contactPhone        String?     @db.VarChar(50)
+  address             Json?
+  taxNumber           String?     @db.VarChar(50)
+  vatId               String?     @db.VarChar(50)
+  stripeCustomerId    String?     @db.VarChar(255)
+  licenseStatus       LicenseStatus @default(TEST)
+  isActive            Boolean     @default(true)
+  employeeLimit       Int?
+  featureFlags        Json?
+  offlineGraceMinutes Int         @default(1440) // 24h default
+  paymentGraceDays    Int         @default(7)
+  lastLicenseCheck    DateTime?
+  offlineSince        DateTime?
+  notes               String?     @db.Text
+  createdById         String      @db.VarChar(36)
+  modifiedById        String?     @db.VarChar(36)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  createdBy        PlatformAdmin    @relation("createdBy", fields: [createdById], references: [id])
+  modifiedBy       PlatformAdmin?   @relation("modifiedBy", fields: [modifiedById], references: [id])
+  subscriptions    Subscription[]
+  payments         Payment[]
+  webhookEvents    WebhookEvent[]
+  users            User[]
+  employees        Employee[]
+  customers        Customer[]
+  objects          SMSObject[]
+  deployments      Deployment[]
+  timeRecords      TimeRecord[]
+  invoices         CustomerInvoice[]
+
+  @@map("tenants")
+}
+
+model Subscription {
+  id                    String            @id @default(uuid())
+  tenantId              String            @db.VarChar(36)
+  stripeSubscriptionId  String?           @unique @db.VarChar(255)
+  planId                String            @db.VarChar(36)
+  status                SubscriptionStatus @default(ACTIVE)
+  billingInterval       BillingInterval
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+  trialStart            DateTime?
+  trialEnd              DateTime?
+  cancelAt              DateTime?
+  canceledAt            DateTime?
+  endedAt               DateTime?
+  employeeCount         Int               @default(0)
+  monthlyRevenue        Decimal           @db.Decimal(10, 2)
+  notes                 String?           @db.Text
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  plan         Plan     @relation(fields: [planId], references: [id])
+  payments     Payment[]
+
+  @@map("subscriptions")
+}
+
+model Plan {
+  id              String          @id @default(uuid())
+  name            String          @db.VarChar(100)
+  slug            String          @unique @db.VarChar(50)
+  description     String?         @db.Text
+  monthlyPrice    Decimal         @db.Decimal(10, 2)
+  yearlyPrice     Decimal         @db.Decimal(10, 2)
+  employeeLimit   Int?
+  stripeProductId String?         @db.VarChar(255)
+  stripePriceIdMonthly String?    @db.VarChar(255)
+  stripePriceIdYearly  String?    @db.VarChar(255)
+  features        Json?
+  isActive        Boolean         @default(true)
+  sortOrder       Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Payment {
+  id                    String          @id @default(uuid())
+  tenantId              String          @db.VarChar(36)
+  subscriptionId        String?         @db.VarChar(36)
+  stripePaymentIntentId String?         @db.VarChar(255)
+  stripeInvoiceId       String?         @db.VarChar(255)
+  amount                Decimal         @db.Decimal(10, 2)
+  currency              String          @default("EUR") @db.VarChar(3)
+  status                PaymentStatus   @default(PENDING)
+  paidAt                DateTime?
+  failedAt              DateTime?
+  failureReason         String?         @db.Text
+  billingPeriodStart    DateTime
+  billingPeriodEnd      DateTime
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  @@map("payments")
+}
+
+model WebhookEvent {
+  id           String   @id @default(uuid())
+  tenantId     String?  @db.VarChar(36)
+  stripeEventId String  @unique @db.VarChar(255)
+  eventType    String   @db.VarChar(100)
+  payload      Json
+  processed    Boolean  @default(false)
+  processedAt  DateTime?
+  error        String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@map("webhook_events")
+}
+
+enum LicenseStatus {
+  TEST
+  ACTIVE
+  PAYMENT_PENDING
+  GRACE_PERIOD
+  RESTRICTED
+  SUSPENDED
+  CANCELLED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  INCOMPLETE
+  PAUSED
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+// ═══════════════════════════════════════════════════
 // BENUTZER & BERECHTIGUNGEN
 // ═══════════════════════════════════════════════════
 
 model User {
   id           String   @id @default(uuid())
-  username     String   @unique @db.VarChar(100)
-  email        String   @unique @db.VarChar(255)
+  tenantId     String   @db.VarChar(36)
+  username     String   @db.VarChar(100)
+  email        String   @db.VarChar(255)
   passwordHash String   @db.VarChar(255)
   firstName    String   @db.VarChar(100)
   lastName     String   @db.VarChar(100)
@@ -30,7 +268,8 @@ model User {
   updatedAt    DateTime @updatedAt
   deletedAt    DateTime?
 
-  role              Role              @relation(fields: [roleId], references: [id])
+  tenant            Tenant              @relation(fields: [tenantId], references: [id])
+  role              Role                @relation(fields: [roleId], references: [id])
   rolePermissions   RolePermission[]
   locks             Lock[]
   sessions          Session[]
@@ -48,21 +287,28 @@ model User {
   approvedAvailabilities Availability[] @relation("approvedBy")
   approvedDeployments Deployment[] @relation("confirmedByEmployee")
 
+  @@unique([tenantId, username])
+  @@unique([tenantId, email])
+  @@map("users")
+
   @@map("users")
 }
 
 model Role {
   id          String   @id @default(uuid())
-  name        String   @unique @db.VarChar(50)
-  slug        String   @unique @db.VarChar(50)
+  tenantId    String   @db.VarChar(36)
+  name        String   @db.VarChar(50)
+  slug        String   @db.VarChar(50)
   description String?  @db.Text
   isSystem    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
   users           User[]
   rolePermissions RolePermission[]
 
+  @@unique([tenantId, slug])
   @@map("roles")
 }
 
@@ -98,7 +344,8 @@ model RolePermission {
 
 model Employee {
   id                String    @id @default(uuid())
-  personnelNumber   String    @unique @db.VarChar(50)
+  tenantId          String    @db.VarChar(36)
+  personnelNumber   String    @db.VarChar(50)
   firstName         String    @db.VarChar(100)
   lastName          String    @db.VarChar(100)
   dateOfBirth       DateTime? @db.Date
@@ -135,6 +382,7 @@ model Employee {
   updatedAt         DateTime  @updatedAt
   deletedAt         DateTime?
 
+  tenant          Tenant  @relation(fields: [tenantId], references: [id])
   qualifications  EmployeeQualification[]
   documents       EmployeeDocument[]
   availabilities  Availability[]
@@ -145,6 +393,7 @@ model Employee {
   replacementEmployee ReplacementRequest[] @relation("replacementEmployee")
   confirmedByEmployee Deployment[] @relation("confirmedByEmployee")
 
+  @@unique([tenantId, personnelNumber])
   @@map("employees")
 }
 
@@ -275,7 +524,8 @@ enum ApprovalStatus {
 
 model Customer {
   id             String          @id @default(uuid())
-  customerNumber String          @unique @db.VarChar(50)
+  tenantId       String          @db.VarChar(36)
+  customerNumber String          @db.VarChar(50)
   companyName    String          @db.VarChar(200)
   department     String?         @db.VarChar(100)
   street         String?         @db.VarChar(200)
@@ -296,11 +546,13 @@ model Customer {
   updatedAt      DateTime        @updatedAt
   deletedAt      DateTime?
 
+  tenant          Tenant          @relation(fields: [tenantId], references: [id])
   contactPersons  ContactPerson[]
   objects         SMSObject[]
   rates           CustomerRate[]
   invoices        CustomerInvoice[]
 
+  @@unique([tenantId, customerNumber])
   @@map("customers")
 }
 
@@ -332,7 +584,8 @@ model ContactPerson {
 
 model SMSObject {
   id                  String   @id @default(uuid())
-  objectNumber        String   @unique @db.VarChar(50)
+  tenantId            String   @db.VarChar(36)
+  objectNumber        String   @db.VarChar(50)
   customerId          String   @db.VarChar(36)
   name                String   @db.VarChar(200)
   street              String?  @db.VarChar(200)
@@ -349,12 +602,14 @@ model SMSObject {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  customer      Customer          @relation(fields: [customerId], references: [id])
-  contactPerson ContactPerson?    @relation(fields: [contactPersonId], references: [id])
-  requirements  ObjectRequirement[]
-  deployments   Deployment[]
-  rates         CustomerRate[]
+  tenant          Tenant            @relation(fields: [tenantId], references: [id])
+  customer        Customer          @relation(fields: [customerId], references: [id])
+  contactPerson   ContactPerson?    @relation(fields: [contactPersonId], references: [id])
+  requirements    ObjectRequirement[]
+  deployments     Deployment[]
+  rates           CustomerRate[]
 
+  @@unique([tenantId, objectNumber])
   @@map("objects")
 }
 
@@ -416,6 +671,7 @@ model Shift {
 
 model Deployment {
   id                 String    @id @default(uuid())
+  tenantId           String    @db.VarChar(36)
   objectId           String    @db.VarChar(36)
   employeeId         String    @db.VarChar(36)
   date               DateTime  @db.Date
@@ -439,6 +695,7 @@ model Deployment {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
+  tenant              Tenant       @relation(fields: [tenantId], references: [id])
   object              SMSObject    @relation(fields: [objectId], references: [id])
   employee            Employee     @relation(fields: [employeeId], references: [id])
   shift               Shift?       @relation(fields: [shiftId], references: [id])
@@ -465,6 +722,7 @@ enum DeploymentStatus {
 
 model TimeRecord {
   id               String    @id @default(uuid())
+  tenantId         String    @db.VarChar(36)
   employeeId       String    @db.VarChar(36)
   deploymentId     String?   @db.VarChar(36)
   date             DateTime  @db.Date
@@ -487,10 +745,11 @@ model TimeRecord {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  employee    Employee  @relation(fields: [employeeId], references: [id])
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  employee    Employee    @relation(fields: [employeeId], references: [id])
   deployment  Deployment? @relation(fields: [deploymentId], references: [id])
-  approvedBy  User?     @relation("approvedBy", fields: [approvedById], references: [id])
-  correctedBy User?     @relation("correctedBy", fields: [correctedById], references: [id])
+  approvedBy  User?       @relation("approvedBy", fields: [approvedById], references: [id])
+  correctedBy User?       @relation("correctedBy", fields: [correctedById], references: [id])
   breaks      Break[]
 
   @@map("time_records")
@@ -546,7 +805,8 @@ enum SurchargeType {
 
 model CustomerInvoice {
   id           String    @id @default(uuid())
-  invoiceNumber String   @unique @db.VarChar(50)
+  tenantId     String    @db.VarChar(36)
+  invoiceNumber String   @db.VarChar(50)
   customerId   String    @db.VarChar(36)
   invoiceDate  DateTime  @db.Date
   dueDate      DateTime  @db.Date
@@ -564,10 +824,12 @@ model CustomerInvoice {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  tenant     Tenant            @relation(fields: [tenantId], references: [id])
   customer   Customer          @relation(fields: [customerId], references: [id])
   positions  InvoicePosition[]
   createdBy  User              @relation(fields: [createdById], references: [id])
 
+  @@unique([tenantId, invoiceNumber])
   @@map("customer_invoices")
 }
 

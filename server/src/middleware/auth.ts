@@ -5,6 +5,7 @@ import { prisma } from '../config/database';
 
 export interface AuthenticatedUser {
   id: string;
+  tenantId: string;
   username: string;
   email: string;
   firstName: string;
@@ -91,6 +92,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     // User-Objekt an Request anhängen
     req.user = {
       id: user.id,
+      tenantId: user.tenantId,
       username: user.username,
       email: user.email,
       firstName: user.firstName,
