@@ -7,6 +7,9 @@ import qualificationRoutes from './qualification.routes';
 import customerRoutes from './customer.routes';
 import objectRoutes from './object.routes';
 import deploymentRoutes from './deployment.routes';
+import autoPlannerRoutes from './autoPlanner.routes';
+import attendanceRoutes from './attendance.routes';
+import billingRoutes from './billing.routes';
 import lockingRoutes from './locking.routes';
 
 const router = Router();
@@ -28,10 +31,10 @@ router.use('/objects', objectRoutes);
 // ─── Phase 4: Dienstplanung ───
 router.use('/deployments', deploymentRoutes);
 
-// ─── Phase 4+: Weitere Routen ───
-// router.use('/scheduling', schedulingRoutes);
-// router.use('/time-records', timeRecordRoutes);
-// router.use('/billing', billingRoutes);
+// ─── Phase 5-8: Auto-Planung, Zeiterfassung, Abrechnung ───
+router.use('/auto-planning', autoPlannerRoutes);
+router.use('/time-records', attendanceRoutes);
+router.use('/billing', billingRoutes);
 // router.use('/reports', reportRoutes);
 // router.use('/admin', adminRoutes);
 // router.use('/notifications', notificationRoutes);

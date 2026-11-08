@@ -193,6 +193,9 @@ export function SchedulingPage() {
         description={`${deployments.length} Einsätze im aktuellen Zeitraum`}
         actions={
           <div className="flex items-center gap-2">
+            <button onClick={() => {}} className="btn-secondary">
+              🤖 Auto-Planung
+            </button>
             <button onClick={() => setShowCreateModal(true)} className="btn-primary">
               + Neuer Einsatz
             </button>

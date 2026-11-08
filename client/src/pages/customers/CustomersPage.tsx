@@ -197,7 +197,7 @@ function CreateCustomerModal({ onClose, onSuccess }: { onClose: () => void; onSu
     email: '',
     phone: '',
     city: '',
-    status: 'active',
+    status: 'active' as const,
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -249,7 +249,7 @@ function CreateCustomerModal({ onClose, onSuccess }: { onClose: () => void; onSu
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-          <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className="input-field">
+          <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as any }))} className="input-field">
             <option value="active">Aktiv</option>
             <option value="prospect">Interessent</option>
             <option value="inactive">Inaktiv</option>

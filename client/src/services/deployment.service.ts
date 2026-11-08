@@ -16,6 +16,7 @@ export interface Deployment {
   status: 'planned' | 'confirmed' | 'cancelled' | 'completed' | 'no_show';
   version: number;
   shift?: { id: string; name: string } | null;
+  notes?: string;
 }
 
 export interface DeploymentListResponse {
