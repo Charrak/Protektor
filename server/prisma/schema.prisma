@@ -388,6 +388,22 @@ model Employee {
   maxHoursPerDay    Decimal   @default(10.00) @db.Decimal(4, 2)
   maxHoursPerWeek   Decimal   @default(48.00) @db.Decimal(5, 2)
   preferredRegion   String?   @db.VarChar(100)
+  
+  // Sicherheits-relevante Felder für Sicherheitsfirmen
+  bewachungserlaubnisNr    String? @db.VarChar(100)  // §34a GewO Lizenznummer
+  bewachungserlaubnisExpiry DateTime? @db.Date  // Ablaufdatum Bewachungserlaubnis
+  waffensachkunde          Boolean @default(false)  // Waffensachkundenachweis vorhanden
+  waffensachkundeExpiry    DateTime? @db.Date  // Ablaufdatum Waffensachkunde
+  ersteHilfeCertified      Boolean @default(false)  // Erste Hilfe Ausbildung
+  ersteHilfeExpiry         DateTime? @db.Date  // Ablaufdatum Erste Hilfe (alle 2 Jahre)
+  sicherheitsstufe         Int @default(1)  // 1-5: Einfacher Dienst bis Führungsposition
+  fuehrungszeugnisDatum    DateTime? @db.Date  // Letzte Prüfung Führungszeugnis
+  zuverlaessigkeetspruefung DateTime? @db.Date  // §7 GewO Zuverlässigkeitsprüfung
+  unterweisungDatum        DateTime? @db.Date  // Letzte Sicherheitsunterweisung
+  hundefuehrer             Boolean @default(false)  // Hundeführer-Schein
+  brandschutzbeauftragter  Boolean @default(false)  // Brandschutzhelfer
+  ersteHilfeTrainer        Boolean @default(false)  // Erste Hilfe Ausbilder
+  
   notes             String?   @db.Text
   photoUrl          String?   @db.VarChar(500)
   status            EmployeeStatus @default(active)
@@ -1167,4 +1183,162 @@ model HelpSearch {
   
   @@index([query])
   @@map("help_searches")
+}
+
+// Schlüsselverwaltung für Sicherheitsfirmen
+model SecurityKey {
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  objectId        String    @db.VarChar(36)
+  keyNumber       String    @db.VarChar(100)  // Schlüsselnummer
+  keyType         String    @db.VarChar(100)  // Typ (z.B. "Zylinder", "Transponder")
+  description     String?   @db.VarChar(500)
+  totalCopies     Int       @default(1)  // Anzahl Kopien
+  assignedTo      String?   @db.VarChar(36)  // Employee ID
+  assignedDate    DateTime? @db.Date
+  returnDate      DateTime? @db.Date
+  status          KeyStatus @default(AVAILABLE)
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  object    SMSObject @relation(fields: [objectId], references: [id])
+  
+  @@index([tenantId, status])
+  @@index([assignedTo])
+  @@map("security_keys")
+}
+
+enum KeyStatus {
+  AVAILABLE
+  ASSIGNED
+  LOST
+  RETURNED
+  DEFECT
+}
+
+// Incident-Management (Besondere Vorkommnisse)
+model SecurityIncident {
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  objectId        String?   @db.VarChar(36)
+  deploymentId    String?   @db.VarChar(36)
+  reportedById    String    @db.VarChar(36)  // Employee ID
+  incidentType    IncidentType
+  severity        IncidentSeverity @default(MEDIUM)
+  title           String    @db.VarChar(200)
+  description     String    @db.Text
+  location        String?   @db.VarChar(200)
+  occurredAt      DateTime  @db.Timestamp
+  reportedAt      DateTime  @default(now())
+  resolvedAt      DateTime? @db.Timestamp
+  resolvedById    String?   @db.VarChar(36)
+  resolution      String?   @db.Text
+  status          IncidentStatus @default(OPEN)
+  policeReported  Boolean   @default(false)
+  policeCaseNr    String?   @db.VarChar(100)
+  insuranceReported Boolean @default(false)
+  insuranceCaseNr String?   @db.VarChar(100)
+  photos          Json?     // Array von Foto-URLs
+  witnesses       Json?     // Array von Zeugen
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  object     SMSObject? @relation(fields: [objectId], references: [id])
+  deployment Deployment? @relation(fields: [deploymentId], references: [id])
+  reportedBy Employee   @relation("incidentReporter", fields: [reportedById], references: [id])
+  resolvedBy Employee?  @relation("incidentResolver", fields: [resolvedById], references: [id])
+  
+  @@index([tenantId, status])
+  @@index([incidentType, severity])
+  @@index([occurredAt])
+  @@map("security_incidents")
+}
+
+enum IncidentType {
+  THEFT
+  VANDALISM
+  TRESPASSING
+  ALARM_ACTIVATION
+  MEDICAL_EMERGENCY
+  FIRE
+  ACCIDENT
+  THREAT
+  SUSPICIOUS_ACTIVITY
+  TECHNICAL_FAILURE
+  OTHER
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+// Notfall-Protokolle / Alarmpläne
+model EmergencyProtocol {
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  objectId        String?   @db.VarChar(36)
+  protocolType    String    @db.VarChar(100)  // z.B. "Brand", "Amok", "Evakuierung"
+  title           String    @db.VarChar(200)
+  description     String    @db.Text
+  steps           Json      // Array von Schritten
+  emergencyContacts Json    // Array von Kontakten
+  evacuationRoutes  Json?   // Array von Fluchtwegen
+  assemblyPoints    Json?   // Array von Sammelplätzen
+  lastDrillDate     DateTime? @db.Date
+  nextDrillDate     DateTime? @db.Date
+  isActive          Boolean @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  tenant  Tenant     @relation(fields: [tenantId], references: [id])
+  object  SMSObject? @relation(fields: [objectId], references: [id])
+  
+  @@index([tenantId, isActive])
+  @@map("emergency_protocols")
+}
+
+// Zutrittsberechtigungen
+model AccessPermission {
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  employeeId      String    @db.VarChar(36)
+  objectId        String    @db.VarChar(36)
+  permissionType  AccessPermissionType @default(FULL_ACCESS)
+  validFrom       DateTime  @db.Date
+  validUntil      DateTime? @db.Date
+  timeRestrictions Json?    // z.B. {"weekdays": ["MO","TU","WE"], "timeFrom": "08:00", "timeUntil": "18:00"}
+  isRevoked       Boolean   @default(false)
+  revokedAt       DateTime? @db.Timestamp
+  revokedBy       String?   @db.VarChar(36)
+  revocationReason String?  @db.VarChar(500)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  employee Employee  @relation(fields: [employeeId], references: [id])
+  object   SMSObject @relation(fields: [objectId], references: [id])
+  
+  @@unique([employeeId, objectId])
+  @@index([tenantId, isRevoked])
+  @@map("access_permissions")
+}
+
+enum AccessPermissionType {
+  FULL_ACCESS
+  LIMITED_HOURS
+  ESCORTED_ONLY
+  SPECIFIC_AREAS
 }
