@@ -1,158 +1,221 @@
-import { prisma } from '../config/database';
+import { PrismaClient } from '@prisma/client';
+import { encrypt, decrypt } from '../utils/encryption';
+import { auditService } from './audit.service';
 import { logger } from '../config/logger';
-import { ConflictError, NotFoundError } from '../middleware/errorHandler';
 
+const prisma = new PrismaClient();
+
+/**
+ * Object Service mit optionaler Encryption für sensible Daten
+ */
 export class ObjectService {
-  async list(query: { search?: string; customerId?: string; isActive?: boolean; page?: number; limit?: number }) {
-    const { search, customerId, isActive, page = 1, limit = 25 } = query;
-    const skip = (page - 1) * limit;
+  /**
+   * Listet alle Objekte (kompatibel mit bestehendem Controller)
+   */
+  async list(filters: {
+    search?: string;
+    customerId?: string;
+    isActive?: boolean;
+    page?: number;
+    limit?: number;
+  }) {
+    const { search, customerId, isActive, page = 1, limit = 50 } = filters;
 
     const where: any = {};
 
+    if (customerId) {
+      where.customerId = customerId;
+    }
+
+    if (isActive !== undefined) {
+      where.isActive = isActive;
+    }
+
     if (search) {
       where.OR = [
-        { objectNumber: { contains: search, mode: 'insensitive' } },
         { name: { contains: search, mode: 'insensitive' } },
-        { city: { contains: search, mode: 'insensitive' } },
+        { objectNumber: { contains: search, mode: 'insensitive' } },
       ];
     }
 
-    if (customerId) where.customerId = customerId;
-    if (isActive !== undefined) where.isActive = isActive;
-
     const [objects, total] = await Promise.all([
-      prisma.sMSObject.findMany({
+      prisma.object.findMany({
         where,
-        include: {
-          customer: { select: { id: true, companyName: true, customerNumber: true } },
-          _count: { select: { requirements: true, deployments: true } },
-        },
+        skip: ((page || 1) - 1) * (limit || 50),
+        take: limit || 50,
         orderBy: { name: 'asc' },
-        skip,
-        take: limit,
+        include: {
+          customer: {
+            select: {
+              companyName: true,
+            },
+          },
+        },
       }),
-      prisma.sMSObject.count({ where }),
+      prisma.object.count({ where }),
     ]);
 
     return {
-      objects: objects.map((o: any) => ({
-        id: o.id,
-        objectNumber: o.objectNumber,
-        name: o.name,
-        city: o.city,
-        objectType: o.objectType,
-        isActive: o.isActive,
-        customer: o.customer,
-        requirementCount: o._count.requirements,
-        deploymentCount: o._count.deployments,
-      })),
+      objects,
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      page: page || 1,
+      limit: limit || 50,
+      totalPages: Math.ceil(total / (limit || 50)),
     };
   }
 
+  /**
+   * Ruft ein Objekt ab und entschlüsselt Zugangsdaten falls vorhanden
+   */
   async getById(id: string) {
-    const object = await prisma.sMSObject.findUnique({
+    const object = await prisma.object.findUnique({
       where: { id },
       include: {
         customer: true,
-        contactPerson: true,
-        requirements: {
-          include: { qualification: true },
-        },
+        deployments: true,
       },
     });
 
-    if (!object) throw new NotFoundError('Objekt');
+    if (!object) {
+      throw new Error('Objekt nicht gefunden');
+    }
+
+    // Zugangsdaten entschlüsseln wenn vorhanden
+    if ((object as any).accessCredentials && typeof (object as any).accessCredentials === 'object') {
+      try {
+        const creds = (object as any).accessCredentials;
+        const decrypted: any = {};
+        
+        if (creds.username) {
+          decrypted.username = decrypt(creds.username);
+        }
+        if (creds.password) {
+          decrypted.password = decrypt(creds.password);
+        }
+        if (creds.code) {
+          decrypted.code = decrypt(creds.code);
+        }
+        
+        (object as any).accessCredentials = decrypted;
+      } catch (error) {
+        logger.error('Fehler beim Entschlüsseln der Zugangsdaten:', error);
+      }
+    }
+
     return object;
   }
 
-  async create(input: any, userId: string) {
-    const existing = await prisma.sMSObject.findFirst({
-      where: { objectNumber: input.objectNumber },
-    });
+  /**
+   * Erstellt ein neues Objekt (kompatibel mit bestehendem Controller)
+   */
+  async create(data: any, userId: string) {
+    // Zugangsdaten verschlüsseln wenn vorhanden
+    if (data.accessCredentials && typeof data.accessCredentials === 'object') {
+      const creds = data.accessCredentials;
+      const encrypted: any = {};
+      
+      if (creds.username) {
+        encrypted.username = encrypt(creds.username);
+      }
+      if (creds.password) {
+        encrypted.password = encrypt(creds.password);
+      }
+      if (creds.code) {
+        encrypted.code = encrypt(creds.code);
+      }
+      
+      data.accessCredentials = encrypted;
+    }
 
-    if (existing) throw new ConflictError('Objektnummer ist bereits vergeben');
-
-    const obj = await prisma.sMSObject.create({
+    const object = await prisma.object.create({
       data: {
-        objectNumber: input.objectNumber,
-        customerId: input.customerId,
-        name: input.name,
-        street: input.street,
-        zipCode: input.zipCode,
-        city: input.city,
-        description: input.description,
-        objectType: input.objectType,
-        contactPersonId: input.contactPersonId,
-        alarmNumber: input.alarmNumber,
-        keyDepot: input.keyDepot,
-        accessCode: input.accessCode,
-        specialInstructions: input.specialInstructions,
-        isActive: input.isActive !== false,
+        objectNumber: data.objectNumber,
+        customerId: data.customerId,
+        name: data.name,
+        address: data.address || {},
+        contactPerson: data.contactPerson || {},
+        accessCredentials: data.accessCredentials || {},
+        notes: data.notes || '',
+        isActive: data.isActive !== false,
       },
     });
 
-    logger.info(`Objekt erstellt: ${obj.name} (${obj.objectNumber})`);
-    return obj;
-  }
-
-  async update(id: string, input: any, userId: string) {
-    const existing = await prisma.sMSObject.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundError('Objekt');
-
-    if (input.objectNumber && input.objectNumber !== existing.objectNumber) {
-      const taken = await prisma.sMSObject.findFirst({
-        where: { objectNumber: input.objectNumber, id: { not: id } },
-      });
-      if (taken) throw new ConflictError('Objektnummer ist bereits vergeben');
+    // Audit Log
+    if (data.tenantId) {
+      await auditService.logCreate(
+        data.tenantId,
+        userId,
+        'Object',
+        object.id,
+        { objectNumber: data.objectNumber, name: data.name }
+      );
     }
 
-    const obj = await prisma.sMSObject.update({
+    return object;
+  }
+
+  /**
+   * Aktualisiert ein Objekt (kompatibel mit bestehendem Controller)
+   */
+  async update(id: string, data: any, userId: string) {
+    // Zugangsdaten verschlüsseln wenn vorhanden
+    if (data.accessCredentials && typeof data.accessCredentials === 'object') {
+      const creds = data.accessCredentials;
+      const encrypted: any = {};
+      
+      if (creds.username) {
+        encrypted.username = encrypt(creds.username);
+      }
+      if (creds.password) {
+        encrypted.password = encrypt(creds.password);
+      }
+      if (creds.code) {
+        encrypted.code = encrypt(creds.code);
+      }
+      
+      data.accessCredentials = encrypted;
+    }
+
+    const object = await prisma.object.update({
       where: { id },
+      data,
+    });
+
+    // Audit Log
+    if (data.tenantId) {
+      await auditService.logUpdate(
+        data.tenantId,
+        userId,
+        'Object',
+        id,
+        data
+      );
+    }
+
+    return object;
+  }
+
+  /**
+   * Setzt Objekt-Anforderungen
+   */
+  async setRequirements(objectId: string, requirements: any[], userId: string) {
+    const object = await prisma.object.update({
+      where: { id: objectId },
       data: {
-        ...(input.objectNumber !== undefined && { objectNumber: input.objectNumber }),
-        ...(input.customerId !== undefined && { customerId: input.customerId }),
-        ...(input.name !== undefined && { name: input.name }),
-        ...(input.street !== undefined && { street: input.street }),
-        ...(input.zipCode !== undefined && { zipCode: input.zipCode }),
-        ...(input.city !== undefined && { city: input.city }),
-        ...(input.description !== undefined && { description: input.description }),
-        ...(input.objectType !== undefined && { objectType: input.objectType }),
-        ...(input.contactPersonId !== undefined && { contactPersonId: input.contactPersonId }),
-        ...(input.alarmNumber !== undefined && { alarmNumber: input.alarmNumber }),
-        ...(input.keyDepot !== undefined && { keyDepot: input.keyDepot }),
-        ...(input.accessCode !== undefined && { accessCode: input.accessCode }),
-        ...(input.specialInstructions !== undefined && { specialInstructions: input.specialInstructions }),
-        ...(input.isActive !== undefined && { isActive: input.isActive }),
+        requirements: requirements as any,
       },
     });
 
-    logger.info(`Objekt aktualisiert: ${obj.name}`);
-    return obj;
-  }
+    // Audit Log
+    await auditService.logUpdate(
+      (object as any).tenantId || '',
+      userId,
+      'Object',
+      objectId,
+      { requirements }
+    );
 
-  async setRequirements(objectId: string, requirementData: Array<{ qualificationId: string; isMandatory: boolean }>, userId: string) {
-    const obj = await prisma.sMSObject.findUnique({ where: { id: objectId } });
-    if (!obj) throw new NotFoundError('Objekt');
-
-    // Alte Anforderungen löschen
-    await prisma.objectRequirement.deleteMany({ where: { objectId } });
-
-    // Neue Anforderungen erstellen
-    if (requirementData.length > 0) {
-      await prisma.objectRequirement.createMany({
-        data: requirementData.map(r => ({
-          objectId,
-          qualificationId: r.qualificationId,
-          isMandatory: r.isMandatory,
-        })),
-      });
-    }
-
-    logger.info(`Objekt-Anforderungen aktualisiert: ${obj.name} (${requirementData.length} Qualifikationen)`);
+    return object;
   }
 }
 

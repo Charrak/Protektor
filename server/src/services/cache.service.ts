@@ -130,17 +130,18 @@ export class CacheService {
    */
   async getCachedPlans(): Promise<any[]> {
     const cacheKey = 'plans:list';
-    let plans = this.get<any[]>(cacheKey);
+    const cached = this.get<any[]>(cacheKey);
 
-    if (!plans) {
-      plans = await prisma.plan.findMany({
-        where: { isActive: true },
-        orderBy: { displayOrder: 'asc' },
-      });
-
-      this.set(cacheKey, plans, 30 * 60 * 1000); // 30 Minuten
+    if (cached) {
+      return cached;
     }
 
+    const plans = await prisma.plan.findMany({
+      where: { isActive: true },
+      orderBy: { displayOrder: 'asc' },
+    });
+
+    this.set(cacheKey, plans, 30 * 60 * 1000); // 30 Minuten
     return plans;
   }
 
@@ -149,17 +150,18 @@ export class CacheService {
    */
   async getCachedEmployees(tenantId: string): Promise<any[]> {
     const cacheKey = `employees:${tenantId}`;
-    let employees = this.get<any[]>(cacheKey);
+    const cached = this.get<any[]>(cacheKey);
 
-    if (!employees) {
-      employees = await prisma.employee.findMany({
-        where: { tenantId },
-        orderBy: { lastName: 'asc' },
-      });
-
-      this.set(cacheKey, employees, 5 * 60 * 1000); // 5 Minuten
+    if (cached) {
+      return cached;
     }
 
+    const employees = await prisma.employee.findMany({
+      where: { tenantId },
+      orderBy: { lastName: 'asc' },
+    });
+
+    this.set(cacheKey, employees, 5 * 60 * 1000); // 5 Minuten
     return employees;
   }
 

@@ -63,7 +63,7 @@ export class StripeController {
     try {
       const { subscriptionId } = req.params;
 
-      const subscription = await stripeService.getSubscription(subscriptionId);
+      const subscription = await stripeService.getSubscription(subscriptionId as string);
 
       res.json(subscription);
     } catch (error) {

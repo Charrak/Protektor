@@ -4,7 +4,7 @@ import { logger } from '../config/logger';
 
 // Stripe Client initialisieren
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2023-10-16',
+  apiVersion: '2024-12-18.acacia' as any,
 });
 
 export interface CreateCheckoutSessionInput {
@@ -71,7 +71,7 @@ export class StripeService {
     }
 
     // Checkout Session erstellen
-    const session = await stripe.checkout.sessions.create({
+    const session = await (stripe.checkout.sessions as any).create({
       customer: customerId,
       payment_method_types: ['card', 'sepa_debit'],
       line_items: [

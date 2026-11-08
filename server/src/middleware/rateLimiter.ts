@@ -51,7 +51,7 @@ export const platformLimiter = rateLimit({
 const failedAttempts = new Map<string, { count: number; lastAttempt: number }>();
 
 export function suspiciousActivityDetector(req: Request, res: any, next: any) {
-  const ip = req.ip || req.connection.remoteAddress;
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
   const now = Date.now();
   
   // Prüfe auf SQL Injection Versuche

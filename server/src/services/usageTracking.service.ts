@@ -259,7 +259,7 @@ export class UsageTrackingService {
       startDate,
       endDate,
       summary: byResource,
-      totalEvents: stats.reduce((sum, stat) => sum + stat.count, 0),
+      totalEvents: stats.reduce((sum: number, stat: any) => sum + (stat.count || 0), 0),
     };
   }
 

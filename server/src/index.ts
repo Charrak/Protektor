@@ -12,50 +12,65 @@ import platformRoutes from './routes/platform.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { tenantMiddleware } from './middleware/tenantMiddleware';
 import { startLockCleanupJob } from './services/locking.service';
+import { apiLimiter, authLimiter, platformLimiter, webhookLimiter, suspiciousActivityDetector } from './middleware/rateLimiter';
+import { sanitizeInput } from './utils/validation';
+import { customSecurityHeaders } from './middleware/security';
 
 const app = express();
 const server = http.createServer(app);
 
-// ─── Middleware ───
+// ─── Security Middleware ───
 app.use(helmet({
   contentSecurityPolicy: false, // Wird von Nginx gesteuert
 }));
+
+// Custom Security Headers
+app.use(customSecurityHeaders);
+
+// Suspicious Activity Detection
+app.use(suspiciousActivityDetector);
+
+// Input Sanitization
+app.use(sanitizeInput);
+
+// CORS
 app.use(cors({
   origin: config.corsOrigin,
   credentials: true,
 }));
+
+// Body Parser
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
-// Rate Limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 Minuten
-  max: 1000, // Max 1000 Requests pro IP
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use('/api/', limiter);
+// ─── Rate Limiting ───
+app.use('/api/', apiLimiter);
 
 // Strikteres Rate Limiting für Login
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20, // Max 20 Login-Versuche
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 app.use('/api/v1/auth/login', authLimiter);
+
+// Platform API Rate Limiting
+app.use('/api/platform', platformLimiter);
+
+// Webhook Rate Limiting
+app.use('/api/platform/webhooks', webhookLimiter);
 
 // ─── Health Check ───
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    environment: config.nodeEnv 
+  });
 });
 
 // ─── SaaS-Plattform-Routen (für Softwareanbieter) ───
 app.use('/api/platform', platformRoutes);
 
 // ─── API Routes (für Kunden) ───
-app.use('/api/v1', routes);
+app.use('/api/v1', tenantMiddleware, routes);
 
 // ─── Error Handler ───
 app.use(errorHandler);
