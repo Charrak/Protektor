@@ -1,7 +1,9 @@
 version: '3.8'
 
 # ============================================
-# SMS Production Docker Compose
+# SMS - Production Docker Compose
+# For Customers - No Source Code Required
+# Uses Pre-built Docker Images
 # ============================================
 
 services:
@@ -9,33 +11,26 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: sms-postgres
-    restart: always
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER:-sms_user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME:-sms_db}
+      POSTGRES_USER: sms_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: sms_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backups:/backups
     networks:
       - sms-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-sms_user} -d ${DB_NAME:-sms_db}"]
+      test: ["CMD-SHELL", "pg_isready -U sms_user -d sms_db"]
       interval: 10s
       timeout: 5s
       retries: 5
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 512M
 
-  # Redis Cache (optional, für Production empfohlen)
+  # Redis Cache
   redis:
     image: redis:7-alpine
     container_name: sms-redis
-    restart: always
+    restart: unless-stopped
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
@@ -46,38 +41,25 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
 
-  # Backend API Server
+  # Backend API Server (Production Image)
   backend:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
-      args:
-        - NODE_ENV=production
+    image: ghcr.io/charrak/protektor/backend:latest
     container_name: sms-backend
-    restart: always
+    restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 5000
-      DATABASE_URL: postgresql://${DB_USER:-sms_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-sms_db}
+      DATABASE_URL: postgresql://sms_user:${POSTGRES_PASSWORD}@postgres:5432/sms_db
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET}
-      CORS_ORIGIN: ${CORS_ORIGIN}
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASS: ${SMTP_PASS:-}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-    expose:
-      - "5000"
+      CORS_ORIGIN: http://localhost:5173
+      PLATFORM_ADMIN_EMAIL: ${PLATFORM_ADMIN_EMAIL:-admin@sms-platform.com}
+      PLATFORM_ADMIN_PASSWORD: ${PLATFORM_ADMIN_PASSWORD:-Admin123!}
+    ports:
+      - "5000:5000"
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -85,61 +67,35 @@ services:
         condition: service_healthy
     networks:
       - sms-network
-    command: npm start
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '2'
-        reservations:
-          memory: 512M
-          cpus: '1'
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  # Frontend React App
+  # Frontend React App (Production Build)
   frontend:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-      args:
-        - NODE_ENV=production
-        - VITE_API_URL=${API_URL:-https://api.sms-deinefirma.de}
+    image: ghcr.io/charrak/protektor/frontend:latest
     container_name: sms-frontend
-    restart: always
+    restart: unless-stopped
     environment:
-      VITE_API_URL: ${API_URL:-https://api.sms-deinefirma.de}
-    expose:
-      - "5173"
+      VITE_API_URL: http://localhost:5000/api
+    ports:
+      - "5173:80"
     depends_on:
       - backend
     networks:
       - sms-network
-    command: npm run preview -- --host 0.0.0.0 --port 5173
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
 volumes:
   postgres_data:
     driver: local
   redis_data:
     driver: local
+  uploads_data:
+    driver: local
 
 networks:
   sms-network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16

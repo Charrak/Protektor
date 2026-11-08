@@ -2,20 +2,26 @@
 setlocal enabledelayedexpansion
 
 :: ═══════════════════════════════════════════════════════════════
-:: SMS - Security Management System
-:: One-Click Installation für Windows
+:: SMS - Developer Installation für Windows
+:: MIT QUELLCODE - Für Entwickler & Anpassungen
 :: ═══════════════════════════════════════════════════════════════
 
-title SMS Installation - Security Management System
+title SMS Developer Installation
 color 0B
 
 echo.
 echo ╔════════════════════════════════════════════════════════════╗
 echo ║                                                            ║
-echo ║   SMS - Security Management System                        ║
-echo ║   One-Click Installation für Windows                      ║
+echo ║   SMS - Developer Installation                            ║
+echo ║   MIT QUELLCODE - Für Entwickler                          ║
 echo ║                                                            ║
 echo ╚════════════════════════════════════════════════════════════╝
+echo.
+echo Diese Installation enthaelt:
+echo   - Vollstaendigen Quellcode
+echo   - Entwicklungsumgebung (Hot Reload)
+echo   - Demo-Daten fuer Tests
+echo   - Docker fuer einfache Bereitstellung
 echo.
 
 :: Prüfen ob Docker installiert ist
