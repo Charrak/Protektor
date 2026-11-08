@@ -5,6 +5,7 @@ import { Layout } from './components/layout/Layout';
 import { LoginPage } from './pages/auth/LoginPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { EmployeesPage } from './pages/employees/EmployeesPage';
+import { EmployeeDetailPage } from './pages/employees/EmployeeDetailPage';
 import { CustomersPage } from './pages/customers/CustomersPage';
 import { ObjectsPage } from './pages/objects/ObjectsPage';
 import { SchedulingPage } from './pages/scheduling/SchedulingPage';
@@ -52,6 +53,7 @@ function AppRoutes() {
 
                   {/* Module (Phase 2+ Inhalte) */}
                   <Route path="/employees" element={<EmployeesPage />} />
+                  <Route path="/employees/:id" element={<EmployeeDetailPage />} />
                   <Route path="/customers" element={<CustomersPage />} />
                   <Route path="/objects" element={<ObjectsPage />} />
                   <Route path="/scheduling" element={<SchedulingPage />} />

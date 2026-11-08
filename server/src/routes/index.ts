@@ -2,6 +2,8 @@ import { Router } from 'express';
 import authRoutes from './auth.routes';
 import userRoutes from './user.routes';
 import roleRoutes from './role.routes';
+import employeeRoutes from './employee.routes';
+import qualificationRoutes from './qualification.routes';
 import lockingRoutes from './locking.routes';
 
 const router = Router();
@@ -12,8 +14,11 @@ router.use('/users', userRoutes);
 router.use('/roles', roleRoutes);
 router.use('/locks', lockingRoutes);
 
-// ─── Phase 2+: Weitere Routen ───
-// router.use('/employees', employeeRoutes);
+// ─── Phase 2: Mitarbeiter & Qualifikationen ───
+router.use('/employees', employeeRoutes);
+router.use('/qualifications', qualificationRoutes);
+
+// ─── Phase 3+: Weitere Routen ───
 // router.use('/customers', customerRoutes);
 // router.use('/objects', objectRoutes);
 // router.use('/deployments', deploymentRoutes);
@@ -23,7 +28,6 @@ router.use('/locks', lockingRoutes);
 // router.use('/reports', reportRoutes);
 // router.use('/admin', adminRoutes);
 // router.use('/notifications', notificationRoutes);
-// router.use('/qualifications', qualificationRoutes);
 // router.use('/replacement', replacementRoutes);
 // router.use('/uploads', uploadRoutes);
 
