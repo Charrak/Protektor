@@ -6,6 +6,7 @@ import employeeRoutes from './employee.routes';
 import qualificationRoutes from './qualification.routes';
 import customerRoutes from './customer.routes';
 import objectRoutes from './object.routes';
+import deploymentRoutes from './deployment.routes';
 import lockingRoutes from './locking.routes';
 
 const router = Router();
@@ -24,8 +25,10 @@ router.use('/qualifications', qualificationRoutes);
 router.use('/customers', customerRoutes);
 router.use('/objects', objectRoutes);
 
+// ─── Phase 4: Dienstplanung ───
+router.use('/deployments', deploymentRoutes);
+
 // ─── Phase 4+: Weitere Routen ───
-// router.use('/deployments', deploymentRoutes);
 // router.use('/scheduling', schedulingRoutes);
 // router.use('/time-records', timeRecordRoutes);
 // router.use('/billing', billingRoutes);
