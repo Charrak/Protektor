@@ -13,6 +13,7 @@ import billingRoutes from './billing.routes';
 import lockingRoutes from './locking.routes';
 import platformRoutes from './platform.routes';
 import datevRoutes from './datev.routes';
+import addonRoutes from './addon.routes';
 import { tenantContext } from '../middleware/tenantContext';
 
 const router = Router();
@@ -51,6 +52,9 @@ router.use('/billing', billingRoutes);
 
 // ─── Phase 9: DATEV-Export für Lohnabrechnung ───
 router.use('/datev', datevRoutes);
+
+// ─── Phase 10: Add-on-System & Feature-Management ───
+router.use('/addons', addonRoutes);
 
 // router.use('/reports', reportRoutes);
 // router.use('/admin', adminRoutes);

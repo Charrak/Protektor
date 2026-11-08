@@ -122,6 +122,8 @@ model Tenant {
   deployments      Deployment[]
   timeRecords      TimeRecord[]
   invoices         CustomerInvoice[]
+  addons           TenantAddon[]
+  features         TenantFeature[]
 
   @@map("tenants")
 }
@@ -997,4 +999,69 @@ enum ReplacementStatus {
   assigned
   unresolved
   cancelled
+}
+
+// ═══════════════════════════════════════════════════
+// ADD-ON SYSTEM
+// ═══════════════════════════════════════════════════
+
+model Addon {
+  id              String   @id @default(uuid())
+  name            String   @db.VarChar(100)
+  slug            String   @unique @db.VarChar(50)
+  description     String?  @db.Text
+  category        String   @db.VarChar(50) // integration, automation, analytics, security, communication
+  monthlyPrice    Decimal  @default(0) @db.Decimal(10, 2)
+  yearlyPrice     Decimal  @default(0) @db.Decimal(10, 2)
+  setupFee        Decimal  @default(0) @db.Decimal(10, 2)
+  featureKey      String   @db.VarChar(100)
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenantAddons TenantAddon[]
+
+  @@map("addons")
+}
+
+model TenantAddon {
+  id                        String   @id @default(uuid())
+  tenantId                  String   @db.VarChar(36)
+  addonId                   String   @db.VarChar(36)
+  status                    String   @default("ACTIVE") @db.VarChar(20) // ACTIVE, CANCELED, PENDING
+  billingInterval           String   @default("MONTHLY") @db.VarChar(10) // MONTHLY, YEARLY
+  price                     Decimal  @db.Decimal(10, 2)
+  activatedAt               DateTime @default(now())
+  canceledAt                DateTime?
+  expiresAt                 DateTime?
+  stripeSubscriptionItemId  String?  @db.VarChar(255)
+  notes                     String?  @db.Text
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  addon  Addon  @relation(fields: [addonId], references: [id])
+
+  @@index([tenantId])
+  @@index([addonId])
+  @@map("tenant_addons")
+}
+
+model TenantFeature {
+  id         String    @id @default(uuid())
+  tenantId   String    @db.VarChar(36)
+  featureKey String    @db.VarChar(100)
+  enabled    Boolean   @default(true)
+  grantedBy  String?   @db.VarChar(36)
+  reason     String?   @db.Text
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([featureKey])
+  @@map("tenant_features")
 }

@@ -5,6 +5,7 @@ import { subscriptionController } from '../controllers/subscription.controller';
 import { planController } from '../controllers/plan.controller';
 import { stripeWebhookController } from '../controllers/stripeWebhook.controller';
 import { stripeController } from '../controllers/stripe.controller';
+import { platformFeatureController } from '../controllers/platformFeature.controller';
 import { platformAuthenticate } from '../middleware/platformAuth';
 
 const router = Router();
@@ -46,5 +47,12 @@ router.post('/webhooks/stripe', (req, res, next) => stripeWebhookController.hand
 router.post('/stripe/checkout-session', platformAuthenticate, (req, res) => stripeController.createCheckoutSession(req, res));
 router.post('/stripe/portal-session', platformAuthenticate, (req, res) => stripeController.createPortalSession(req, res));
 router.get('/stripe/subscription/:subscriptionId', platformAuthenticate, (req, res) => stripeController.getSubscription(req, res));
+
+// ─── Feature-Management (für Platform-Admins) ───
+router.get('/features/catalog', platformAuthenticate, (req, res) => platformFeatureController.getFeatureCatalog(req, res));
+router.get('/tenants/:tenantId/features', platformAuthenticate, (req, res) => platformFeatureController.getTenantFeatures(req, res));
+router.post('/tenants/:tenantId/features/grant', platformAuthenticate, (req, res) => platformFeatureController.grantFeature(req, res));
+router.post('/tenants/:tenantId/features/revoke', platformAuthenticate, (req, res) => platformFeatureController.revokeFeature(req, res));
+router.get('/tenants/:tenantId/addons', platformAuthenticate, (req, res) => platformFeatureController.getTenantAddons(req, res));
 
 export default router;
