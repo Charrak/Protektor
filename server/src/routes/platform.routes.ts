@@ -55,4 +55,17 @@ router.post('/tenants/:tenantId/features/grant', platformAuthenticate, (req, res
 router.post('/tenants/:tenantId/features/revoke', platformAuthenticate, (req, res) => platformFeatureController.revokeFeature(req, res));
 router.get('/tenants/:tenantId/addons', platformAuthenticate, (req, res) => platformFeatureController.getTenantAddons(req, res));
 
+// ─── Entwickler-Menü & Einstellungen ───
+import developerRoutes from './developer.routes';
+router.use('/developer', developerRoutes);
+
+// ─── Hilfe-System (Admin) ───
+import helpRoutes from './help.routes';
+router.use('/help', platformAuthenticate, helpRoutes);
+
+// ─── Kritische Berichte & Statistiken ───
+import { criticalReportsController } from '../controllers/criticalReports.controller';
+router.get('/dashboard/critical-reports', platformAuthenticate, (req, res) => criticalReportsController.getCriticalReports(req, res));
+router.get('/dashboard/revenue-stats', platformAuthenticate, (req, res) => criticalReportsController.getRevenueStats(req, res));
+
 export default router;

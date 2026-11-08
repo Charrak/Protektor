@@ -208,6 +208,10 @@ export const platformService = {
     return data;
   },
 
+  async apiCall(endpoint: string, options: any = {}) {
+    const response = await api.request({ url: endpoint, ...options });
+    return response.data;
+  },
   async deletePlan(id: string) {
     await api.delete(`/plans/${id}`);
   },

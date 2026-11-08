@@ -1065,3 +1065,95 @@ model TenantFeature {
   @@index([featureKey])
   @@map("tenant_features")
 }
+
+// ═══════════════════════════════════════════════════
+// SYSTEM EINSTELLUNGEN & ENTWICKLER-MENÜ
+// ═══════════════════════════════════════════════════
+
+model SystemSettings {
+  id        String   @id @default(uuid())
+  key       String   @unique @db.VarChar(100)
+  value     Json
+  updatedAt DateTime @updatedAt
+  
+  @@map("system_settings")
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  name        String    @db.VarChar(100)
+  key         String    @unique @db.VarChar(255)
+  type        String    @db.VarChar(50) // datev, sms, push, maps, etc.
+  isActive    Boolean   @default(true)
+  lastUsed    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@map("api_keys")
+}
+
+model BankConnection {
+  id              String    @id @default(uuid())
+  tenantId        String?   @db.VarChar(36) // null = Platform
+  name            String    @db.VarChar(100)
+  iban            String    @db.VarChar(34)
+  bic             String    @db.VarChar(11)
+  bankName        String    @db.VarChar(100)
+  creditorId      String?   @db.VarChar(35)
+  isDefault       Boolean   @default(false)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@map("bank_connections")
+}
+
+model SepaMandate {
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  mandateRef      String    @unique @db.VarChar(35)
+  customerName    String    @db.VarChar(200)
+  customerIban    String    @db.VarChar(34)
+  status          String    @default("PENDING") @db.VarChar(20) // PENDING, ACTIVE, REVOKED
+  signedAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([tenantId])
+  @@map("sepa_mandates")
+}
+
+// ═══════════════════════════════════════════════════
+// HILFE-SYSTEM
+// ═══════════════════════════════════════════════════
+
+model HelpArticle {
+  id          String    @id @default(uuid())
+  category    String    @db.VarChar(50) // admin, user, api, troubleshooting
+  subcategory String?   @db.VarChar(50)
+  title       String    @db.VarChar(200)
+  slug        String    @unique @db.VarChar(200)
+  content     String    @db.Text
+  tags        String[]
+  isPublished Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  viewCount   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([category])
+  @@index([tags])
+  @@map("help_articles")
+}
+
+model HelpSearch {
+  id          String    @id @default(uuid())
+  query       String    @db.VarChar(500)
+  resultCount Int       @default(0)
+  userId      String?   @db.VarChar(36)
+  tenantId    String?   @db.VarChar(36)
+  createdAt   DateTime  @default(now())
+  
+  @@index([query])
+  @@map("help_searches")
+}

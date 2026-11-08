@@ -5,8 +5,10 @@ import { PlatformDashboardPage } from './PlatformDashboardPage';
 import { TenantListPage } from './TenantListPage';
 import { SubscriptionListPage } from './SubscriptionListPage';
 import { PlanListPage } from './PlanListPage';
+import { DeveloperSettingsPage } from './DeveloperSettingsPage';
+import { HelpCenterPage } from './HelpCenterPage';
 
-type Page = 'dashboard' | 'tenants' | 'subscriptions' | 'plans';
+type Page = 'dashboard' | 'tenants' | 'subscriptions' | 'plans' | 'developer' | 'help';
 
 export function PlatformLayout() {
   const [user, setUser] = useState<PlatformUser | null>(null);
@@ -61,6 +63,8 @@ export function PlatformLayout() {
     { page: 'tenants', label: 'Mandanten', icon: '🏢' },
     { page: 'subscriptions', label: 'Abonnements', icon: '💳' },
     { page: 'plans', label: 'Tarife', icon: '📋' },
+    { page: 'developer', label: 'Entwickler', icon: '⚙️' },
+    { page: 'help', label: 'Hilfe-Center', icon: '📚' },
   ];
 
   return (
@@ -118,6 +122,8 @@ export function PlatformLayout() {
         {currentPage === 'tenants' && <TenantListPage />}
         {currentPage === 'subscriptions' && <SubscriptionListPage />}
         {currentPage === 'plans' && <PlanListPage />}
+        {currentPage === 'developer' && <DeveloperSettingsPage />}
+        {currentPage === 'help' && <HelpCenterPage />}
       </div>
     </div>
   );
