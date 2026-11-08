@@ -1,89 +1,123 @@
-import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { usePlatformAuth } from '../../contexts/PlatformAuthContext';
+import { useState, useEffect } from 'react';
+import { platformService, PlatformUser } from '../../services/platform.service';
+import { PlatformLoginPage } from './PlatformLoginPage';
+import { PlatformDashboardPage } from './PlatformDashboardPage';
+import { TenantListPage } from './TenantListPage';
+import { SubscriptionListPage } from './SubscriptionListPage';
+import { PlanListPage } from './PlanListPage';
 
-const navigation = [
-  { name: 'Dashboard', href: '/platform', icon: '📊' },
-  { name: 'Mandanten', href: '/platform/tenants', icon: '🏢' },
-  { name: 'Tarife', href: '/platform/plans', icon: '💎' },
-  { name: 'Zahlungen', href: '/platform/payments', icon: '💳' },
-  { name: 'Webhooks', href: '/platform/webhooks', icon: '🔔' },
-];
+type Page = 'dashboard' | 'tenants' | 'subscriptions' | 'plans';
 
-export function PlatformLayout({ children }: { children: React.ReactNode }) {
-  const { admin, logout } = usePlatformAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
+export function PlatformLayout() {
+  const [user, setUser] = useState<PlatformUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState<Page>('dashboard');
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/platform/login');
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    const token = localStorage.getItem('platformToken');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const userData = await platformService.getMe();
+      setUser(userData);
+    } catch (err) {
+      localStorage.removeItem('platformToken');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const handleLoginSuccess = async () => {
+    const userData = await platformService.getMe();
+    setUser(userData);
+  };
+
+  const handleLogout = async () => {
+    await platformService.logout();
+    setUser(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">Laden...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <PlatformLoginPage />;
+  }
+
+  const navItems: { page: Page; label: string; icon: string }[] = [
+    { page: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { page: 'tenants', label: 'Mandanten', icon: '🏢' },
+    { page: 'subscriptions', label: 'Abonnements', icon: '💳' },
+    { page: 'plans', label: 'Tarife', icon: '📋' },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className="w-64 bg-purple-900 text-white flex flex-col">
-        <div className="flex items-center h-16 px-6 border-b border-purple-800">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center font-bold text-sm">
-              P
+      <div className="fixed inset-y-0 left-0 w-64 bg-gradient-to-b from-blue-900 to-indigo-900 text-white">
+        <div className="p-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+              <span className="text-xl font-bold">S</span>
             </div>
             <div>
-              <h1 className="text-lg font-bold">Plattform</h1>
-              <p className="text-xs text-purple-300">Administration</p>
+              <h1 className="text-lg font-bold">SMS</h1>
+              <p className="text-xs text-blue-200">Plattform-Admin</p>
             </div>
           </div>
         </div>
 
-        <nav className="flex-1 mt-6 px-3">
-          {navigation.map((item) => {
-            const isActive = item.href === '/platform'
-              ? location.pathname === '/platform'
-              : location.pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm font-medium transition-colors ${
-                  isActive ? 'bg-purple-700 text-white' : 'text-purple-200 hover:bg-purple-800 hover:text-white'
-                }`}
-              >
-                <span className="text-lg">{item.icon}</span>
-                {item.name}
-              </Link>
-            );
-          })}
+        <nav className="mt-6">
+          {navItems.map((item) => (
+            <button
+              key={item.page}
+              onClick={() => setCurrentPage(item.page)}
+              className={`w-full flex items-center space-x-3 px-6 py-3 text-left transition-colors ${
+                currentPage === item.page
+                  ? 'bg-white bg-opacity-10 border-r-4 border-white'
+                  : 'hover:bg-white hover:bg-opacity-5'
+              }`}
+            >
+              <span className="text-xl">{item.icon}</span>
+              <span className="text-sm font-medium">{item.label}</span>
+            </button>
+          ))}
         </nav>
 
-        <div className="p-4 border-t border-purple-800">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 bg-purple-700 rounded-full flex items-center justify-center text-sm font-bold">
-              {admin?.firstName?.[0]}{admin?.lastName?.[0]}
+        <div className="absolute bottom-0 left-0 right-0 p-6">
+          <div className="bg-white bg-opacity-10 rounded-lg p-4">
+            <div className="text-sm font-medium">
+              {user.firstName} {user.lastName}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{admin?.firstName} {admin?.lastName}</p>
-              <p className="text-xs text-purple-300 truncate">{admin?.email}</p>
-            </div>
+            <div className="text-xs text-blue-200 mt-1">{user.email}</div>
+            <button
+              onClick={handleLogout}
+              className="mt-3 text-xs text-blue-200 hover:text-white transition-colors"
+            >
+              Abmelden
+            </button>
           </div>
-          <button onClick={handleLogout} className="w-full text-left px-3 py-2 rounded-lg text-sm text-purple-200 hover:bg-purple-800 hover:text-white">
-            🚪 Abmelden
-          </button>
         </div>
-      </aside>
+      </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-200 h-16 flex items-center px-8">
-          <div className="flex-1" />
-          <div className="text-sm text-gray-600">
-            <span className="font-medium text-purple-600">Plattform-Administrator</span>
-          </div>
-        </header>
-
-        <main className="flex-1 p-8">
-          {children}
-        </main>
+      <div className="ml-64 p-8">
+        {currentPage === 'dashboard' && <PlatformDashboardPage />}
+        {currentPage === 'tenants' && <TenantListPage />}
+        {currentPage === 'subscriptions' && <SubscriptionListPage />}
+        {currentPage === 'plans' && <PlanListPage />}
       </div>
     </div>
   );

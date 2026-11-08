@@ -11,8 +11,16 @@ import autoPlannerRoutes from './autoPlanner.routes';
 import attendanceRoutes from './attendance.routes';
 import billingRoutes from './billing.routes';
 import lockingRoutes from './locking.routes';
+import platformRoutes from './platform.routes';
+import { tenantContext } from '../middleware/tenantContext';
 
 const router = Router();
+
+// ─── Plattform-Verwaltung (SaaS Admin) ───
+router.use('/platform', platformRoutes);
+
+// ─── Tenant-Context Middleware (für alle Mandanten-APIs) ───
+router.use(tenantContext);
 
 // ─── Phase 1: Auth, Benutzer, Rollen, Sperren ───
 router.use('/auth', authRoutes);

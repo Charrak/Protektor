@@ -16,10 +16,12 @@ import { ReportsPage } from './pages/reports/ReportsPage';
 import { AdminPage } from './pages/admin/AdminPage';
 import { UsersPage } from './pages/admin/UsersPage';
 import { RolesPage } from './pages/admin/RolesPage';
+import { PlatformLayout } from './pages/platform/PlatformLayout';
 import { PlatformLoginPage } from './pages/platform/PlatformLoginPage';
 import { PlatformDashboardPage } from './pages/platform/PlatformDashboardPage';
-import { PlatformTenantsPage } from './pages/platform/PlatformTenantsPage';
-import { PlatformLayout } from './pages/platform/PlatformLayout';
+import { TenantListPage } from './pages/platform/TenantListPage';
+import { SubscriptionListPage } from './pages/platform/SubscriptionListPage';
+import { PlanListPage } from './pages/platform/PlanListPage';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -61,21 +63,8 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
       <Route path="/platform/login" element={<PlatformLoginPage />} />
-      <Route path="/platform/*" element={
-        <PlatformAuthProvider>
-          <PlatformProtectedRoute>
-            <PlatformLayout>
-              <Routes>
-                <Route path="" element={<PlatformDashboardPage />} />
-                <Route path="tenants" element={<PlatformTenantsPage />} />
-                <Route path="plans" element={<div>Tarife (kommt bald)</div>} />
-                <Route path="payments" element={<div>Zahlungen (kommt bald)</div>} />
-                <Route path="webhooks" element={<div>Webhooks (kommt bald)</div>} />
-              </Routes>
-            </PlatformLayout>
-          </PlatformProtectedRoute>
-        </PlatformAuthProvider>
-      } />
+      <Route path="/platform/login" element={<PlatformLoginPage />} />
+      <Route path="/platform/*" element={<PlatformLayout />} />
       <Route
         path="/*"
         element={

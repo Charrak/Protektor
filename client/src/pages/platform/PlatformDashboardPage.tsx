@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { platformService, type DashboardStats } from '../../services/platform.service';
+import { useEffect, useState } from 'react';
+import { platformService, DashboardStats } from '../../services/platform.service';
 
 export function PlatformDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -14,44 +14,56 @@ export function PlatformDashboardPage() {
       const data = await platformService.getDashboard();
       setStats(data);
     } catch (err) {
-      console.error('Fehler beim Laden:', err);
+      console.error('Dashboard-Fehler:', err);
     } finally {
       setLoading(false);
     }
   };
 
   if (loading) {
-    return <div className="p-8 text-center">Wird geladen...</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-500">Laden...</div>
+      </div>
+    );
   }
 
   if (!stats) {
-    return <div className="p-8 text-center text-red-600">Fehler beim Laden der Daten</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-red-500">Fehler beim Laden des Dashboards</div>
+      </div>
+    );
   }
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Plattform-Dashboard</h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Plattform-Dashboard</h1>
+        <p className="text-gray-600 mt-1">Übersicht über alle Mandanten und Abonnement</p>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard
+      {/* Hauptmetriken */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <MetricCard
           title="Gesamte Mandanten"
           value={stats.totalTenants}
           icon="🏢"
           color="blue"
         />
-        <StatCard
+        <MetricCard
           title="Aktive Mandanten"
           value={stats.activeTenants}
-          icon="✓"
+          icon="✅"
           color="green"
         />
-        <StatCard
+        <MetricCard
           title="Test-Mandanten"
           value={stats.trialTenants}
           icon="🧪"
-          color="purple"
+          color="yellow"
         />
-        <StatCard
+        <MetricCard
           title="Suspendiert"
           value={stats.suspendedTenants}
           icon="⚠️"
@@ -59,88 +71,82 @@ export function PlatformDashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="card">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-3xl">💰</span>
-            <h3 className="text-lg font-semibold text-gray-900">Monatlicher Umsatz</h3>
+      {/* Umsatz-Metriken */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-100 text-sm">Monatlicher Umsatz (MRR)</p>
+              <p className="text-3xl font-bold mt-2">
+                {stats.monthlyRecurringRevenue.toLocaleString('de-DE', {
+                  style: 'currency',
+                  currency: 'EUR',
+                })}
+              </p>
+            </div>
+            <div className="text-5xl opacity-30">💰</div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">
-            {stats.monthlyRecurringRevenue.toLocaleString('de-DE', {
-              style: 'currency',
-              currency: 'EUR',
-            })}
-          </p>
-          <p className="text-sm text-gray-500 mt-1">Wiederkehrend (MRR)</p>
         </div>
 
-        <div className="card">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-3xl">💎</span>
-            <h3 className="text-lg font-semibold text-gray-900">Jährlicher Umsatz</h3>
+        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-100 text-sm">Jährlicher Umsatz (ARR)</p>
+              <p className="text-3xl font-bold mt-2">
+                {stats.yearlyRecurringRevenue.toLocaleString('de-DE', {
+                  style: 'currency',
+                  currency: 'EUR',
+                })}
+              </p>
+            </div>
+            <div className="text-5xl opacity-30">📈</div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">
-            {stats.yearlyRecurringRevenue.toLocaleString('de-DE', {
-              style: 'currency',
-              currency: 'EUR',
-            })}
-          </p>
-          <p className="text-sm text-gray-500 mt-1">Wiederkehrend (ARR)</p>
-        </div>
-
-        <div className="card">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-3xl">📊</span>
-            <h3 className="text-lg font-semibold text-gray-900">Aktive Abonnements</h3>
-          </div>
-          <p className="text-3xl font-bold text-gray-900">{stats.activeSubscriptions}</p>
-          <p className="text-sm text-gray-500 mt-1">Aktive Subscriptions</p>
         </div>
       </div>
 
-      <div className="card">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Schnellzugriff</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <a href="/platform/tenants" className="block p-4 border border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors">
-            <div className="text-2xl mb-2">🏢</div>
-            <h3 className="font-semibold text-gray-900">Mandanten verwalten</h3>
-            <p className="text-sm text-gray-500 mt-1">Mandanten anlegen, bearbeiten, sperren</p>
-          </a>
-
-          <a href="/platform/plans" className="block p-4 border border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors">
-            <div className="text-2xl mb-2">💎</div>
-            <h3 className="font-semibold text-gray-900">Tarife verwalten</h3>
-            <p className="text-sm text-gray-500 mt-1">Preise, Limits, Funktionen</p>
-          </a>
-
-          <a href="/platform/payments" className="block p-4 border border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors">
-            <div className="text-2xl mb-2">💳</div>
-            <h3 className="font-semibold text-gray-900">Zahlungen</h3>
-            <p className="text-sm text-gray-500 mt-1">Zahlungsübersicht, Ausstände</p>
-          </a>
+      {/* Abonnements */}
+      <div className="bg-white rounded-xl shadow-md p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          Aktive Abonnements
+        </h2>
+        <div className="text-4xl font-bold text-blue-600">
+          {stats.activeSubscriptions}
         </div>
+        <p className="text-gray-600 mt-2">
+          {stats.activeTenants > 0
+            ? `${Math.round((stats.activeSubscriptions / stats.activeTenants) * 100)}% der aktiven Mandanten`
+            : 'Keine aktiven Mandanten'}
+        </p>
       </div>
     </div>
   );
 }
 
-function StatCard({ title, value, icon, color }: { title: string; value: number; icon: string; color: string }) {
-  const colorClasses: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    red: 'bg-red-50 text-red-600',
-    purple: 'bg-purple-50 text-purple-600',
+function MetricCard({
+  title,
+  value,
+  icon,
+  color,
+}: {
+  title: string;
+  value: number;
+  icon: string;
+  color: 'blue' | 'green' | 'yellow' | 'red';
+}) {
+  const colorClasses = {
+    blue: 'bg-blue-50 border-blue-200 text-blue-900',
+    green: 'bg-green-50 border-green-200 text-green-900',
+    yellow: 'bg-yellow-50 border-yellow-200 text-yellow-900',
+    red: 'bg-red-50 border-red-200 text-red-900',
   };
 
   return (
-    <div className="card">
-      <div className="flex items-center justify-between mb-3">
-        <span className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl ${colorClasses[color]}`}>
-          {icon}
-        </span>
+    <div className={`rounded-xl border-2 p-6 ${colorClasses[color]}`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-3xl">{icon}</span>
       </div>
-      <p className="text-3xl font-bold text-gray-900">{value}</p>
-      <p className="text-sm text-gray-600 mt-1">{title}</p>
+      <div className="text-3xl font-bold">{value}</div>
+      <div className="text-sm opacity-75 mt-1">{title}</div>
     </div>
   );
 }
