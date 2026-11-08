@@ -22,6 +22,10 @@ router.use('/platform', platformRoutes);
 // ─── Tenant-Context Middleware (für alle Mandanten-APIs) ───
 router.use(tenantContext);
 
+// ─── Usage Tracking Middleware ───
+import { trackApiUsage } from '../middleware/usageTracker';
+router.use(trackApiUsage);
+
 // ─── Phase 1: Auth, Benutzer, Rollen, Sperren ───
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
