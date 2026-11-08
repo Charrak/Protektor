@@ -12,6 +12,7 @@ import attendanceRoutes from './attendance.routes';
 import billingRoutes from './billing.routes';
 import lockingRoutes from './locking.routes';
 import platformRoutes from './platform.routes';
+import datevRoutes from './datev.routes';
 import { tenantContext } from '../middleware/tenantContext';
 
 const router = Router();
@@ -47,6 +48,10 @@ router.use('/deployments', deploymentRoutes);
 router.use('/auto-planning', autoPlannerRoutes);
 router.use('/time-records', attendanceRoutes);
 router.use('/billing', billingRoutes);
+
+// ─── Phase 9: DATEV-Export für Lohnabrechnung ───
+router.use('/datev', datevRoutes);
+
 // router.use('/reports', reportRoutes);
 // router.use('/admin', adminRoutes);
 // router.use('/notifications', notificationRoutes);
