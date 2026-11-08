@@ -12,6 +12,7 @@ import { routes } from './routes';
 import platformRoutes from './routes/platform.routes';
 import brandingRoutes from './routes/branding.routes';
 import passwordSetupRoutes from './routes/passwordSetup.routes';
+import apiUsageRoutes from './routes/apiUsage.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { tenantMiddleware } from './middleware/tenantMiddleware';
 import { startLockCleanupJob } from './services/locking.service';
@@ -83,6 +84,9 @@ app.use('/api/v1/branding', tenantMiddleware, brandingRoutes);
 
 // ─── Password Setup Routes (für initiales Passwort-Setup) ───
 app.use('/api/v1/password-setup', passwordSetupRoutes);
+
+// ─── API Usage Routes (für Developer-Dashboard) ───
+app.use('/api/v1/api', tenantMiddleware, apiUsageRoutes);
 
 // ─── Error Handler ───
 app.use(errorHandler);
