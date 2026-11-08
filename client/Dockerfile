@@ -1,17 +1,24 @@
+# ============================================
+# SMS Frontend - Dockerfile
+# ============================================
+
+# Basis-Image: Node.js 18 auf Alpine Linux
 FROM node:18-alpine
 
+# Arbeitsverzeichnis im Container
 WORKDIR /app
 
-# Install dependencies
+# Step 1: Dependencies installieren
 COPY package*.json ./
 
 RUN npm ci
 
-# Copy source code
+# Step 2: Source Code kopieren
 COPY . .
 
-# Expose port
+# Port 5173 freigeben (Vite Dev Server)
 EXPOSE 5173
 
-# Start development server
-CMD ["npm", "run", "dev"]
+# Vite Dev Server starten
+# Wichtig: --host 0.0.0.0 damit Container von außen erreichbar ist
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
