@@ -55,7 +55,9 @@ function AppRoutes() {
                   <Route path="/employees" element={<EmployeesPage />} />
                   <Route path="/employees/:id" element={<EmployeeDetailPage />} />
                   <Route path="/customers" element={<CustomersPage />} />
+                  <Route path="/customers/:id" element={<div>Kunden-Detail</div>} />
                   <Route path="/objects" element={<ObjectsPage />} />
+                  <Route path="/objects/:id" element={<div>Objekt-Detail</div>} />
                   <Route path="/scheduling" element={<SchedulingPage />} />
                   <Route path="/attendance" element={<AttendancePage />} />
                   <Route path="/billing" element={<BillingPage />} />
