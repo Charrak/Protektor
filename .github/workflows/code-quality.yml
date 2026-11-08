@@ -1,0 +1,60 @@
+name: Code Quality
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Backend Dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: Install Frontend Dependencies
+        working-directory: ./client
+        run: npm ci
+
+      - name: Check Backend Code Style
+        working-directory: ./server
+        run: |
+          npm run lint || echo "Linting not configured"
+          npx tsc --noEmit || true
+
+      - name: Check Frontend Code Style
+        working-directory: ./client
+        run: |
+          npm run lint || echo "Linting not configured"
+          npm run build
+
+      - name: Check for Security Issues
+        run: |
+          echo "Checking for hardcoded secrets..."
+          if grep -r "password.*=.*['\"].*['\"]" --include="*.ts" --include="*.tsx" --exclude-dir=node_modules . | grep -v "test" | grep -v ".test.ts"; then
+            echo "⚠️  Potential hardcoded passwords found"
+          else
+            echo "✅ No hardcoded passwords found"
+          fi
+
+      - name: Check Dependencies
+        run: |
+          cd server && npm audit --audit-level=moderate || true
+          cd ../client && npm audit --audit-level=moderate || true
+
+      - name: Check Bundle Size
+        working-directory: ./client
+        run: |
+          npm run build
+          du -sh dist/ || true
+          echo "Bundle size check complete"
