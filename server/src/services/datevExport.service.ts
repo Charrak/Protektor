@@ -89,7 +89,7 @@ export class DatevExportService {
       },
     });
 
-    const datevEmployees: DatevEmployeeExport[] = employees.map(emp => {
+    const datevEmployees: DatevEmployeeExport[] = employees.map((emp: any) => {
       // Beschäftigungsart bestimmen
       let beschaeftigungsart = 1; // Vollzeit
       if (emp.employmentType === 'PART_TIME') beschaeftigungsart = 2;
@@ -154,7 +154,7 @@ export class DatevExportService {
       },
     });
 
-    const datevTimeEntries: DatevTimeExport[] = timeEntries.map(entry => {
+    const datevTimeEntries: DatevTimeExport[] = timeEntries.map((entry: any) => {
       // Stundenart bestimmen (DATEV Lohnarten)
       let lohnart = 1; // Normaler Lohn
       if (entry.type === 'OVERTIME') lohnart = 2; // Überstunden
@@ -202,7 +202,7 @@ export class DatevExportService {
       },
     });
 
-    const datevAllowances: DatevAbschlagsExport[] = allowances.map(allowance => {
+    const datevAllowances: DatevAbschlagsExport[] = allowances.map((allowance: any) => {
       // DATEV Lohnart für Zuschlag bestimmen
       let lohnart = 100; // Standard Zuschlag
       if (allowance.type === 'NIGHT_SHIFT') lohnart = 101;

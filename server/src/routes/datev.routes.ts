@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { datevController } from '../controllers/datev.controller';
-import { authMiddleware } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/authorization';
 
 const router = Router();
 
 // Alle DATEV-Routes erfordern Authentifizierung
-router.use(authMiddleware);
+router.use(authenticate);
 
 /**
  * @route   POST /api/v1/datev/export
@@ -15,7 +15,7 @@ router.use(authMiddleware);
  */
 router.post(
   '/export',
-  requirePermission(['billing.create', 'billing.manage']),
+  requirePermission('billing.create'),
   datevController.generateExport
 );
 
@@ -26,7 +26,7 @@ router.post(
  */
 router.get(
   '/export/:year/:month/download',
-  requirePermission(['billing.read']),
+  requirePermission('billing.read'),
   datevController.downloadExport
 );
 
@@ -37,7 +37,7 @@ router.get(
  */
 router.get(
   '/validate',
-  requirePermission(['employee.manage']),
+  requirePermission('employee.manage'),
   datevController.validateData
 );
 
@@ -48,7 +48,7 @@ router.get(
  */
 router.get(
   '/summary/:year/:month',
-  requirePermission(['billing.read']),
+  requirePermission('billing.read'),
   datevController.getSummary
 );
 

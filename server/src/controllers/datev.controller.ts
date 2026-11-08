@@ -70,7 +70,8 @@ export class DatevController {
   async downloadExport(req: Request, res: Response) {
     try {
       const tenantId = (req as any).tenantId;
-      const { year, month } = req.params;
+      const year = req.params.year as string;
+      const month = req.params.month as string;
 
       const exportData = await datevExportService.generateFullDatevExport(tenantId, {
         month: parseInt(month),
@@ -126,7 +127,8 @@ export class DatevController {
   async getSummary(req: Request, res: Response) {
     try {
       const tenantId = (req as any).tenantId;
-      const { year, month } = req.params;
+      const year = req.params.year as string;
+      const month = req.params.month as string;
 
       const [employees, timeEntries, allowances] = await Promise.all([
         datevExportService.exportEmployeeMasterData(tenantId, {
