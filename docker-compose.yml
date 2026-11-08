@@ -1,90 +1,101 @@
-version: "3.8"
+version: '3.8'
 
 services:
-  # ─── Reverse Proxy ───
-  nginx:
-    image: nginx:1.25-alpine
-    container_name: sms-nginx
-    restart: unless-stopped
-    ports:
-      - "${HTTP_PORT:-80}:80"
-      - "${HTTPS_PORT:-443}:443"
-    volumes:
-      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
-    depends_on:
-      - frontend
-      - backend
-    networks:
-      - sms-network
-
-  # ─── Frontend (React) ───
-  frontend:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.frontend
-    container_name: sms-frontend
-    restart: unless-stopped
-    environment:
-      - VITE_API_URL=${API_URL:-http://localhost:4000/api/v1}
-      - VITE_WS_URL=${WS_URL:-http://localhost:4000}
-    expose:
-      - "3000"
-    networks:
-      - sms-network
-
-  # ─── Backend (Node.js API + WebSocket) ───
-  backend:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.backend
-    container_name: sms-backend
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - PORT=4000
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
-      - UPLOAD_DIR=/app/uploads
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-    volumes:
-      - upload-data:/app/uploads
-    expose:
-      - "4000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - sms-network
-
-  # ─── PostgreSQL Datenbank ───
+  # PostgreSQL Database
   postgres:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     container_name: sms-postgres
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      POSTGRES_USER: sms_user
+      POSTGRES_PASSWORD: sms_password
+      POSTGRES_DB: sms_db
+    ports:
+      - "5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
-    expose:
-      - "5432"
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - sms-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U sms_user -d sms_db"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # Redis Cache (optional, für Production)
+  redis:
+    image: redis:7-alpine
+    container_name: sms-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
     networks:
       - sms-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API Server
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: sms-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      DATABASE_URL: postgresql://sms_user:sms_password@postgres:5432/sms_db
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      CORS_ORIGIN: http://localhost:5173
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - sms-network
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    command: npm run dev
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: sms-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:5000/api
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - sms-network
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    command: npm run dev
 
 volumes:
-  postgres-data:
-    driver: local
-  upload-data:
-    driver: local
+  postgres_data:
+  redis_data:
 
 networks:
   sms-network:
