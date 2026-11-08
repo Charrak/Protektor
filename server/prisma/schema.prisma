@@ -1,0 +1,1344 @@
+// SMS – Security Management System
+// Prisma Schema – Vollständige Datenbankdefinition
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════
+// SAAS - MIETERTUM & ABONNEMENT
+// ═══════════════════════════════════════════════════
+
+model PlatformAdmin {
+  id           String   @id @default(uuid())
+  username     String   @unique @db.VarChar(100)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @db.VarChar(255)
+  firstName    String   @db.VarChar(100)
+  lastName     String   @db.VarChar(100)
+  isActive     Boolean  @default(true)
+  lastLogin    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions         PlatformSession[]
+  notifications    PlatformNotification[]
+  auditLogs        PlatformAuditLog[]
+  createdTenants   Tenant[]            @relation("createdBy")
+  modifiedTenants  Tenant[]            @relation("modifiedBy")
+
+  @@map("platform_admins")
+}
+
+model PlatformSession {
+  id             String   @id @default(uuid())
+  adminId        String   @db.VarChar(36)
+  token          String   @unique @db.VarChar(500)
+  refreshToken   String   @unique @db.VarChar(500)
+  ipAddress      String?  @db.VarChar(45)
+  userAgent      String?  @db.Text
+  expiresAt      DateTime
+  lastActivityAt DateTime @default(now())
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  admin PlatformAdmin @relation(fields: [adminId], references: [id])
+
+  @@map("platform_sessions")
+}
+
+model PlatformNotification {
+  id        String   @id @default(uuid())
+  adminId   String   @db.VarChar(36)
+  type      String   @db.VarChar(50)
+  title     String   @db.VarChar(200)
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  admin PlatformAdmin @relation(fields: [adminId], references: [id])
+
+  @@index([adminId, isRead])
+  @@map("platform_notifications")
+}
+
+model PlatformAuditLog {
+  id           String   @id @default(uuid())
+  adminId      String?  @db.VarChar(36)
+  adminName    String?  @db.VarChar(200)
+  action       String   @db.VarChar(50)
+  resourceType String   @db.VarChar(50)
+  resourceId   String   @db.VarChar(36)
+  oldValue     Json?
+  newValue     Json?
+  ipAddress    String?  @db.VarChar(45)
+  createdAt    DateTime @default(now())
+
+  admin PlatformAdmin? @relation(fields: [adminId], references: [id])
+
+  @@index([resourceType, resourceId])
+  @@map("platform_audit_logs")
+}
+
+model Tenant {
+  id                  String      @id @default(uuid())
+  tenantId            String      @unique @db.VarChar(36)
+  companyName         String      @db.VarChar(200)
+  contactEmail        String      @db.VarChar(255)
+  contactPhone        String?     @db.VarChar(50)
+  address             Json?
+  taxNumber           String?     @db.VarChar(50)
+  vatId               String?     @db.VarChar(50)
+  stripeCustomerId    String?     @db.VarChar(255)
+  licenseStatus       LicenseStatus @default(TEST)
+  isActive            Boolean     @default(true)
+  employeeLimit       Int?
+  featureFlags        Json?
+  
+  // White-Label Branding
+  logoUrl             String?     @db.VarChar(500)
+  faviconUrl          String?     @db.VarChar(500)
+  brandColor          String?     @db.VarChar(7)  // Hex color e.g. "#1e40af"
+  loginMessage        String?     @db.VarChar(500)  // Custom welcome message
+  
+  // Password Setup Token (for initial tenant admin password setup)
+  passwordResetToken      String?   @db.VarChar(255)
+  passwordResetTokenExpiry DateTime?
+  
+  offlineGraceMinutes Int         @default(1440) // 24h default
+  paymentGraceDays    Int         @default(7)
+  lastLicenseCheck    DateTime?
+  offlineSince        DateTime?
+  notes               String?     @db.Text
+  createdById         String      @db.VarChar(36)
+  modifiedById        String?     @db.VarChar(36)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  createdBy        PlatformAdmin    @relation("createdBy", fields: [createdById], references: [id])
+  modifiedBy       PlatformAdmin?   @relation("modifiedBy", fields: [modifiedById], references: [id])
+  subscriptions    Subscription[]
+  payments         Payment[]
+  webhookEvents    WebhookEvent[]
+  users            User[]
+  employees        Employee[]
+  customers        Customer[]
+  objects          SMSObject[]
+  deployments      Deployment[]
+  timeRecords      TimeRecord[]
+  invoices         CustomerInvoice[]
+  addons           TenantAddon[]
+  features         TenantFeature[]
+
+  @@map("tenants")
+}
+
+model Subscription {
+  id                    String            @id @default(uuid())
+  tenantId              String            @db.VarChar(36)
+  stripeSubscriptionId  String?           @unique @db.VarChar(255)
+  planId                String            @db.VarChar(36)
+  status                SubscriptionStatus @default(ACTIVE)
+  billingInterval       BillingInterval
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+  trialStart            DateTime?
+  trialEnd              DateTime?
+  cancelAt              DateTime?
+  canceledAt            DateTime?
+  endedAt               DateTime?
+  employeeCount         Int               @default(0)
+  monthlyRevenue        Decimal           @db.Decimal(10, 2)
+  notes                 String?           @db.Text
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  plan         Plan     @relation(fields: [planId], references: [id])
+  payments     Payment[]
+
+  @@map("subscriptions")
+}
+
+model Plan {
+  id              String          @id @default(uuid())
+  name            String          @db.VarChar(100)
+  slug            String          @unique @db.VarChar(50)
+  description     String?         @db.Text
+  monthlyPrice    Decimal         @db.Decimal(10, 2)
+  yearlyPrice     Decimal         @db.Decimal(10, 2)
+  employeeLimit   Int?
+  stripeProductId String?         @db.VarChar(255)
+  stripePriceIdMonthly String?    @db.VarChar(255)
+  stripePriceIdYearly  String?    @db.VarChar(255)
+  features        Json?
+  isActive        Boolean         @default(true)
+  sortOrder       Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Payment {
+  id                    String          @id @default(uuid())
+  tenantId              String          @db.VarChar(36)
+  subscriptionId        String?         @db.VarChar(36)
+  stripePaymentIntentId String?         @db.VarChar(255)
+  stripeInvoiceId       String?         @db.VarChar(255)
+  amount                Decimal         @db.Decimal(10, 2)
+  currency              String          @default("EUR") @db.VarChar(3)
+  status                PaymentStatus   @default(PENDING)
+  paidAt                DateTime?
+  failedAt              DateTime?
+  failureReason         String?         @db.Text
+  billingPeriodStart    DateTime
+  billingPeriodEnd      DateTime
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  @@map("payments")
+}
+
+model WebhookEvent {
+  id           String   @id @default(uuid())
+  tenantId     String?  @db.VarChar(36)
+  stripeEventId String  @unique @db.VarChar(255)
+  eventType    String   @db.VarChar(100)
+  payload      Json
+  processed    Boolean  @default(false)
+  processedAt  DateTime?
+  error        String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@map("webhook_events")
+}
+
+enum LicenseStatus {
+  TEST
+  ACTIVE
+  PAYMENT_PENDING
+  GRACE_PERIOD
+  RESTRICTED
+  SUSPENDED
+  CANCELLED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  INCOMPLETE
+  PAUSED
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+// ═══════════════════════════════════════════════════
+// BENUTZER & BERECHTIGUNGEN
+// ═══════════════════════════════════════════════════
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String   @db.VarChar(36)
+  username     String   @db.VarChar(100)
+  email        String   @db.VarChar(255)
+  passwordHash String   @db.VarChar(255)
+  firstName    String   @db.VarChar(100)
+  lastName     String   @db.VarChar(100)
+  roleId       String   @db.VarChar(36)
+  isActive     Boolean  @default(true)
+  lastLogin    DateTime?
+  failedLogins Int      @default(0)
+  lockedUntil  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  tenant            Tenant              @relation(fields: [tenantId], references: [id])
+  role              Role                @relation(fields: [roleId], references: [id])
+  rolePermissions   RolePermission[]
+  locks             Lock[]
+  sessions          Session[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  createdDeployments Deployment[]     @relation("plannedBy")
+  cancelledDeployments Deployment[]   @relation("cancelledBy")
+  approvedTimeRecords TimeRecord[]    @relation("approvedBy")
+  correctedTimeRecords TimeRecord[]   @relation("correctedBy")
+  uploadedDocuments EmployeeDocument[]
+  verifiedQualifications EmployeeQualification[] @relation("verifiedBy")
+  createdInvoices   CustomerInvoice[]
+  requestedReplacements ReplacementRequest[] @relation("requestedBy")
+  resolvedReplacements ReplacementRequest[] @relation("resolvedBy")
+  approvedAvailabilities Availability[] @relation("approvedBy")
+  approvedDeployments Deployment[] @relation("confirmedByEmployee")
+
+  @@unique([tenantId, username])
+  @@unique([tenantId, email])
+  @@map("users")
+
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  tenantId    String   @db.VarChar(36)
+  name        String   @db.VarChar(50)
+  slug        String   @db.VarChar(50)
+  description String?  @db.Text
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  users           User[]
+  rolePermissions RolePermission[]
+
+  @@unique([tenantId, slug])
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique @db.VarChar(100)
+  slug        String   @unique @db.VarChar(100)
+  module      String   @db.VarChar(50)
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String @id @default(uuid())
+  roleId       String @db.VarChar(36)
+  permissionId String @db.VarChar(36)
+  granted      Boolean @default(true)
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ═══════════════════════════════════════════════════
+// MITARBEITER
+// ═══════════════════════════════════════════════════
+
+model Employee {
+  id                String    @id @default(uuid())
+  tenantId          String    @db.VarChar(36)
+  personnelNumber   String    @db.VarChar(50)
+  firstName         String    @db.VarChar(100)
+  lastName          String    @db.VarChar(100)
+  dateOfBirth       DateTime? @db.Date
+  gender            Gender?
+  street            String?   @db.VarChar(200)
+  zipCode           String?   @db.VarChar(20)
+  city              String?   @db.VarChar(100)
+  country           String    @default("DE") @db.VarChar(100)
+  phone             String?   @db.VarChar(50)
+  mobile            String?   @db.VarChar(50)
+  email             String?   @db.VarChar(255)
+  bankName          String?   @db.VarChar(100)
+  iban              String?   @db.VarChar(34)
+  bic               String?   @db.VarChar(11)
+  taxId             String?   @db.VarChar(20)
+  socialInsuranceId String?   @db.VarChar(30)
+  healthInsurance   String?   @db.VarChar(100)
+  healthInsuranceId String?   @db.VarChar(30)
+  employmentType    EmploymentType?
+  weeklyHours       Decimal?  @db.Decimal(5, 2)
+  contractStart     DateTime? @db.Date
+  contractEnd       DateTime? @db.Date
+  hourlyRateBase    Decimal?  @db.Decimal(8, 2)
+  surchargeNight    Decimal?  @default(0) @db.Decimal(5, 2)
+  surchargeSunday   Decimal?  @default(0) @db.Decimal(5, 2)
+  surchargeHoliday  Decimal?  @default(0) @db.Decimal(5, 2)
+  maxHoursPerDay    Decimal   @default(10.00) @db.Decimal(4, 2)
+  maxHoursPerWeek   Decimal   @default(48.00) @db.Decimal(5, 2)
+  preferredRegion   String?   @db.VarChar(100)
+  
+  // Sicherheits-relevante Felder für Sicherheitsfirmen
+  bewachungserlaubnisNr    String? @db.VarChar(100)  // §34a GewO Lizenznummer
+  bewachungserlaubnisExpiry DateTime? @db.Date  // Ablaufdatum Bewachungserlaubnis
+  waffensachkunde          Boolean @default(false)  // Waffensachkundenachweis vorhanden
+  waffensachkundeExpiry    DateTime? @db.Date  // Ablaufdatum Waffensachkunde
+  ersteHilfeCertified      Boolean @default(false)  // Erste Hilfe Ausbildung
+  ersteHilfeExpiry         DateTime? @db.Date  // Ablaufdatum Erste Hilfe (alle 2 Jahre)
+  sicherheitsstufe         Int @default(1)  // 1-5: Einfacher Dienst bis Führungsposition
+  fuehrungszeugnisDatum    DateTime? @db.Date  // Letzte Prüfung Führungszeugnis
+  zuverlaessigkeetspruefung DateTime? @db.Date  // §7 GewO Zuverlässigkeitsprüfung
+  unterweisungDatum        DateTime? @db.Date  // Letzte Sicherheitsunterweisung
+  hundefuehrer             Boolean @default(false)  // Hundeführer-Schein
+  brandschutzbeauftragter  Boolean @default(false)  // Brandschutzhelfer
+  ersteHilfeTrainer        Boolean @default(false)  // Erste Hilfe Ausbilder
+  
+  notes             String?   @db.Text
+  photoUrl          String?   @db.VarChar(500)
+  status            EmployeeStatus @default(active)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  tenant          Tenant  @relation(fields: [tenantId], references: [id])
+  qualifications  EmployeeQualification[]
+  documents       EmployeeDocument[]
+  availabilities  Availability[]
+  deployments     Deployment[]
+  timeRecords     TimeRecord[]
+  rates           EmployeeRate[]
+  originalReplacements ReplacementRequest[] @relation("originalEmployee")
+  replacementEmployee ReplacementRequest[] @relation("replacementEmployee")
+  confirmedByEmployee Deployment[] @relation("confirmedByEmployee")
+
+  @@unique([tenantId, personnelNumber])
+  @@map("employees")
+}
+
+enum Gender {
+  male
+  female
+  diverse
+}
+
+enum EmploymentType {
+  full_time
+  part_time
+  mini_job
+  freelance
+}
+
+enum EmployeeStatus {
+  active
+  inactive
+  on_leave
+  terminated
+}
+
+// ═══════════════════════════════════════════════════
+// QUALIFIKATIONEN
+// ═══════════════════════════════════════════════════
+
+model Qualification {
+  id              String   @id @default(uuid())
+  name            String   @db.VarChar(200)
+  description     String?  @db.Text
+  category        String?  @db.VarChar(50)
+  validityDays    Int?
+  requiresRenewal Boolean  @default(true)
+  color           String?  @db.VarChar(7)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  employeeQualifications EmployeeQualification[]
+  objectRequirements     ObjectRequirement[]
+
+  @@map("qualifications")
+}
+
+model EmployeeQualification {
+  id                String    @id @default(uuid())
+  employeeId        String    @db.VarChar(36)
+  qualificationId   String    @db.VarChar(36)
+  obtainedDate      DateTime  @db.Date
+  expiryDate        DateTime? @db.Date
+  certificateNumber String?   @db.VarChar(100)
+  documentUrl       String?   @db.VarChar(500)
+  isVerified        Boolean   @default(false)
+  verifiedById      String?   @db.VarChar(36)
+  verifiedAt        DateTime?
+  notes             String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  employee      Employee      @relation(fields: [employeeId], references: [id])
+  qualification Qualification @relation(fields: [qualificationId], references: [id])
+  verifiedBy    User?         @relation("verifiedBy", fields: [verifiedById], references: [id])
+
+  @@unique([employeeId, qualificationId])
+  @@map("employee_qualifications")
+}
+
+model EmployeeDocument {
+  id         String   @id @default(uuid())
+  employeeId String   @db.VarChar(36)
+  fileName   String   @db.VarChar(255)
+  fileUrl    String   @db.VarChar(500)
+  fileSize   Int?
+  mimeType   String?  @db.VarChar(100)
+  category   String?  @db.VarChar(50)
+  uploadedById String? @db.VarChar(36)
+  createdAt  DateTime @default(now())
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  uploadedBy User?    @relation(fields: [uploadedById], references: [id])
+
+  @@map("employee_documents")
+}
+
+// ═══════════════════════════════════════════════════
+// VERFÜGBARKEITEN
+// ═══════════════════════════════════════════════════
+
+model Availability {
+  id           String    @id @default(uuid())
+  employeeId   String    @db.VarChar(36)
+  type         AvailabilityType
+  startDate    DateTime  @db.Date
+  endDate      DateTime  @db.Date
+  allDay       Boolean   @default(true)
+  startTime    DateTime? @db.Time
+  endTime      DateTime? @db.Time
+  reason       String?   @db.Text
+  approvedById String?   @db.VarChar(36)
+  status       ApprovalStatus @default(pending)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  approvedBy User?    @relation("approvedBy", fields: [approvedById], references: [id])
+
+  @@map("availabilities")
+}
+
+enum AvailabilityType {
+  available
+  vacation
+  sick
+  personal
+  training
+  other
+}
+
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+}
+
+// ═══════════════════════════════════════════════════
+// KUNDEN & OBJEKTE
+// ═══════════════════════════════════════════════════
+
+model Customer {
+  id             String          @id @default(uuid())
+  tenantId       String          @db.VarChar(36)
+  customerNumber String          @db.VarChar(50)
+  companyName    String          @db.VarChar(200)
+  department     String?         @db.VarChar(100)
+  street         String?         @db.VarChar(200)
+  zipCode        String?         @db.VarChar(20)
+  city           String?         @db.VarChar(100)
+  country        String          @default("DE") @db.VarChar(100)
+  phone          String?         @db.VarChar(50)
+  fax            String?         @db.VarChar(50)
+  email          String?         @db.VarChar(255)
+  website        String?         @db.VarChar(255)
+  taxNumber      String?         @db.VarChar(50)
+  vatId          String?         @db.VarChar(50)
+  billingAddress Json?
+  paymentTerms   Int             @default(14)
+  notes          String?         @db.Text
+  status         CustomerStatus  @default(active)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id])
+  contactPersons  ContactPerson[]
+  objects         SMSObject[]
+  rates           CustomerRate[]
+  invoices        CustomerInvoice[]
+
+  @@unique([tenantId, customerNumber])
+  @@map("customers")
+}
+
+enum CustomerStatus {
+  active
+  inactive
+  prospect
+}
+
+model ContactPerson {
+  id         String   @id @default(uuid())
+  customerId String   @db.VarChar(36)
+  firstName  String   @db.VarChar(100)
+  lastName   String   @db.VarChar(100)
+  role       String?  @db.VarChar(100)
+  phone      String?  @db.VarChar(50)
+  mobile     String?  @db.VarChar(50)
+  email      String?  @db.VarChar(255)
+  isPrimary  Boolean  @default(false)
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer  @relation(fields: [customerId], references: [id])
+  objects  SMSObject[]
+
+  @@map("contact_persons")
+}
+
+model SMSObject {
+  id                  String   @id @default(uuid())
+  tenantId            String   @db.VarChar(36)
+  objectNumber        String   @db.VarChar(50)
+  customerId          String   @db.VarChar(36)
+  name                String   @db.VarChar(200)
+  street              String?  @db.VarChar(200)
+  zipCode             String?  @db.VarChar(20)
+  city                String?  @db.VarChar(100)
+  description         String?  @db.Text
+  objectType          String?  @db.VarChar(50)
+  contactPersonId     String?  @db.VarChar(36)
+  alarmNumber         String?  @db.VarChar(50)
+  keyDepot            String?  @db.Text
+  accessCode          String?  @db.VarChar(100)
+  specialInstructions String?  @db.Text
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant          Tenant            @relation(fields: [tenantId], references: [id])
+  customer        Customer          @relation(fields: [customerId], references: [id])
+  contactPerson   ContactPerson?    @relation(fields: [contactPersonId], references: [id])
+  requirements    ObjectRequirement[]
+  deployments     Deployment[]
+  rates           CustomerRate[]
+
+  @@unique([tenantId, objectNumber])
+  @@map("objects")
+}
+
+model ObjectRequirement {
+  id              String  @id @default(uuid())
+  objectId        String  @db.VarChar(36)
+  qualificationId String  @db.VarChar(36)
+  isMandatory     Boolean @default(true)
+  notes           String? @db.Text
+  createdAt       DateTime @default(now())
+
+  object        SMSObject     @relation(fields: [objectId], references: [id])
+  qualification Qualification @relation(fields: [qualificationId], references: [id])
+
+  @@unique([objectId, qualificationId])
+  @@map("object_requirements")
+}
+
+model CustomerRate {
+  id          String    @id @default(uuid())
+  customerId  String    @db.VarChar(36)
+  objectId    String?   @db.VarChar(36)
+  serviceType String    @db.VarChar(50)
+  rateNormal  Decimal   @db.Decimal(8, 2)
+  rateNight   Decimal?  @db.Decimal(8, 2)
+  rateSunday  Decimal?  @db.Decimal(8, 2)
+  rateHoliday Decimal?  @db.Decimal(8, 2)
+  validFrom   DateTime  @db.Date
+  validUntil  DateTime? @db.Date
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  customer Customer  @relation(fields: [customerId], references: [id])
+  object   SMSObject? @relation(fields: [objectId], references: [id])
+
+  @@map("customer_rates")
+}
+
+// ═══════════════════════════════════════════════════
+// DIENSTPLANUNG & EINSÄTZE
+// ═══════════════════════════════════════════════════
+
+model Shift {
+  id           String   @id @default(uuid())
+  name         String   @db.VarChar(100)
+  startTime    DateTime @db.Time
+  endTime      DateTime @db.Time
+  breakMinutes Int      @default(0)
+  isNightShift Boolean  @default(false)
+  color        String?  @db.VarChar(7)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  deployments Deployment[]
+
+  @@map("shifts")
+}
+
+model Deployment {
+  id                 String    @id @default(uuid())
+  tenantId           String    @db.VarChar(36)
+  objectId           String    @db.VarChar(36)
+  employeeId         String    @db.VarChar(36)
+  date               DateTime  @db.Date
+  shiftId            String?   @db.VarChar(36)
+  startTime          DateTime  @db.Time
+  endTime            DateTime  @db.Time
+  breakMinutes       Int       @default(0)
+  isNightShift       Boolean   @default(false)
+  isSunday           Boolean   @default(false)
+  isHoliday          Boolean   @default(false)
+  status             DeploymentStatus @default(planned)
+  confirmedById      String?   @db.VarChar(36)
+  confirmedAt        DateTime?
+  cancelledById      String?   @db.VarChar(36)
+  cancelledAt        DateTime?
+  cancellationReason String?   @db.Text
+  replacementId      String?   @db.VarChar(36)
+  plannedById        String    @db.VarChar(36)
+  notes              String?   @db.Text
+  version            Int       @default(1)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  tenant              Tenant       @relation(fields: [tenantId], references: [id])
+  object              SMSObject    @relation(fields: [objectId], references: [id])
+  employee            Employee     @relation(fields: [employeeId], references: [id])
+  shift               Shift?       @relation(fields: [shiftId], references: [id])
+  plannedBy           User         @relation("plannedBy", fields: [plannedById], references: [id])
+  cancelledBy         User?        @relation("cancelledBy", fields: [cancelledById], references: [id])
+  confirmedByEmployee User?        @relation("confirmedByEmployee", fields: [confirmedById], references: [id])
+  timeRecords         TimeRecord[]
+  replacementRequests ReplacementRequest[]
+
+  @@map("deployments")
+}
+
+enum DeploymentStatus {
+  planned
+  confirmed
+  cancelled
+  completed
+  no_show
+}
+
+// ═══════════════════════════════════════════════════
+// ZEITERFASSUNG
+// ═══════════════════════════════════════════════════
+
+model TimeRecord {
+  id               String    @id @default(uuid())
+  tenantId         String    @db.VarChar(36)
+  employeeId       String    @db.VarChar(36)
+  deploymentId     String?   @db.VarChar(36)
+  date             DateTime  @db.Date
+  clockIn          DateTime
+  clockOut         DateTime?
+  breakStart       DateTime?
+  breakEnd         DateTime?
+  breakDuration    Int       @default(0)
+  regularHours     Decimal?  @db.Decimal(5, 2)
+  nightHours       Decimal?  @db.Decimal(5, 2)
+  sundayHours      Decimal?  @db.Decimal(5, 2)
+  holidayHours     Decimal?  @db.Decimal(5, 2)
+  overtimeHours    Decimal?  @db.Decimal(5, 2)
+  totalHours       Decimal?  @db.Decimal(5, 2)
+  status           TimeRecordStatus @default(open)
+  approvedById     String?   @db.VarChar(36)
+  approvedAt       DateTime?
+  correctionReason String?   @db.Text
+  correctedById    String?   @db.VarChar(36)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  employee    Employee    @relation(fields: [employeeId], references: [id])
+  deployment  Deployment? @relation(fields: [deploymentId], references: [id])
+  approvedBy  User?       @relation("approvedBy", fields: [approvedById], references: [id])
+  correctedBy User?       @relation("correctedBy", fields: [correctedById], references: [id])
+  breaks      Break[]
+
+  @@map("time_records")
+}
+
+enum TimeRecordStatus {
+  open
+  completed
+  approved
+  rejected
+}
+
+model Break {
+  id            String    @id @default(uuid())
+  timeRecordId  String    @db.VarChar(36)
+  breakStart    DateTime
+  breakEnd      DateTime?
+  durationMinutes Int?
+  createdAt     DateTime  @default(now())
+
+  timeRecord TimeRecord @relation(fields: [timeRecordId], references: [id])
+
+  @@map("breaks")
+}
+
+// ═══════════════════════════════════════════════════
+// VERGÜTUNG & ABRECHNUNG
+// ═══════════════════════════════════════════════════
+
+model EmployeeRate {
+  id            String    @id @default(uuid())
+  employeeId    String    @db.VarChar(36)
+  rateBase      Decimal   @db.Decimal(8, 2)
+  rateNight     Decimal?  @db.Decimal(8, 2)
+  rateSunday    Decimal?  @db.Decimal(8, 2)
+  rateHoliday   Decimal?  @db.Decimal(8, 2)
+  surchargeType SurchargeType @default(percentage)
+  validFrom     DateTime  @db.Date
+  validUntil    DateTime? @db.Date
+  approvedById  String?   @db.VarChar(36)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@map("employee_rates")
+}
+
+enum SurchargeType {
+  absolute
+  percentage
+}
+
+model CustomerInvoice {
+  id           String    @id @default(uuid())
+  tenantId     String    @db.VarChar(36)
+  invoiceNumber String   @db.VarChar(50)
+  customerId   String    @db.VarChar(36)
+  invoiceDate  DateTime  @db.Date
+  dueDate      DateTime  @db.Date
+  periodStart  DateTime  @db.Date
+  periodEnd    DateTime  @db.Date
+  subtotal     Decimal   @db.Decimal(10, 2)
+  taxRate      Decimal   @default(19.00) @db.Decimal(5, 2)
+  taxAmount    Decimal   @db.Decimal(10, 2)
+  totalAmount  Decimal   @db.Decimal(10, 2)
+  status       InvoiceStatus @default(draft)
+  paidAt       DateTime?
+  pdfUrl       String?   @db.VarChar(500)
+  notes        String?   @db.Text
+  createdById  String    @db.VarChar(36)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant     Tenant            @relation(fields: [tenantId], references: [id])
+  customer   Customer          @relation(fields: [customerId], references: [id])
+  positions  InvoicePosition[]
+  createdBy  User              @relation(fields: [createdById], references: [id])
+
+  @@unique([tenantId, invoiceNumber])
+  @@map("customer_invoices")
+}
+
+enum InvoiceStatus {
+  draft
+  sent
+  paid
+  overdue
+  cancelled
+}
+
+model InvoicePosition {
+  id           String   @id @default(uuid())
+  invoiceId    String   @db.VarChar(36)
+  objectId     String?  @db.VarChar(36)
+  employeeId   String?  @db.VarChar(36)
+  description  String   @db.Text
+  quantity     Decimal  @db.Decimal(8, 2)
+  unit         String   @default("Stunden") @db.VarChar(20)
+  ratePerUnit  Decimal  @db.Decimal(8, 2)
+  totalAmount  Decimal  @db.Decimal(10, 2)
+  serviceType  String?  @db.VarChar(50)
+  serviceDate  DateTime? @db.Date
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  invoice CustomerInvoice @relation(fields: [invoiceId], references: [id])
+
+  @@map("invoice_positions")
+}
+
+// ═══════════════════════════════════════════════════
+// SPERREN & SICHERHEIT
+// ═══════════════════════════════════════════════════
+
+model Lock {
+  id          String    @id @default(uuid())
+  resourceType String   @db.VarChar(50)
+  resourceId  String    @db.VarChar(36)
+  lockedById  String    @db.VarChar(36)
+  sessionId   String    @db.VarChar(100)
+  acquiredAt  DateTime  @default(now())
+  heartbeatAt DateTime  @default(now())
+  expiresAt   DateTime
+  status      LockStatus @default(active)
+  releasedAt  DateTime?
+
+  lockedBy User @relation(fields: [lockedById], references: [id])
+
+  @@index([resourceType, resourceId])
+  @@map("locks")
+}
+
+enum LockStatus {
+  active
+  expired
+  released
+}
+
+model Session {
+  id             String    @id @default(uuid())
+  userId         String    @db.VarChar(36)
+  token          String    @unique @db.VarChar(500)
+  refreshToken   String    @unique @db.VarChar(500)
+  ipAddress      String?   @db.VarChar(45)
+  userAgent      String?   @db.Text
+  deviceInfo     String?   @db.VarChar(200)
+  expiresAt      DateTime
+  lastActivityAt DateTime  @default(now())
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("sessions")
+}
+
+// ═══════════════════════════════════════════════════
+// PROTOKOLL & BENACHRICHTIGUNGEN
+// ═══════════════════════════════════════════════════
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String?  @db.VarChar(36)
+  userName     String?  @db.VarChar(200)
+  sessionId    String?  @db.VarChar(100)
+  action       String   @db.VarChar(50)
+  resourceType String   @db.VarChar(50)
+  resourceId   String   @db.VarChar(36)
+  oldValue     Json?
+  newValue     Json?
+  ipAddress    String?  @db.VarChar(45)
+  userAgent    String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([resourceType, resourceId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id           String    @id @default(uuid())
+  userId       String    @db.VarChar(36)
+  type         String    @db.VarChar(50)
+  title        String    @db.VarChar(200)
+  message      String    @db.Text
+  resourceType String?   @db.VarChar(50)
+  resourceId   String?   @db.VarChar(36)
+  isRead       Boolean   @default(false)
+  readAt       DateTime?
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ═══════════════════════════════════════════════════
+// FEIERTAGE & ERSATZ
+// ═══════════════════════════════════════════════════
+
+model Holiday {
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(200)
+  date        DateTime @db.Date
+  state       String?  @db.VarChar(10)
+  isRecurring Boolean  @default(true)
+  year        Int?
+  createdAt   DateTime @default(now())
+
+  @@unique([date, state])
+  @@map("holidays")
+}
+
+model ReplacementRequest {
+  id                      String   @id @default(uuid())
+  deploymentId            String   @db.VarChar(36)
+  originalEmployeeId      String   @db.VarChar(36)
+  reason                  String   @db.Text
+  status                  ReplacementStatus @default(pending)
+  requestedById           String   @db.VarChar(36)
+  resolvedById            String?  @db.VarChar(36)
+  replacementEmployeeId   String?  @db.VarChar(36)
+  replacementDeploymentId String?  @db.VarChar(36)
+  candidates              Json?
+  notes                   String?  @db.Text
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  deployment          Deployment  @relation(fields: [deploymentId], references: [id])
+  originalEmployee    Employee    @relation("originalEmployee", fields: [originalEmployeeId], references: [id])
+  replacementEmployee Employee?   @relation("replacementEmployee", fields: [replacementEmployeeId], references: [id])
+  requestedBy         User        @relation("requestedBy", fields: [requestedById], references: [id])
+  resolvedBy          User?       @relation("resolvedBy", fields: [resolvedById], references: [id])
+
+  @@map("replacement_requests")
+}
+
+enum ReplacementStatus {
+  pending
+  candidates_found
+  assigned
+  unresolved
+  cancelled
+}
+
+// ═══════════════════════════════════════════════════
+// ADD-ON SYSTEM
+// ═══════════════════════════════════════════════════
+
+model Addon {
+  id              String   @id @default(uuid())
+  name            String   @db.VarChar(100)
+  slug            String   @unique @db.VarChar(50)
+  description     String?  @db.Text
+  category        String   @db.VarChar(50) // integration, automation, analytics, security, communication
+  monthlyPrice    Decimal  @default(0) @db.Decimal(10, 2)
+  yearlyPrice     Decimal  @default(0) @db.Decimal(10, 2)
+  setupFee        Decimal  @default(0) @db.Decimal(10, 2)
+  featureKey      String   @db.VarChar(100)
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenantAddons TenantAddon[]
+
+  @@map("addons")
+}
+
+model TenantAddon {
+  id                        String   @id @default(uuid())
+  tenantId                  String   @db.VarChar(36)
+  addonId                   String   @db.VarChar(36)
+  status                    String   @default("ACTIVE") @db.VarChar(20) // ACTIVE, CANCELED, PENDING
+  billingInterval           String   @default("MONTHLY") @db.VarChar(10) // MONTHLY, YEARLY
+  price                     Decimal  @db.Decimal(10, 2)
+  activatedAt               DateTime @default(now())
+  canceledAt                DateTime?
+  expiresAt                 DateTime?
+  stripeSubscriptionItemId  String?  @db.VarChar(255)
+  notes                     String?  @db.Text
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  addon  Addon  @relation(fields: [addonId], references: [id])
+
+  @@index([tenantId])
+  @@index([addonId])
+  @@map("tenant_addons")
+}
+
+model TenantFeature {
+  id         String    @id @default(uuid())
+  tenantId   String    @db.VarChar(36)
+  featureKey String    @db.VarChar(100)
+  enabled    Boolean   @default(true)
+  grantedBy  String?   @db.VarChar(36)
+  reason     String?   @db.Text
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([featureKey])
+  @@map("tenant_features")
+}
+
+// ═══════════════════════════════════════════════════
+// SYSTEM EINSTELLUNGEN & ENTWICKLER-MENÜ
+// ═══════════════════════════════════════════════════
+
+model SystemSettings {
+  id        String   @id @default(uuid())
+  key       String   @unique @db.VarChar(100)
+  value     Json
+  updatedAt DateTime @updatedAt
+  
+  @@map("system_settings")
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  name        String    @db.VarChar(100)
+  key         String    @unique @db.VarChar(255)
+  type        String    @db.VarChar(50) // datev, sms, push, maps, etc.
+  isActive    Boolean   @default(true)
+  lastUsed    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@map("api_keys")
+}
+
+model BankConnection {
+  id              String    @id @default(uuid())
+  tenantId        String?   @db.VarChar(36) // null = Platform
+  name            String    @db.VarChar(100)
+  iban            String    @db.VarChar(34)
+  bic             String    @db.VarChar(11)
+  bankName        String    @db.VarChar(100)
+  creditorId      String?   @db.VarChar(35)
+  isDefault       Boolean   @default(false)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@map("bank_connections")
+}
+
+model SepaMandate {
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  mandateRef      String    @unique @db.VarChar(35)
+  customerName    String    @db.VarChar(200)
+  customerIban    String    @db.VarChar(34)
+  status          String    @default("PENDING") @db.VarChar(20) // PENDING, ACTIVE, REVOKED
+  signedAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([tenantId])
+  @@map("sepa_mandates")
+}
+
+// ═══════════════════════════════════════════════════
+// HILFE-SYSTEM
+// ═══════════════════════════════════════════════════
+
+model HelpArticle {
+  id          String    @id @default(uuid())
+  category    String    @db.VarChar(50) // admin, user, api, troubleshooting
+  subcategory String?   @db.VarChar(50)
+  title       String    @db.VarChar(200)
+  slug        String    @unique @db.VarChar(200)
+  content     String    @db.Text
+  tags        String[]
+  isPublished Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  viewCount   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([category])
+  @@index([tags])
+  @@map("help_articles")
+}
+
+model HelpSearch {
+  id          String    @id @default(uuid())
+  query       String    @db.VarChar(500)
+  resultCount Int       @default(0)
+  userId      String?   @db.VarChar(36)
+  tenantId    String?   @db.VarChar(36)
+  createdAt   DateTime  @default(now())
+  
+  @@index([query])
+  @@map("help_searches")
+}
+
+// Schlüsselverwaltung für Sicherheitsfirmen
+model SecurityKey {
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  objectId        String    @db.VarChar(36)
+  keyNumber       String    @db.VarChar(100)  // Schlüsselnummer
+  keyType         String    @db.VarChar(100)  // Typ (z.B. "Zylinder", "Transponder")
+  description     String?   @db.VarChar(500)
+  totalCopies     Int       @default(1)  // Anzahl Kopien
+  assignedTo      String?   @db.VarChar(36)  // Employee ID
+  assignedDate    DateTime? @db.Date
+  returnDate      DateTime? @db.Date
+  status          KeyStatus @default(AVAILABLE)
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  object    SMSObject @relation(fields: [objectId], references: [id])
+  
+  @@index([tenantId, status])
+  @@index([assignedTo])
+  @@map("security_keys")
+}
+
+enum KeyStatus {
+  AVAILABLE
+  ASSIGNED
+  LOST
+  RETURNED
+  DEFECT
+}
+
+// Incident-Management (Besondere Vorkommnisse)
+model SecurityIncident {
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  objectId        String?   @db.VarChar(36)
+  deploymentId    String?   @db.VarChar(36)
+  reportedById    String    @db.VarChar(36)  // Employee ID
+  incidentType    IncidentType
+  severity        IncidentSeverity @default(MEDIUM)
+  title           String    @db.VarChar(200)
+  description     String    @db.Text
+  location        String?   @db.VarChar(200)
+  occurredAt      DateTime  @db.Timestamp
+  reportedAt      DateTime  @default(now())
+  resolvedAt      DateTime? @db.Timestamp
+  resolvedById    String?   @db.VarChar(36)
+  resolution      String?   @db.Text
+  status          IncidentStatus @default(OPEN)
+  policeReported  Boolean   @default(false)
+  policeCaseNr    String?   @db.VarChar(100)
+  insuranceReported Boolean @default(false)
+  insuranceCaseNr String?   @db.VarChar(100)
+  photos          Json?     // Array von Foto-URLs
+  witnesses       Json?     // Array von Zeugen
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  object     SMSObject? @relation(fields: [objectId], references: [id])
+  deployment Deployment? @relation(fields: [deploymentId], references: [id])
+  reportedBy Employee   @relation("incidentReporter", fields: [reportedById], references: [id])
+  resolvedBy Employee?  @relation("incidentResolver", fields: [resolvedById], references: [id])
+  
+  @@index([tenantId, status])
+  @@index([incidentType, severity])
+  @@index([occurredAt])
+  @@map("security_incidents")
+}
+
+enum IncidentType {
+  THEFT
+  VANDALISM
+  TRESPASSING
+  ALARM_ACTIVATION
+  MEDICAL_EMERGENCY
+  FIRE
+  ACCIDENT
+  THREAT
+  SUSPICIOUS_ACTIVITY
+  TECHNICAL_FAILURE
+  OTHER
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+// Notfall-Protokolle / Alarmpläne
+model EmergencyProtocol {
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  objectId        String?   @db.VarChar(36)
+  protocolType    String    @db.VarChar(100)  // z.B. "Brand", "Amok", "Evakuierung"
+  title           String    @db.VarChar(200)
+  description     String    @db.Text
+  steps           Json      // Array von Schritten
+  emergencyContacts Json    // Array von Kontakten
+  evacuationRoutes  Json?   // Array von Fluchtwegen
+  assemblyPoints    Json?   // Array von Sammelplätzen
+  lastDrillDate     DateTime? @db.Date
+  nextDrillDate     DateTime? @db.Date
+  isActive          Boolean @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  tenant  Tenant     @relation(fields: [tenantId], references: [id])
+  object  SMSObject? @relation(fields: [objectId], references: [id])
+  
+  @@index([tenantId, isActive])
+  @@map("emergency_protocols")
+}
+
+// Zutrittsberechtigungen
+model AccessPermission {
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  employeeId      String    @db.VarChar(36)
+  objectId        String    @db.VarChar(36)
+  permissionType  AccessPermissionType @default(FULL_ACCESS)
+  validFrom       DateTime  @db.Date
+  validUntil      DateTime? @db.Date
+  timeRestrictions Json?    // z.B. {"weekdays": ["MO","TU","WE"], "timeFrom": "08:00", "timeUntil": "18:00"}
+  isRevoked       Boolean   @default(false)
+  revokedAt       DateTime? @db.Timestamp
+  revokedBy       String?   @db.VarChar(36)
+  revocationReason String?  @db.VarChar(500)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  employee Employee  @relation(fields: [employeeId], references: [id])
+  object   SMSObject @relation(fields: [objectId], references: [id])
+  
+  @@unique([employeeId, objectId])
+  @@index([tenantId, isRevoked])
+  @@map("access_permissions")
+}
+
+enum AccessPermissionType {
+  FULL_ACCESS
+  LIMITED_HOURS
+  ESCORTED_ONLY
+  SPECIFIC_AREAS
+}

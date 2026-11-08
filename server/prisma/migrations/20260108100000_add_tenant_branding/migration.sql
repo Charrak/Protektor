@@ -1,0 +1,5 @@
+-- Add Tenant White-Label Branding Fields
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "logoUrl" VARCHAR(500);
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "faviconUrl" VARCHAR(500);
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "brandColor" VARCHAR(7);
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "loginMessage" VARCHAR(500);
