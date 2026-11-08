@@ -63,6 +63,10 @@ router.use('/developer', developerRoutes);
 import helpRoutes from './help.routes';
 router.use('/help', platformAuthenticate, helpRoutes);
 
+// ─── Audit-Logs & Rollback (Entwickler) ───
+import auditRoutes from './audit.routes';
+router.use('/audit-logs', auditRoutes);
+
 // ─── Kritische Berichte & Statistiken ───
 import { criticalReportsController } from '../controllers/criticalReports.controller';
 router.get('/dashboard/critical-reports', platformAuthenticate, (req, res) => criticalReportsController.getCriticalReports(req, res));
