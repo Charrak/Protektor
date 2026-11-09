@@ -31,7 +31,7 @@ export class AuthService {
    */
   async login(username: string, password: string, ipAddress?: string, userAgent?: string): Promise<LoginResult> {
     // Benutzer laden
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findFirst({
       where: { username, deletedAt: null },
       include: {
         role: {
