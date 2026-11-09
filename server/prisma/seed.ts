@@ -13,10 +13,11 @@ async function main() {
     where: { email: 'admin@sms-platform.com' },
     update: {},
     create: {
+      username: 'admin',
       email: 'admin@sms-platform.com',
-      password: platformAdminPassword,
-      name: 'Platform Administrator',
-      role: 'SUPER_ADMIN',
+      passwordHash: platformAdminPassword,
+      firstName: 'Platform',
+      lastName: 'Administrator',
       isActive: true,
     },
   });
