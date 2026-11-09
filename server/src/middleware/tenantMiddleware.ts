@@ -8,6 +8,12 @@ import { prisma } from '../config/database';
  */
 export async function tenantMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
+    // Auth-Routen benötigen keinen Tenant-Check (Login, Refresh, etc.)
+    if (req.path.startsWith('/auth')) {
+      next();
+      return;
+    }
+
     if (!req.user) {
       res.status(401).json({ error: 'UNAUTHORIZED', message: 'Nicht angemeldet' });
       return;
