@@ -3,7 +3,7 @@
  * Handles tenant branding (logo, favicon, colors, messages)
  */
 
-import { apiCall } from '../utils/api';
+import { apiCall } from './api';
 
 export interface BrandingSettings {
   tenantId: string;
