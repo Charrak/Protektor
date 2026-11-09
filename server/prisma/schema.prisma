@@ -310,8 +310,6 @@ model User {
   @@unique([tenantId, username])
   @@unique([tenantId, email])
   @@map("users")
-
-  @@map("users")
 }
 
 model Role {
