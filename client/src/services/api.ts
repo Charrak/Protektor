@@ -26,4 +26,22 @@ api.interceptors.response.use(
   }
 );
 
+// Wrapper-Funktion für apiCall
+export async function apiCall<T = any>(
+  url: string,
+  options?: {
+    method?: string;
+    body?: any;
+    headers?: Record<string, string>;
+  }
+): Promise<T> {
+  const response = await api({
+    url,
+    method: options?.method || 'GET',
+    data: options?.body,
+    headers: options?.headers,
+  });
+  return response.data;
+}
+
 export default api;
