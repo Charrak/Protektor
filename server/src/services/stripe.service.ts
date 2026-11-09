@@ -2,10 +2,17 @@ import Stripe from 'stripe';
 import { prisma } from '../config/database';
 import { logger } from '../config/logger';
 
-// Stripe Client initialisieren
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-12-18.acacia' as any,
-});
+// Stripe Client initialisieren - nur wenn API Key vorhanden
+let stripe: Stripe | null = null;
+
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2024-12-18.acacia' as any,
+  });
+  logger.info('Stripe Client initialisiert');
+} else {
+  logger.warn('STRIPE_SECRET_KEY nicht gesetzt - Stripe Services deaktiviert');
+}
 
 export interface CreateCheckoutSessionInput {
   tenantId: string;
