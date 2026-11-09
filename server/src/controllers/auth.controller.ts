@@ -41,6 +41,8 @@ export class AuthController {
       res.json({
         user: result.user,
         sessionId: result.sessionId,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
       });
     } catch (error) {
       if (error instanceof Error && error.message.includes('gesperrt')) {
@@ -95,7 +97,11 @@ export class AuthController {
         path: '/',
       });
 
-      res.json({ message: 'Token erneuert' });
+      res.json({
+        message: 'Token erneuert',
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+      });
     } catch (error) {
       res.status(401).json({ error: 'Token-Erneuerung fehlgeschlagen' });
     }

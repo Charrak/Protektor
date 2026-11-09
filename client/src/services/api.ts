@@ -8,17 +8,29 @@ const api = axios.create({
   },
 });
 
+// Request-Interceptor: AccessToken hinzufügen
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('accessToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Response Interceptor für Token-Erneuerung
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401 && error.response?.data?.error === 'TOKEN_EXPIRED') {
       try {
-        await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
-        // Original-Request wiederholen
-        return api(error.config);
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (refreshToken) {
+          const { data } = await axios.post('/api/v1/auth/refresh', { refreshToken });
+          localStorage.setItem('accessToken', data.accessToken);
+          localStorage.setItem('refreshToken', data.refreshToken);
+          return api(error.config);
+        }
       } catch {
-        // Refresh fehlgeschlagen → zur Login-Seite
         window.location.href = '/login';
       }
     }
