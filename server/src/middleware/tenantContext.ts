@@ -8,6 +8,11 @@ import { logger } from '../config/logger';
  */
 export async function tenantContext(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
+    // Auth-Routen überspringen (Login braucht keinen License-Key)
+    if (req.path.startsWith('/auth')) {
+      return next();
+    }
+
     // License-Key aus Header
     const licenseKey = req.headers['x-license-key'] as string;
 
