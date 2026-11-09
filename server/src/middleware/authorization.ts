@@ -8,7 +8,7 @@ export function requirePermission(...requiredPermissions: string[]) {
     }
 
     // Administratoren haben immer alle Rechte
-    if (req.user.roleSlug === 'administrator') {
+    if (req.user.roleSlug === 'administrator' || req.user.roleSlug === 'admin') {
       next();
       return;
     }
@@ -37,7 +37,7 @@ export function requireRole(...allowedRoles: string[]) {
       return;
     }
 
-    if (req.user.roleSlug === 'administrator') {
+    if (req.user.roleSlug === 'administrator' || req.user.roleSlug === 'admin') {
       next();
       return;
     }
