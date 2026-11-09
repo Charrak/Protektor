@@ -3,7 +3,7 @@
  */
 
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate } from '../middleware/auth';
 import { upload } from '../services/upload.service';
 import {
   getBranding,
