@@ -135,6 +135,13 @@ model Tenant {
   invoices         CustomerInvoice[]
   addons           TenantAddon[]
   features         TenantFeature[]
+  
+  // Security Features (Phase 36)
+  roles              Role[]
+  securityKeys       SecurityKey[]
+  securityIncidents  SecurityIncident[]
+  emergencyProtocols EmergencyProtocol[]
+  accessPermissions  AccessPermission[]
 
   @@map("tenants")
 }
@@ -346,6 +353,7 @@ model RolePermission {
 
   role       Role       @relation(fields: [roleId], references: [id])
   permission Permission @relation(fields: [permissionId], references: [id])
+  users      User[]
 
   @@unique([roleId, permissionId])
   @@map("role_permissions")
@@ -420,7 +428,10 @@ model Employee {
   rates           EmployeeRate[]
   originalReplacements ReplacementRequest[] @relation("originalEmployee")
   replacementEmployee ReplacementRequest[] @relation("replacementEmployee")
-  confirmedByEmployee Deployment[] @relation("confirmedByEmployee")
+  // Security Features (Phase 36)
+  reportedIncidents  SecurityIncident[] @relation("incidentReporter")
+  resolvedIncidents  SecurityIncident[] @relation("incidentResolver")
+  accessPermissions  AccessPermission[]
 
   @@unique([tenantId, personnelNumber])
   @@map("employees")
@@ -637,6 +648,12 @@ model SMSObject {
   requirements    ObjectRequirement[]
   deployments     Deployment[]
   rates           CustomerRate[]
+  
+  // Security Features (Phase 36)
+  securityKeys       SecurityKey[]
+  securityIncidents  SecurityIncident[]
+  emergencyProtocols EmergencyProtocol[]
+  accessPermissions  AccessPermission[]
 
   @@unique([tenantId, objectNumber])
   @@map("objects")
@@ -733,6 +750,9 @@ model Deployment {
   confirmedByEmployee User?        @relation("confirmedByEmployee", fields: [confirmedById], references: [id])
   timeRecords         TimeRecord[]
   replacementRequests ReplacementRequest[]
+  
+  // Security Features (Phase 36)
+  securityIncidents   SecurityIncident[]
 
   @@map("deployments")
 }
