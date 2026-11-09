@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate } from '../middleware/auth';
 import { getApiUsageStats, getApiKeyUsage } from '../controllers/apiUsage.controller';
 
 const router = Router();
