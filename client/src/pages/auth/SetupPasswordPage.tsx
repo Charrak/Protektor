@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { apiCall } from '../../utils/api';
+import { apiCall } from '../../services/api';
 import { CheckCircle, AlertCircle, Lock } from 'lucide-react';
 
 interface ValidationResult {
