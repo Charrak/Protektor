@@ -103,7 +103,7 @@ export class ExternalApiService {
         email: data.email,
         personnelNumber: data.personnelNumber,
         status: data.status || 'active',
-        employmentType: data.employmentType || 'FULL_TIME',
+        employmentType: data.employmentType || 'full_time',
       },
     });
 

@@ -43,6 +43,7 @@ async function main() {
       contactEmail: 'platform@sms-platform.com',
       licenseStatus: 'ACTIVE',
       employeeLimit: 1000,
+      createdById: admin.id,
     },
   });
 
@@ -413,7 +414,7 @@ async function main() {
         lastName,
         personnelNumber: `SN${String(i + 1).padStart(3, '0')}`,
         email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@security-nord.de`,
-        employmentType: i < 15 ? 'FULL_TIME' : 'PART_TIME',
+        employmentType: i < 15 ? 'full_time' : 'part_time',
         hourlyRateBase: 15 + (i % 5) * 2,
         status: 'active',
         contractStart: new Date(2020 + (i % 4), i % 12, 1 + (i % 28)),
@@ -456,7 +457,7 @@ async function main() {
         lastName,
         personnelNumber: `SA${String(i + 1).padStart(3, '0')}`,
         email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@schutz-ag.de`,
-        employmentType: i < 12 ? 'FULL_TIME' : 'MINIJOB',
+        employmentType: i < 12 ? 'full_time' : 'mini_job',
         hourlyRateBase: 14 + (i % 4) * 2,
         status: 'active',
         contractStart: new Date(2019 + (i % 5), i % 12, 1 + (i % 28)),
@@ -497,7 +498,7 @@ async function main() {
         lastName,
         personnelNumber: `SS${String(i + 1).padStart(3, '0')}`,
         email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@secure-solutions.de`,
-        employmentType: i < 7 ? 'FULL_TIME' : 'PART_TIME',
+        employmentType: i < 7 ? 'full_time' : 'part_time',
         hourlyRateBase: 13 + (i % 3) * 2,
         status: 'active',
         contractStart: new Date(2023, i % 12, 1 + (i % 28)),
@@ -541,7 +542,7 @@ async function main() {
     });
 
     for (let i = 0; i < customer.objects; i++) {
-      await prisma.object.create({
+      await prisma.sMSObject.create({
         data: {
           tenantId: tenant1.id,
           customerId: dbCustomer.id,
@@ -589,7 +590,7 @@ async function main() {
     });
 
     for (let i = 0; i < customer.objects; i++) {
-      await prisma.object.create({
+      await prisma.sMSObject.create({
         data: {
           tenantId: tenant2.id,
           customerId: dbCustomer.id,
@@ -634,7 +635,7 @@ async function main() {
     });
 
     for (let i = 0; i < customer.objects; i++) {
-      await prisma.object.create({
+      await prisma.sMSObject.create({
         data: {
           tenantId: tenant3.id,
           customerId: dbCustomer.id,
@@ -683,7 +684,7 @@ async function main() {
       take: 5,
     });
 
-    const tenant1Objects = await prisma.object.findMany({
+    const tenant1Objects = await prisma.sMSObject.findMany({
       where: { tenantId: tenant1.id },
       take: 5,
     });
@@ -697,7 +698,7 @@ async function main() {
       // Status abhängig vom Datum
       const isFuture = deploymentDate > today;
       const isToday = deploymentDate.toDateString() === today.toDateString();
-      const deploymentStatus = isFuture ? 'PLANNED' : isToday ? 'IN_PROGRESS' : 'COMPLETED';
+      const deploymentStatus = isFuture ? 'planned' : isToday ? 'confirmed' : 'completed';
 
       const deployment = await prisma.deployment.create({
         data: {
@@ -708,6 +709,7 @@ async function main() {
           startTime,
           endTime,
           status: deploymentStatus,
+          plannedById: tenant1User.id,
           confirmedAt: isFuture ? null : new Date(),
         },
       });
@@ -737,7 +739,7 @@ async function main() {
       take: 3,
     });
 
-    const tenant2Objects = await prisma.object.findMany({
+    const tenant2Objects = await prisma.sMSObject.findMany({
       where: { tenantId: tenant2.id },
       take: 3,
     });
@@ -751,7 +753,7 @@ async function main() {
       // Status abhängig vom Datum
       const isFuture = deploymentDate > today;
       const isToday = deploymentDate.toDateString() === today.toDateString();
-      const deploymentStatus = isFuture ? 'PLANNED' : isToday ? 'IN_PROGRESS' : 'COMPLETED';
+      const deploymentStatus = isFuture ? 'planned' : isToday ? 'confirmed' : 'completed';
 
       const deployment = await prisma.deployment.create({
         data: {
@@ -762,6 +764,7 @@ async function main() {
           startTime,
           endTime,
           status: deploymentStatus,
+          plannedById: tenant2User.id,
           confirmedAt: isFuture ? null : new Date(),
         },
       });
@@ -791,7 +794,7 @@ async function main() {
       take: 2,
     });
 
-    const tenant3Objects = await prisma.object.findMany({
+    const tenant3Objects = await prisma.sMSObject.findMany({
       where: { tenantId: tenant3.id },
       take: 2,
     });
@@ -805,7 +808,7 @@ async function main() {
       // Status abhängig vom Datum
       const isFuture = deploymentDate > today;
       const isToday = deploymentDate.toDateString() === today.toDateString();
-      const deploymentStatus = isFuture ? 'PLANNED' : isToday ? 'IN_PROGRESS' : 'COMPLETED';
+      const deploymentStatus = isFuture ? 'planned' : isToday ? 'confirmed' : 'completed';
 
       const deployment = await prisma.deployment.create({
         data: {
@@ -816,6 +819,7 @@ async function main() {
           startTime,
           endTime,
           status: deploymentStatus,
+          plannedById: tenant3User.id,
           confirmedAt: isFuture ? null : new Date(),
         },
       });
@@ -852,7 +856,7 @@ async function main() {
     prisma.user.count(),
     prisma.employee.count(),
     prisma.customer.count(),
-    prisma.object.count(),
+    prisma.sMSObject.count(),
     prisma.deployment.count(),
     prisma.timeRecord.count(),
     prisma.plan.count(),
