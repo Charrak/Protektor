@@ -6,6 +6,7 @@ export class EmployeeController {
     try {
       const { search, status, employmentType, page, limit } = req.query;
       const result = await employeeService.list({
+        tenantId: req.user?.tenantId,
         search: search as string,
         status: status as any,
         employmentType: employmentType as any,
