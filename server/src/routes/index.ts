@@ -19,6 +19,9 @@ import employeeRestrictionRoutes from './employeeRestriction.routes';
 import employeeDocumentRoutes from './employeeDocument.routes';
 import timeRecordRoutes from './timeRecord.routes';
 import complianceRoutes from './compliance.routes';
+import customerDocumentRoutes from './customerDocument.routes';
+import shiftReportRoutes from './shiftReport.routes';
+import reminderRoutes from './reminder.routes';
 import { tenantContext } from '../middleware/tenantContext';
 
 const router = Router();
@@ -51,6 +54,9 @@ router.use('/employee-documents', employeeDocumentRoutes);
 // ─── Phase 3: Kunden & Objekte ───
 router.use('/customers', customerRoutes);
 router.use('/objects', objectRoutes);
+router.use('/customer-documents', customerDocumentRoutes);
+router.use('/shift-reports', shiftReportRoutes);
+router.use('/reminders', reminderRoutes);
 
 // ─── Phase 4: Dienstplanung ───
 router.use('/deployments', deploymentRoutes);
