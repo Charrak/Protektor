@@ -15,6 +15,7 @@ import passwordSetupRoutes from './routes/passwordSetup.routes';
 import apiUsageRoutes from './routes/apiUsage.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { tenantMiddleware } from './middleware/tenantMiddleware';
+import { authenticate } from './middleware/auth';
 import { startLockCleanupJob } from './services/locking.service';
 import { apiLimiter, authLimiter, platformLimiter, webhookLimiter, suspiciousActivityDetector } from './middleware/rateLimiter';
 import { sanitizeInput } from './utils/validation';
@@ -76,17 +77,21 @@ app.get('/api/health', (_req, res) => {
 // ─── SaaS-Plattform-Routen (für Softwareanbieter) ───
 app.use('/api/platform', platformRoutes);
 
-// ─── API Routes (für Kunden) ───
-app.use('/api/v1', tenantMiddleware, routes);
-
-// ─── Branding Routes (für Tenant-Logos) ───
-app.use('/api/v1/branding', tenantMiddleware, brandingRoutes);
-
-// ─── Password Setup Routes (für initiales Passwort-Setup) ───
+// ─── Spezifische öffentliche Routen (vor dem allgemeinen Auth-Check) ───
 app.use('/api/v1/password-setup', passwordSetupRoutes);
+app.use('/api/v1/branding', brandingRoutes);
+app.use('/api/v1/api', apiUsageRoutes);
 
-// ─── API Usage Routes (für Developer-Dashboard) ───
-app.use('/api/v1/api', tenantMiddleware, apiUsageRoutes);
+// ─── API Routes (für Kunden) ───
+// authenticate VOR tenantMiddleware, damit req.user existiert
+const PUBLIC_PATHS = ['/auth', '/help'];
+const isPublic = (path: string) => PUBLIC_PATHS.some(p => path === p || path.startsWith(p + '/'));
+
+app.use('/api/v1',
+  (req, res, next) => isPublic(req.path) ? next() : authenticate(req, res, next),
+  (req, res, next) => isPublic(req.path) ? next() : tenantMiddleware(req, res, next),
+  routes
+);
 
 // ─── Error Handler ───
 app.use(errorHandler);
