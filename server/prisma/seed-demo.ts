@@ -1,5 +1,6 @@
 import { PrismaClient, LicenseStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { ensureDefaultRoles } from '../src/services/defaultRoles.service';
 
 const prisma = new PrismaClient();
 
@@ -29,6 +30,21 @@ async function main() {
   console.log('   📧 Email: admin@sms-platform.com');
   console.log('   🔑 Password: Admin123!');
   console.log('   🌐 URL: http://localhost:5173/platform\n');
+
+  // ═══════════════════════════════════════════════════════
+  // 1B. Standardrollen für Platform-Tenant erstellen
+  // ═══════════════════════════════════════════════════════
+  const platformTenant = await prisma.tenant.upsert({
+    where: { tenantId: 'PLATFORM' },
+    update: {},
+    create: {
+      tenantId: 'PLATFORM',
+      companyName: 'SMS Platform',
+      contactEmail: 'platform@sms-platform.com',
+      licenseStatus: 'ACTIVE',
+      employeeLimit: 1000,
+    },
+  });
 
   // ═══════════════════════════════════════════════════════
   // 2. TARIFE erstellen
@@ -159,10 +175,16 @@ async function main() {
     },
   });
 
+  // Tenant 1 Standardrollen erstellen
+  await ensureDefaultRoles(prisma, tenant1.id);
+  const tenant1AdminRole = await prisma.role.findUniqueOrThrow({
+    where: { tenantId_slug: { tenantId: tenant1.id, slug: 'admin' } },
+  });
+
   // Tenant 1 User
   const tenant1User = await prisma.user.upsert({
-    where: { email: 'admin@security-nord.de' },
-    update: { passwordHash: tenant1Password },
+    where: { tenantId_email: { tenantId: tenant1.id, email: 'admin@security-nord.de' } },
+    update: { passwordHash: tenant1Password, roleId: tenant1AdminRole.id },
     create: {
       username: 'admin-nord',
       email: 'admin@security-nord.de',
@@ -170,7 +192,7 @@ async function main() {
       firstName: 'Thomas',
       lastName: 'Nordmann',
       tenantId: tenant1.id,
-      roleId: 'admin',
+      roleId: tenant1AdminRole.id,
       isActive: true,
     },
   });
@@ -185,7 +207,7 @@ async function main() {
       data: {
         tenantId: tenant1.id,
         planId: professionalPlan.id,
-        status: 'ACTIVE',
+        status: 'active',
         billingInterval: 'MONTHLY',
         currentPeriodStart: new Date(),
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -236,10 +258,16 @@ async function main() {
     },
   });
 
+  // Tenant 2 Standardrollen erstellen
+  await ensureDefaultRoles(prisma, tenant2.id);
+  const tenant2AdminRole = await prisma.role.findUniqueOrThrow({
+    where: { tenantId_slug: { tenantId: tenant2.id, slug: 'admin' } },
+  });
+
   // Tenant 2 User
   const tenant2User = await prisma.user.upsert({
-    where: { email: 'info@schutz-ag.de' },
-    update: { passwordHash: tenant2Password },
+    where: { tenantId_email: { tenantId: tenant2.id, email: 'info@schutz-ag.de' } },
+    update: { passwordHash: tenant2Password, roleId: tenant2AdminRole.id },
     create: {
       username: 'admin-schutz',
       email: 'info@schutz-ag.de',
@@ -247,7 +275,7 @@ async function main() {
       firstName: 'Maria',
       lastName: 'Schütz',
       tenantId: tenant2.id,
-      roleId: 'admin',
+      roleId: tenant2AdminRole.id,
       isActive: true,
     },
   });
@@ -262,7 +290,7 @@ async function main() {
       data: {
         tenantId: tenant2.id,
         planId: enterprisePlan.id,
-        status: 'ACTIVE',
+        status: 'active',
         billingInterval: 'MONTHLY',
         currentPeriodStart: new Date(),
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -305,10 +333,16 @@ async function main() {
     },
   });
 
+  // Tenant 3 Standardrollen erstellen
+  await ensureDefaultRoles(prisma, tenant3.id);
+  const tenant3AdminRole = await prisma.role.findUniqueOrThrow({
+    where: { tenantId_slug: { tenantId: tenant3.id, slug: 'admin' } },
+  });
+
   // Tenant 3 User
   const tenant3User = await prisma.user.upsert({
-    where: { email: 'kontakt@secure-solutions.de' },
-    update: { passwordHash: tenant3Password },
+    where: { tenantId_email: { tenantId: tenant3.id, email: 'kontakt@secure-solutions.de' } },
+    update: { passwordHash: tenant3Password, roleId: tenant3AdminRole.id },
     create: {
       username: 'admin-secure',
       email: 'kontakt@secure-solutions.de',
@@ -316,7 +350,7 @@ async function main() {
       firstName: 'Stefan',
       lastName: 'Solutions',
       tenantId: tenant3.id,
-      roleId: 'admin',
+      roleId: tenant3AdminRole.id,
       isActive: true,
     },
   });
@@ -373,8 +407,8 @@ async function main() {
         personnelNumber: `SN${String(i + 1).padStart(3, '0')}`,
         email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@security-nord.de`,
         employmentType: i < 15 ? 'FULL_TIME' : 'PART_TIME',
-        hourlyRate: 15 + (i % 5) * 2,
-        status: 'ACTIVE',
+        hourlyRateBase: 15 + (i % 5) * 2,
+        status: 'active',
         contractStart: new Date(2020 + (i % 4), i % 12, 1 + (i % 28)),
         street: `${['Hafenstraße', 'Reeperbahn', 'Jungfernstieg'][i % 3]} ${10 + i}`,
         zipCode: '20359',
@@ -409,8 +443,8 @@ async function main() {
         personnelNumber: `SA${String(i + 1).padStart(3, '0')}`,
         email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@schutz-ag.de`,
         employmentType: i < 12 ? 'FULL_TIME' : 'MINIJOB',
-        hourlyRate: 14 + (i % 4) * 2,
-        status: 'ACTIVE',
+        hourlyRateBase: 14 + (i % 4) * 2,
+        status: 'active',
         contractStart: new Date(2019 + (i % 5), i % 12, 1 + (i % 28)),
         street: `${['Maximilianstraße', 'Leopoldstraße', 'Brienner Straße'][i % 3]} ${5 + i}`,
         zipCode: '80539',
@@ -443,8 +477,8 @@ async function main() {
         personnelNumber: `SS${String(i + 1).padStart(3, '0')}`,
         email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@secure-solutions.de`,
         employmentType: i < 7 ? 'FULL_TIME' : 'PART_TIME',
-        hourlyRate: 13 + (i % 3) * 2,
-        status: 'ACTIVE',
+        hourlyRateBase: 13 + (i % 3) * 2,
+        status: 'active',
         contractStart: new Date(2023, i % 12, 1 + (i % 28)),
         street: `Berliner Straße ${20 + i}`,
         zipCode: '10117',
@@ -477,7 +511,7 @@ async function main() {
         customerNumber: customer.number,
         email: `info@${customer.name.toLowerCase().replace(/[^a-z]/g, '')}.de`,
         phone: '+49 40 ' + Math.floor(1000000 + Math.random() * 9000000),
-        status: 'ACTIVE',
+        status: 'active',
         street: `Hamburger Straße ${Math.floor(Math.random() * 100)}`,
         zipCode: '20359',
         city: 'Hamburg',
