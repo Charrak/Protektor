@@ -13,6 +13,7 @@ interface CreateEmployeeInput {
 interface UpdateEmployeeInput extends Partial<CreateEmployeeInput> {}
 
 interface ListQuery {
+  tenantId?: string;
   search?: string;
   status?: string;
   employmentType?: string;
@@ -22,10 +23,12 @@ interface ListQuery {
 
 export class EmployeeService {
   async list(query: ListQuery) {
-    const { search, status, employmentType, page = 1, limit = 25 } = query;
+    const { tenantId, search, status, employmentType, page = 1, limit = 25 } = query;
     const skip = (page - 1) * limit;
 
     const where: any = { deletedAt: null };
+
+    if (tenantId) where.tenantId = tenantId;
 
     if (search) {
       where.OR = [
