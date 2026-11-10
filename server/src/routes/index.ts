@@ -14,6 +14,14 @@ import lockingRoutes from './locking.routes';
 import platformRoutes from './platform.routes';
 import datevRoutes from './datev.routes';
 import addonRoutes from './addon.routes';
+import recurringAvailabilityRoutes from './recurringAvailability.routes';
+import employeeRestrictionRoutes from './employeeRestriction.routes';
+import employeeDocumentRoutes from './employeeDocument.routes';
+import timeRecordRoutes from './timeRecord.routes';
+import complianceRoutes from './compliance.routes';
+import customerDocumentRoutes from './customerDocument.routes';
+import shiftReportRoutes from './shiftReport.routes';
+import reminderRoutes from './reminder.routes';
 import { tenantContext } from '../middleware/tenantContext';
 
 const router = Router();
@@ -38,17 +46,28 @@ router.use('/locks', lockingRoutes);
 router.use('/employees', employeeRoutes);
 router.use('/qualifications', qualificationRoutes);
 
+// ─── Phase 2a: Verfügbarkeiten, Restriktionen, Dokumente ───
+router.use('/recurring-availabilities', recurringAvailabilityRoutes);
+router.use('/employee-restrictions', employeeRestrictionRoutes);
+router.use('/employee-documents', employeeDocumentRoutes);
+
 // ─── Phase 3: Kunden & Objekte ───
 router.use('/customers', customerRoutes);
 router.use('/objects', objectRoutes);
+router.use('/customer-documents', customerDocumentRoutes);
+router.use('/shift-reports', shiftReportRoutes);
+router.use('/reminders', reminderRoutes);
 
 // ─── Phase 4: Dienstplanung ───
 router.use('/deployments', deploymentRoutes);
 
 // ─── Phase 5-8: Auto-Planung, Zeiterfassung, Abrechnung ───
 router.use('/auto-planning', autoPlannerRoutes);
-router.use('/time-records', attendanceRoutes);
+router.use('/time-records', timeRecordRoutes);
 router.use('/billing', billingRoutes);
+
+// ─── Phase 9: Compliance & Audit ───
+router.use('/compliance', complianceRoutes);
 
 // ─── Phase 9: DATEV-Export für Lohnabrechnung ───
 router.use('/datev', datevRoutes);

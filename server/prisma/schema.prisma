@@ -137,6 +137,22 @@ model Tenant {
   addons           TenantAddon[]
   features         TenantFeature[]
   
+  // Phase 2: Einsatzplanung & Compliance
+  recurringAvailabilities RecurringAvailability[]
+  employeeRestrictions    EmployeeRestriction[]
+  employeeDocuments       EmployeeDocument[]
+  timeCorrections         TimeCorrection[]
+  availabilities          Availability[]
+  breaks                  Break[]
+  
+  // Phase 5: Kundenmanagement & Abrechnung
+  customerDocuments       CustomerDocument[]
+  shiftReports            ShiftReport[]
+  reminders               Reminder[]
+  customerAccessLogs      CustomerAccessLog[]
+  customerUsers           CustomerUser[]
+  tenantFieldConfigs      TenantFieldConfig[]
+  
   // Security Features (Phase 36)
   roles              Role[]
   securityKeys       SecurityKey[]
@@ -300,13 +316,25 @@ model User {
   cancelledDeployments Deployment[]   @relation("cancelledBy")
   approvedTimeRecords TimeRecord[]    @relation("approvedBy")
   correctedTimeRecords TimeRecord[]   @relation("correctedBy")
+  lockedTimeRecords  TimeRecord[]     @relation("lockedBy")
   uploadedDocuments EmployeeDocument[]
+  verifiedDocuments  EmployeeDocument[] @relation("documentVerifier")
   verifiedQualifications EmployeeQualification[] @relation("verifiedBy")
   createdInvoices   CustomerInvoice[]
   requestedReplacements ReplacementRequest[] @relation("requestedBy")
   resolvedReplacements ReplacementRequest[] @relation("resolvedBy")
   approvedAvailabilities Availability[] @relation("approvedBy")
+  approvedRecurringAvailabilities RecurringAvailability[] @relation("recurringApprovedBy")
+  createdRestrictions EmployeeRestriction[] @relation("restrictionCreator")
+  createdCorrections TimeCorrection[] @relation("correctionCreator")
+  approvedCorrections TimeCorrection[] @relation("correctionApprover")
+  changedTimeRecords TimeRecord[] @relation("timeChangedBy")
   approvedDeployments Deployment[] @relation("confirmedByEmployee")
+  
+  // Kunden-Dokumente & Mahnwesen
+  uploadedCustomerDocuments  CustomerDocument[] @relation("customerDocUploadedBy")
+  verifiedCustomerDocuments  CustomerDocument[] @relation("customerDocVerifiedBy")
+  createdReminders           Reminder[]         @relation("reminderCreatedBy")
 
   @@unique([tenantId, username])
   @@unique([tenantId, email])
@@ -474,6 +502,21 @@ model Employee {
   brandschutzExpiry        DateTime? @db.Date
   ersteHilfeTrainer        Boolean @default(false)
   
+  // ═══════════════════════════════════════════════════
+  // EINSATZRESTRIKTIONEN (ArbZG + Betriebliche Regeln)
+  // ═══════════════════════════════════════════════════
+  noNightShift             Boolean @default(false)  // Keine Nachtschicht (20-06 Uhr)
+  noSundayShift            Boolean @default(false)  // Keine Sonntagsarbeit
+  noHolidayShift           Boolean @default(false)  // Keine Feiertagsarbeit
+  maxDailyHours            Decimal @default(10.00) @db.Decimal(4, 2)  // Max Stunden/Tag (ArbZG)
+  maxWeeklyHours           Decimal @default(48.00) @db.Decimal(5, 2)  // Max Stunden/Woche
+  minRestHours             Decimal @default(11.00) @db.Decimal(4, 2)  // Min Ruhezeit zw. Schichten (ArbZG: 11h)
+  allowedRegions           Json?  // z.B. ["Berlin", "Brandenburg"] - Nur bestimmte Regionen
+  allowedObjectIds         Json?  // Nur bestimmte Objekte (IDs)
+  excludedObjectIds        Json?  // Explizit ausgeschlossene Objekte
+  maxConsecutiveDays       Int @default(6)  // Max aufeinanderfolgende Arbeitstage
+  nightShiftMinAge         Int?  // Mindestalter für Nachtschicht
+  
   // Sonstiges
   notes             String?   @db.Text
   photoUrl          String?   @db.VarChar(500)
@@ -482,19 +525,21 @@ model Employee {
   updatedAt         DateTime  @updatedAt
   deletedAt         DateTime?
 
-  tenant          Tenant  @relation(fields: [tenantId], references: [id])
-  qualifications  EmployeeQualification[]
-  documents       EmployeeDocument[]
-  availabilities  Availability[]
-  deployments     Deployment[]
-  timeRecords     TimeRecord[]
-  rates           EmployeeRate[]
+  tenant               Tenant  @relation(fields: [tenantId], references: [id])
+  qualifications       EmployeeQualification[]
+  documents            EmployeeDocument[]
+  availabilities       Availability[]
+  recurringAvailabilities RecurringAvailability[]
+  restrictions         EmployeeRestriction[]
+  deployments          Deployment[]
+  timeRecords          TimeRecord[]
+  rates                EmployeeRate[]
   originalReplacements ReplacementRequest[] @relation("originalEmployee")
-  replacementEmployee ReplacementRequest[] @relation("replacementEmployee")
+  replacementEmployee  ReplacementRequest[] @relation("replacementEmployee")
   // Security Features (Phase 36)
-  reportedIncidents  SecurityIncident[] @relation("incidentReporter")
-  resolvedIncidents  SecurityIncident[] @relation("incidentResolver")
-  accessPermissions  AccessPermission[]
+  reportedIncidents    SecurityIncident[] @relation("incidentReporter")
+  resolvedIncidents    SecurityIncident[] @relation("incidentResolver")
+  accessPermissions    AccessPermission[]
 
   @@unique([tenantId, personnelNumber])
   @@map("employees")
@@ -602,20 +647,59 @@ model EmployeeQualification {
 }
 
 model EmployeeDocument {
-  id         String   @id @default(uuid())
-  employeeId String   @db.VarChar(36)
-  fileName   String   @db.VarChar(255)
-  fileUrl    String   @db.VarChar(500)
-  fileSize   Int?
-  mimeType   String?  @db.VarChar(100)
-  category   String?  @db.VarChar(50)
-  uploadedById String? @db.VarChar(36)
-  createdAt  DateTime @default(now())
+  id              String   @id @default(uuid())
+  tenantId        String   @db.VarChar(36)
+  employeeId      String   @db.VarChar(36)
+  fileName        String   @db.VarChar(255)
+  fileUrl         String   @db.VarChar(500)
+  fileSize        Int?
+  mimeType        String?  @db.VarChar(100)
+  category        DocumentCategory @default(other)
+  subCategory     String?  @db.VarChar(100)  // z.B. "Bewachungserlaubnis", "Führungszeugnis"
+  
+  // Versionierung
+  version         Int      @default(1)
+  previousVersionId String? @db.VarChar(36)  // Vorgänger-Dokument
+  isLatestVersion Boolean  @default(true)
+  
+  // Ablauf-Tracking
+  expiryDate      DateTime? @db.Date  // Ablaufdatum des Dokuments
+  reminderDays    Int      @default(90) // Erinnerung X Tage vor Ablauf
+  lastRemindedAt  DateTime?
+  
+  // Metadaten
+  description     String?  @db.Text
+  tags            Json?    // z.B. ["§34a", "Pflicht"]
+  uploadedById    String?  @db.VarChar(36)
+  verifiedById    String?  @db.VarChar(36)
+  verifiedAt      DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?  // Soft-Delete für Versionshistorie
 
-  employee   Employee @relation(fields: [employeeId], references: [id])
-  uploadedBy User?    @relation(fields: [uploadedById], references: [id])
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  uploadedBy      User?    @relation(fields: [uploadedById], references: [id])
+  verifiedBy      User?    @relation("documentVerifier", fields: [verifiedById], references: [id])
+  previousVersion EmployeeDocument? @relation("documentVersions", fields: [previousVersionId], references: [id])
+  versions        EmployeeDocument[] @relation("documentVersions")
 
   @@map("employee_documents")
+}
+
+enum DocumentCategory {
+  contract          // Arbeitsvertrag
+  amendment         // Vertragsänderung
+  qualification     // Nachweise/Zertifikate
+  license           // Bewachungserlaubnis, Waffenschein etc.
+  health            // Gesundheitszeugnisse, Erste Hilfe
+  identification    // Ausweis, Pass, Geburtsurkunde
+  tax               // Steuerunterlagen
+  insurance         // Versicherungsunterlagen
+  training          // Unterweisungen, Schulungen
+  termination       // Kündigung, Austritt
+  other             // Sonstiges
 }
 
 // ═══════════════════════════════════════════════════
@@ -624,6 +708,7 @@ model EmployeeDocument {
 
 model Availability {
   id           String    @id @default(uuid())
+  tenantId     String    @db.VarChar(36)
   employeeId   String    @db.VarChar(36)
   type         AvailabilityType
   startDate    DateTime  @db.Date
@@ -633,14 +718,88 @@ model Availability {
   endTime      DateTime? @db.Time
   reason       String?   @db.Text
   approvedById String?   @db.VarChar(36)
+  approvedAt   DateTime?
   status       ApprovalStatus @default(pending)
+  requestedAt  DateTime  @default(now())
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  employee   Employee @relation(fields: [employeeId], references: [id])
-  approvedBy User?    @relation("approvedBy", fields: [approvedById], references: [id])
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  employee   Employee   @relation(fields: [employeeId], references: [id])
+  approvedBy User?      @relation("approvedBy", fields: [approvedById], references: [id])
 
   @@map("availabilities")
+}
+
+// ═══════════════════════════════════════════════════
+// WIEDERKEHRENDE VERFÜGBARKEITEN (Wöchentliche Muster)
+// ═══════════════════════════════════════════════════
+
+model RecurringAvailability {
+  id              String   @id @default(uuid())
+  tenantId        String   @db.VarChar(36)
+  employeeId      String   @db.VarChar(36)
+  dayOfWeek       Int      // 1=Montag ... 7=Sonntag
+  startTime       DateTime @db.Time
+  endTime         DateTime @db.Time
+  validFrom       DateTime @db.Date   // Ab wann gilt dieses Muster
+  validUntil      DateTime? @db.Date  // Bis wann (null = unbegrenzt)
+  isActive        Boolean  @default(true)
+  notes           String?  @db.Text
+  approvedById    String?  @db.VarChar(36)
+  approvedAt      DateTime?
+  status          ApprovalStatus @default(pending)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  employee        Employee  @relation(fields: [employeeId], references: [id])
+  approvedBy      User?     @relation("recurringApprovedBy", fields: [approvedById], references: [id])
+
+  @@unique([tenantId, employeeId, dayOfWeek, startTime, endTime])
+  @@map("recurring_availabilities")
+}
+
+// ═══════════════════════════════════════════════════
+// EINSATZRESTRIKTIONEN (Explizite Regeln)
+// ═══════════════════════════════════════════════════
+
+model EmployeeRestriction {
+  id              String   @id @default(uuid())
+  tenantId        String   @db.VarChar(36)
+  employeeId      String   @db.VarChar(36)
+  type            RestrictionType
+  description     String?  @db.Text
+  value           String?  @db.VarChar(255)  // JSON oder einfacher Wert
+  objectId        String?  @db.VarChar(36)   // Falls Objekt-spezifisch
+  validFrom       DateTime? @db.Date
+  validUntil      DateTime? @db.Date
+  isActive        Boolean  @default(true)
+  createdBy       String?  @db.VarChar(36)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  object          SMSObject? @relation(fields: [objectId], references: [id])
+  creator         User?    @relation("restrictionCreator", fields: [createdBy], references: [id])
+
+  @@map("employee_restrictions")
+}
+
+enum RestrictionType {
+  no_night_shift       // Keine Nachtschicht
+  no_sunday            // Keine Sonntagsarbeit
+  no_holiday           // Keine Feiertagsarbeit
+  max_daily_hours      // Max Stunden pro Tag
+  max_weekly_hours     // Max Stunden pro Woche
+  min_rest_hours       // Min Ruhezeit zwischen Schichten
+  allowed_region       // Nur bestimmte Region
+  excluded_object      // Bestimmtes Objekt ausgeschlossen
+  allowed_object       // Nur bestimmtes Objekt erlaubt
+  max_consecutive_days // Max aufeinanderfolgende Tage
+  night_min_age        // Mindestalter Nachtschicht
+  custom               // Benutzerdefiniert
 }
 
 enum AvailabilityType {
@@ -665,32 +824,69 @@ enum ApprovalStatus {
 model Customer {
   id             String          @id @default(uuid())
   tenantId       String          @db.VarChar(36)
-  customerNumber String          @db.VarChar(50)
+  customerNumber String          @db.VarChar(50)  // Auto: KD-2026-0001
+  
+  // Firmeninformationen
   companyName    String          @db.VarChar(200)
+  legalForm      String?         @db.VarChar(50)   // GmbH, AG, etc.
   department     String?         @db.VarChar(100)
-  street         String?         @db.VarChar(200)
-  zipCode        String?         @db.VarChar(20)
-  city           String?         @db.VarChar(100)
+  
+  // Firmenadresse
+  street         String          @db.VarChar(200)
+  zipCode        String          @db.VarChar(20)
+  city           String          @db.VarChar(100)
   country        String          @default("DE") @db.VarChar(100)
+  
+  // Kontakt
   phone          String?         @db.VarChar(50)
   fax            String?         @db.VarChar(50)
   email          String?         @db.VarChar(255)
   website        String?         @db.VarChar(255)
+  
+  // Steuerdaten
   taxNumber      String?         @db.VarChar(50)
-  vatId          String?         @db.VarChar(50)
-  billingAddress Json?
-  paymentTerms   Int             @default(14)
-  notes          String?         @db.Text
-  status         CustomerStatus  @default(active)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  deletedAt      DateTime?
+  vatId          String?         @db.VarChar(50)   // USt-IdNr.
+  
+  // RECHNUNGSDATEN (Pflicht für Rechnungsstellung)
+  invoiceStreet         String?  @db.VarChar(200)   // Abweichende Rechnungsanschrift
+  invoiceZipCode        String?  @db.VarChar(20)
+  invoiceCity           String?  @db.VarChar(100)
+  invoiceCountry        String   @default("DE") @db.VarChar(100)
+  invoiceRecipientName  String?  @db.VarChar(200)   // Abweichender Rechnungsempfänger
+  invoiceEmail          String?  @db.VarChar(255)   // Rechnungs-E-Mail (Pflicht!)
+  invoicePhone          String?  @db.VarChar(50)
+  invoiceDeliveryMethod InvoiceDeliveryMethod @default(email)
+  
+  // VERTRAGSDATEN
+  contractNumber        String?  @db.VarChar(100)
+  contractStartDate     DateTime? @db.Date
+  contractEndDate       DateTime? @db.Date
+  terminationNoticePeriod Int    @default(90)        // Tage vor Vertragsende
+  billingType           BillingType @default(hourly)
+  billingInterval       BillingInterval @default(monthly)
+  
+  // ZAHLUNGSBEDINGUNGEN
+  paymentTerms          Int      @default(14)        // Tage
+  reminderStatus        ReminderStatus @default(none)
+  
+  // SONSTIGES
+  purchaseOrderNumber   String?  @db.VarChar(100)    // Bestellnummer/Kostenstelle
+  notes                 String?  @db.Text
+  status                CustomerStatus @default(active)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  deletedAt             DateTime?
 
-  tenant          Tenant          @relation(fields: [tenantId], references: [id])
-  contactPersons  ContactPerson[]
-  objects         SMSObject[]
-  rates           CustomerRate[]
-  invoices        CustomerInvoice[]
+  tenant                Tenant              @relation(fields: [tenantId], references: [id])
+  contactPersons        ContactPerson[]
+  objects               SMSObject[]
+  rates                 CustomerRate[]
+  invoices              CustomerInvoice[]
+  documents             CustomerDocument[]
+  shiftReports          ShiftReport[]
+  accessLogs            CustomerAccessLog[]
+  reminders             Reminder[]
+  portalUsers           CustomerUser[]
 
   @@unique([tenantId, customerNumber])
   @@map("customers")
@@ -702,22 +898,54 @@ enum CustomerStatus {
   prospect
 }
 
-model ContactPerson {
-  id         String   @id @default(uuid())
-  customerId String   @db.VarChar(36)
-  firstName  String   @db.VarChar(100)
-  lastName   String   @db.VarChar(100)
-  role       String?  @db.VarChar(100)
-  phone      String?  @db.VarChar(50)
-  mobile     String?  @db.VarChar(50)
-  email      String?  @db.VarChar(255)
-  isPrimary  Boolean  @default(false)
-  notes      String?  @db.Text
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+enum InvoiceDeliveryMethod {
+  email
+  portal
+  post
+}
 
+enum BillingType {
+  hourly        // Stundenbasiert
+  perPost       // Pro Posten
+  lumpSum       // Pauschale
+  mixed         // Mischform
+}
+
+enum BillingInterval {
+  monthly
+  quarterly
+  yearly
+}
+
+enum ReminderStatus {
+  none
+  reminder1     // Zahlungserinnerung
+  reminder2     // 1. Mahnung
+  reminder3     // 2. Mahnung
+}
+
+model ContactPerson {
+  id                String   @id @default(uuid())
+  tenantId          String   @db.VarChar(36)
+  customerId        String   @db.VarChar(36)
+  firstName         String   @db.VarChar(100)
+  lastName          String   @db.VarChar(100)
+  role              String?  @db.VarChar(100)
+  phone             String?  @db.VarChar(50)
+  mobile            String?  @db.VarChar(50)
+  email             String?  @db.VarChar(255)
+  isPrimary         Boolean  @default(false)
+  isInvoiceContact  Boolean  @default(false)   // Ansprechpartner Rechnung
+  isEmergencyContact Boolean @default(false)   // Notfallkontakt
+  availability      String?  @db.VarChar(200)   // Erreichbarkeitszeiten
+  notes             String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
   customer Customer  @relation(fields: [customerId], references: [id])
   objects  SMSObject[]
+  portalUsers CustomerUser[]
 
   @@map("contact_persons")
 }
@@ -734,10 +962,24 @@ model SMSObject {
   description         String?  @db.Text
   objectType          String?  @db.VarChar(50)
   contactPersonId     String?  @db.VarChar(36)
+  
+  // Sicherheit & Zugang
   alarmNumber         String?  @db.VarChar(50)
   keyDepot            String?  @db.Text
   accessCode          String?  @db.VarChar(100)
+  accessRegulations   String?  @db.Text        // Zutrittsregelungen
   specialInstructions String?  @db.Text
+  
+  // PERSONAL & AUSRÜSTUNG
+  requiredPersonnel   Int      @default(1)     // Postenanzahl
+  equipmentRequirements String? @db.Text       // Ausrüstung/Kleidung
+  
+  // NOTFALL & ALARM
+  alarmPlan           String?  @db.Text        // Alarmplan
+  emergencyContacts   Json?                    // Array: [{name, phone, role, availability}]
+  
+  // LEISTUNG
+  serviceType         ServiceType @default(objectProtection)
   isActive            Boolean  @default(true)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -748,6 +990,9 @@ model SMSObject {
   requirements    ObjectRequirement[]
   deployments     Deployment[]
   rates           CustomerRate[]
+  restrictions    EmployeeRestriction[]
+  timeRecords     TimeRecord[]
+  shiftReports    ShiftReport[]
   
   // Security Features (Phase 36)
   securityKeys       SecurityKey[]
@@ -757,6 +1002,14 @@ model SMSObject {
 
   @@unique([tenantId, objectNumber])
   @@map("objects")
+}
+
+enum ServiceType {
+  objectProtection   // Objektschutz
+  guardService       // Wachdienst
+  entryControl       // Einlasskontrolle
+  patrolService      // Streifendienst
+  eventSecurity      // Veranstaltungsschutz
 }
 
 model ObjectRequirement {
@@ -875,50 +1128,133 @@ model TimeRecord {
   employeeId       String    @db.VarChar(36)
   deploymentId     String?   @db.VarChar(36)
   date             DateTime  @db.Date
+  
+  // Einsatzort & Tätigkeit
+  objectId         String?   @db.VarChar(36)
+  postNumber       String?   @db.VarChar(50)  // Postennummer
+  activityType     String?   @db.VarChar(100) // Tätigkeit
+  
+  // Stempelzeiten
   clockIn          DateTime
   clockOut         DateTime?
-  breakStart       DateTime?
-  breakEnd         DateTime?
-  breakDuration    Int       @default(0)
-  regularHours     Decimal?  @db.Decimal(5, 2)
-  nightHours       Decimal?  @db.Decimal(5, 2)
-  sundayHours      Decimal?  @db.Decimal(5, 2)
-  holidayHours     Decimal?  @db.Decimal(5, 2)
-  overtimeHours    Decimal?  @db.Decimal(5, 2)
-  totalHours       Decimal?  @db.Decimal(5, 2)
+  
+  // Pausen (können mehrere sein)
+  breakDuration    Int       @default(0)  // In Minuten
+  
+  // Arbeitszeiten nach Art
+  regularHours     Decimal?  @db.Decimal(5, 2)  // Normale Stunden
+  nightHours       Decimal?  @db.Decimal(5, 2)  // Nacht (20-06 Uhr)
+  sundayHours      Decimal?  @db.Decimal(5, 2)  // Sonntagsarbeit
+  holidayHours     Decimal?  @db.Decimal(5, 2)  // Feiertagsarbeit
+  overtimeHours    Decimal?  @db.Decimal(5, 2)  // Überstunden
+  totalHours       Decimal?  @db.Decimal(5, 2)  // Gesamt
+  
+  // Status & Genehmigung
   status           TimeRecordStatus @default(open)
   approvedById     String?   @db.VarChar(36)
   approvedAt       DateTime?
+  
+  // Korrektur & Historie
   correctionReason String?   @db.Text
   correctedById    String?   @db.VarChar(36)
+  isLocked         Boolean   @default(false)  // Nach Genehmigung gesperrt
+  lockedById       String?   @db.VarChar(36)
+  lockedAt         DateTime?
+  lockReason       String?   @db.Text
+  
+  // Zuschlagssätze (für Abrechnung)
+  nightSurchargePct Decimal? @db.Decimal(5, 2)  // z.B. 25%
+  sundaySurchargePct Decimal? @db.Decimal(5, 2) // z.B. 50%
+  holidaySurchargePct Decimal? @db.Decimal(5, 2) // z.B. 100%
+  
+  // Zuschläge in € (berechnet)
+  nightSurcharge   Decimal? @db.Decimal(8, 2)
+  sundaySurcharge  Decimal? @db.Decimal(8, 2)
+  holidaySurcharge Decimal? @db.Decimal(8, 2)
+  totalSurcharge   Decimal? @db.Decimal(8, 2)
+  
+  // Notizen & Quelle
+  notes            String?   @db.Text
+  sourceType       TimeRecordSource @default(manual)  // manuell, stempel, app
+  sourceDevice     String?   @db.VarChar(100)  // z.B. "Mobile App", "Terminal"
+  
+  // Export
+  exportedForPayroll Boolean @default(false)
+  exportedForCustomer Boolean @default(false)
+  exportDate       DateTime?
+  
+  // Audit-Trail
+  changedById      String?   @db.VarChar(36)
+  changedAt        DateTime?
+  changeReason     String?   @db.Text
+  
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  tenant      Tenant      @relation(fields: [tenantId], references: [id])
-  employee    Employee    @relation(fields: [employeeId], references: [id])
-  deployment  Deployment? @relation(fields: [deploymentId], references: [id])
-  approvedBy  User?       @relation("approvedBy", fields: [approvedById], references: [id])
-  correctedBy User?       @relation("correctedBy", fields: [correctedById], references: [id])
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  employee    Employee     @relation(fields: [employeeId], references: [id])
+  deployment  Deployment?  @relation(fields: [deploymentId], references: [id])
+  object      SMSObject?   @relation(fields: [objectId], references: [id])
+  approvedBy  User?        @relation("approvedBy", fields: [approvedById], references: [id])
+  correctedBy User?        @relation("correctedBy", fields: [correctedById], references: [id])
+  lockedBy    User?        @relation("lockedBy", fields: [lockedById], references: [id])
+  changedBy   User?        @relation("timeChangedBy", fields: [changedById], references: [id])
   breaks      Break[]
+  corrections TimeCorrection[]
 
   @@map("time_records")
 }
 
 enum TimeRecordStatus {
-  open
-  completed
-  approved
-  rejected
+  open       // Noch nicht beendet
+  completed  // Beendet, wartet auf Genehmigung
+  approved   // Genehmigt
+  rejected   // Abgelehnt, muss korrigiert werden
+  locked     // Endgültig gesperrt (für Abrechnung)
+}
+
+enum TimeRecordSource {
+  manual     // Manuell eingetragen
+  stamp      // Terminal-Stempel
+  app        // Mobile App
+  import     // Import aus externem System
+}
+
+// Korrektur-Historie für Zeitnachweise
+model TimeCorrection {
+  id              String   @id @default(uuid())
+  tenantId        String   @db.VarChar(36)
+  timeRecordId    String   @db.VarChar(36)
+  correctedById   String   @db.VarChar(36)
+  fieldChanged    String   @db.VarChar(50)  // z.B. "clockOut", "breakDuration"
+  oldValue        String?  @db.VarChar(255)
+  newValue        String?  @db.VarChar(255)
+  reason          String   @db.Text
+  approvedById    String?  @db.VarChar(36)
+  approvedAt      DateTime?
+  createdAt       DateTime @default(now())
+
+  tenant          Tenant       @relation(fields: [tenantId], references: [id])
+  timeRecord      TimeRecord   @relation(fields: [timeRecordId], references: [id])
+  correctedBy     User         @relation("correctionCreator", fields: [correctedById], references: [id])
+  approvedBy      User?        @relation("correctionApprover", fields: [approvedById], references: [id])
+
+  @@map("time_corrections")
 }
 
 model Break {
-  id            String    @id @default(uuid())
-  timeRecordId  String    @db.VarChar(36)
-  breakStart    DateTime
-  breakEnd      DateTime?
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  timeRecordId    String    @db.VarChar(36)
+  breakStart      DateTime
+  breakEnd        DateTime?
   durationMinutes Int?
-  createdAt     DateTime  @default(now())
+  breakType       String?   @db.VarChar(50)  // "paid", "unpaid", "meal"
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
   timeRecord TimeRecord @relation(fields: [timeRecordId], references: [id])
 
   @@map("breaks")
@@ -953,30 +1289,47 @@ enum SurchargeType {
 }
 
 model CustomerInvoice {
-  id           String    @id @default(uuid())
-  tenantId     String    @db.VarChar(36)
-  invoiceNumber String   @db.VarChar(50)
-  customerId   String    @db.VarChar(36)
-  invoiceDate  DateTime  @db.Date
-  dueDate      DateTime  @db.Date
-  periodStart  DateTime  @db.Date
-  periodEnd    DateTime  @db.Date
-  subtotal     Decimal   @db.Decimal(10, 2)
-  taxRate      Decimal   @default(19.00) @db.Decimal(5, 2)
-  taxAmount    Decimal   @db.Decimal(10, 2)
-  totalAmount  Decimal   @db.Decimal(10, 2)
-  status       InvoiceStatus @default(draft)
-  paidAt       DateTime?
-  pdfUrl       String?   @db.VarChar(500)
-  notes        String?   @db.Text
-  createdById  String    @db.VarChar(36)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  invoiceNumber   String    @db.VarChar(50)
+  customerId      String    @db.VarChar(36)
+  
+  // Rechnungsdaten
+  invoiceDate     DateTime  @db.Date
+  dueDate         DateTime  @db.Date
+  periodStart     DateTime  @db.Date
+  periodEnd       DateTime  @db.Date
+  
+  // Kundenreferenz
+  purchaseOrderNumber String? @db.VarChar(100)  // Bestellnummer/Kostenstelle
+  billingContactId    String? @db.VarChar(36)   // Ansprechpartner Rechnung
+  
+  // Beträge
+  subtotal        Decimal   @db.Decimal(10, 2)
+  taxRate         Decimal   @default(19.00) @db.Decimal(5, 2)
+  taxAmount       Decimal   @db.Decimal(10, 2)
+  totalAmount     Decimal   @db.Decimal(10, 2)
+  
+  // Status & Versand
+  status          InvoiceStatus @default(draft)
+  reminderStatus  ReminderStatus @default(none)
+  sentAt          DateTime?
+  paidAt          DateTime?
+  pdfUrl          String?   @db.VarChar(500)
+  deliveryMethod  InvoiceDeliveryMethod @default(email)
+  
+  // Metadaten
+  notes           String?   @db.Text
+  createdById     String    @db.VarChar(36)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  tenant     Tenant            @relation(fields: [tenantId], references: [id])
-  customer   Customer          @relation(fields: [customerId], references: [id])
-  positions  InvoicePosition[]
-  createdBy  User              @relation(fields: [createdById], references: [id])
+  tenant          Tenant            @relation(fields: [tenantId], references: [id])
+  customer        Customer          @relation(fields: [customerId], references: [id])
+  billingContact  ContactPerson?    @relation(fields: [billingContactId], references: [id])
+  positions       InvoicePosition[]
+  createdBy       User              @relation(fields: [createdById], references: [id])
+  reminders       Reminder[]
 
   @@unique([tenantId, invoiceNumber])
   @@map("customer_invoices")
@@ -1008,6 +1361,255 @@ model InvoicePosition {
   invoice CustomerInvoice @relation(fields: [invoiceId], references: [id])
 
   @@map("invoice_positions")
+}
+
+// ═══════════════════════════════════════════════════
+// KUNDEN-DOKUMENTE (Verträge, AVV, Nachweise)
+// ═══════════════════════════════════════════════════
+
+model CustomerDocument {
+  id              String   @id @default(uuid())
+  tenantId        String   @db.VarChar(36)
+  customerId      String   @db.VarChar(36)
+  fileName        String   @db.VarChar(255)
+  fileUrl         String   @db.VarChar(500)
+  fileSize        Int?
+  mimeType        String?  @db.VarChar(100)
+  category        CustomerDocumentCategory @default(other)
+  description     String?  @db.Text
+  
+  // Versionierung
+  version         Int      @default(1)
+  previousVersionId String? @db.VarChar(36)
+  isLatestVersion Boolean  @default(true)
+  
+  // Ablauf-Tracking
+  expiryDate      DateTime? @db.Date
+  reminderDays    Int      @default(90)
+  
+  // DSGVO
+  purpose         DataPurpose @default(contractFulfillment)
+  retentionPeriodMonths Int?  // Aufbewahrungsfrist in Monaten
+  deleteAt        DateTime?   // Automatisches Löschdatum
+  
+  // Metadaten
+  uploadedById    String?  @db.VarChar(36)
+  verifiedById    String?  @db.VarChar(36)
+  verifiedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  customer        Customer @relation(fields: [customerId], references: [id])
+  uploadedBy      User?    @relation("customerDocUploadedBy")
+  verifiedBy      User?    @relation("customerDocVerifiedBy")
+
+  @@map("customer_documents")
+}
+
+enum CustomerDocumentCategory {
+  contract              // Bewachungsvertrag
+  privacyAgreement      // Datenschutzvereinbarung/AVV
+  objectApproval        // Objektfreigabe
+  training              // Unterweisung
+  qualification         // Nachweise/Zertifikate
+  insurance             // Versicherung
+  correspondence        // Schriftverkehr
+  other                 // Sonstiges
+}
+
+enum DataPurpose {
+  contractFulfillment   // Vertragserfüllung
+  billing               // Abrechnung & Buchhaltung
+  customerService       // Kundenservice/Kommunikation
+  legal                 // Gesetzliche Pflicht
+  marketing             // Marketing (nur mit Einwilligung!)
+}
+
+// ═══════════════════════════════════════════════════
+// SCHICHTBERICHTE (Digitales Formular)
+// ═══════════════════════════════════════════════════
+
+model ShiftReport {
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  customerId      String    @db.VarChar(36)
+  objectId        String    @db.VarChar(36)
+  deploymentId    String?   @db.VarChar(36)
+  
+  // Berichtsinhalt
+  reportDate      DateTime  @db.Date
+  shiftStart      DateTime
+  shiftEnd        DateTime
+  personnelCount  Int       @default(1)
+  
+  // Schichtverlauf
+  generalNotes    String?   @db.Text
+  incidents       Json?     // Array: [{time, type, description, severity}]
+  specialTasks    Json?     // Array: [{task, completed, notes}]
+  handoverNotes   String?   @db.Text  // Übergabe an nächste Schicht
+  
+  // Kontrollgänge
+  patrolChecks    Json?     // Array: [{location, time, status, notes}]
+  
+  // Anhänge
+  attachmentUrls  Json?     // Array von URLs (Fotos, Dokumente)
+  
+  // Unterschrift/Bestätigung
+  reportedById    String    @db.VarChar(36)  // Employee ID
+  confirmedAt     DateTime?
+  confirmedBy     String?   @db.VarChar(36)  // Vorgesetzter
+  
+  // PDF-Version
+  pdfUrl          String?   @db.VarChar(500)
+  
+  status          ReportStatus @default(draft)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  customer    Customer    @relation(fields: [customerId], references: [id])
+  object      SMSObject   @relation(fields: [objectId], references: [id])
+
+  @@map("shift_reports")
+}
+
+enum ReportStatus {
+  draft
+  submitted
+  approved
+  archived
+}
+
+// ═══════════════════════════════════════════════════
+// KUNDEN-PORTAL
+// ═══════════════════════════════════════════════════
+
+model CustomerUser {
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  customerId      String    @db.VarChar(36)
+  contactPersonId String?   @db.VarChar(36)
+  email           String    @db.VarChar(255)
+  passwordHash    String    @db.VarChar(255)
+  firstName       String    @db.VarChar(100)
+  lastName        String    @db.VarChar(100)
+  role            CustomerPortalRole @default(invoiceViewer)
+  
+  // Berechtigungen (sichtbare Bereiche)
+  canViewInvoices    Boolean @default(true)
+  canViewDeployments Boolean @default(false)
+  canViewTimeRecords Boolean @default(false)
+  canViewReports     Boolean @default(false)
+  canApproveRecords  Boolean @default(false)
+  
+  // Login
+  isActive        Boolean   @default(true)
+  lastLogin       DateTime?
+  failedLogins    Int       @default(0)
+  lockedUntil     DateTime?
+  passwordResetToken String? @db.VarChar(255)
+  passwordResetTokenExpiry DateTime?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  customer      Customer       @relation(fields: [customerId], references: [id])
+  contactPerson ContactPerson? @relation(fields: [contactPersonId], references: [id])
+
+  @@unique([tenantId, email])
+  @@map("customer_users")
+}
+
+enum CustomerPortalRole {
+  invoiceViewer     // Nur Rechnungen einsehen
+  reportViewer      // Rechnungen + Objektberichte
+  fullAccess        // Alle Bereiche
+  admin             // Vollzugriff + Benutzerverwaltung
+}
+
+// ═══════════════════════════════════════════════════
+// KUNDEN-ZUGRIFFSPROTOKOLL (DSGVO)
+// ═══════════════════════════════════════════════════
+
+model CustomerAccessLog {
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  customerId      String    @db.VarChar(36)
+  userId          String?   @db.VarChar(36)  // Internal User ID
+  customerUserId  String?   @db.VarChar(36)  // Customer Portal User ID
+  action          String    @db.VarChar(100) // view, edit, export, login, etc.
+  resourceType    String?   @db.VarChar(50)  // invoice, deployment, etc.
+  resourceId      String?   @db.VarChar(36)
+  ipAddress       String?   @db.VarChar(45)
+  userAgent       String?   @db.Text
+  createdAt       DateTime  @default(now())
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId, createdAt(sort: Desc)])
+  @@map("customer_access_logs")
+}
+
+// ═══════════════════════════════════════════════════
+// MAHNWESEN
+// ═══════════════════════════════════════════════════
+
+model Reminder {
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  invoiceId       String    @db.VarChar(36)
+  customerId      String    @db.VarChar(36)
+  
+  reminderLevel   ReminderStatus  // reminder1, reminder2, reminder3
+  reminderDate    DateTime  @db.Date
+  dueDate         DateTime  @db.Date
+  amountDue       Decimal   @db.Decimal(10, 2)
+  lateFees        Decimal   @db.Decimal(10, 2)
+  
+  // Text
+  subject         String    @db.VarChar(200)
+  message         String    @db.Text
+  notes           String?   @db.Text
+  
+  // Versand
+  sentAt          DateTime?
+  sentVia         String?   @db.VarChar(50)  // email, post, portal
+  paidAt          DateTime?
+  
+  // Ersteller
+  createdById     String    @db.VarChar(36)
+  createdAt       DateTime  @default(now())
+
+  tenant     Tenant          @relation(fields: [tenantId], references: [id])
+  invoice    CustomerInvoice @relation(fields: [invoiceId], references: [id])
+  customer   Customer        @relation(fields: [customerId], references: [id])
+  createdBy  User            @relation("reminderCreatedBy", fields: [createdById], references: [id])
+
+  @@map("reminders")
+}
+
+// ═══════════════════════════════════════════════════
+// KONFIGURIERBARE PFLICHTFELDER (pro Tenant)
+// ═══════════════════════════════════════════════════
+
+model TenantFieldConfig {
+  id              String   @id @default(uuid())
+  tenantId        String   @db.VarChar(36)
+  entityType      String   @db.VarChar(50)  // customer, employee, object, etc.
+  fieldName       String   @db.VarChar(100)
+  isRequired      Boolean  @default(false)
+  label           String?  @db.VarChar(200)  // Anzeigename
+  helpText        String?  @db.Text
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([tenantId, entityType, fieldName])
+  @@map("tenant_field_configs")
 }
 
 // ═══════════════════════════════════════════════════
