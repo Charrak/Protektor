@@ -58,10 +58,12 @@ async function main() {
   const subscription = await prisma.subscription.create({
     data: {
       tenantId: demoTenant.id,
+      planId: plans[1]?.id || 'professional-plan-id', // Professional Plan
       status: 'ACTIVE',
       billingInterval: 'MONTHLY',
       currentPeriodStart: new Date(),
       currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // +30 Tage
+      monthlyRevenue: 149.99, // Professional Plan Preis
     },
   });
 
