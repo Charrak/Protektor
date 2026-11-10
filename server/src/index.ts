@@ -17,12 +17,16 @@ import { errorHandler } from './middleware/errorHandler';
 import { tenantMiddleware } from './middleware/tenantMiddleware';
 import { authenticate } from './middleware/auth';
 import { startLockCleanupJob } from './services/locking.service';
+import stripeWebhookRoutes from './routes/stripeWebhook.routes';
 import { apiLimiter, authLimiter, platformLimiter, webhookLimiter, suspiciousActivityDetector } from './middleware/rateLimiter';
 import { sanitizeInput } from './utils/validation';
 import { customSecurityHeaders } from './middleware/security';
 
 const app = express();
 const server = http.createServer(app);
+
+// ─── Trust Proxy (für Nginx Reverse Proxy) ───
+app.set('trust proxy', 1);
 
 // ─── Security Middleware ───
 app.use(helmet({
@@ -37,6 +41,9 @@ app.use(suspiciousActivityDetector);
 
 // Input Sanitization
 app.use(sanitizeInput);
+
+// Stripe Webhook (braucht raw Body, MUSS vor express.json() stehen!)
+app.use('/api/platform/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhookRoutes);
 
 // CORS
 app.use(cors({

@@ -41,7 +41,7 @@ router.put('/plans/:id', platformAuthenticate, (req, res, next) => planControlle
 router.delete('/plans/:id', platformAuthenticate, (req, res, next) => planController.delete(req, res, next));
 
 // ─── Stripe Webhooks (KEINE Authentifizierung, wird von Stripe signiert) ───
-router.post('/webhooks/stripe', (req, res, next) => stripeWebhookController.handleWebhook(req, res, next));
+// Stripe Webhook wurde nach index.ts verschoben (braucht raw Body)
 
 // ─── Stripe Integration (Authentifizierung erforderlich) ───
 router.post('/stripe/checkout-session', platformAuthenticate, (req, res) => stripeController.createCheckoutSession(req, res));
