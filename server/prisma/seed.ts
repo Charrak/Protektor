@@ -41,7 +41,6 @@ async function main() {
         zipCode: '10115',
         country: 'DE',
       },
-      licenseKey: 'demo-license-key-12345',
       licenseStatus: 'ACTIVE',
       employeeLimit: 50,
       paymentGraceDays: 7,
@@ -53,7 +52,7 @@ async function main() {
   console.log('✅ Demo Tenant erstellt:');
   console.log(`   Company: Demo Security GmbH`);
   console.log(`   Tenant ID: DEMO-001`);
-  console.log(`   License Key: demo-license-key-12345\n`);
+  console.log(`   Lizenz: ACTIVE\n`);
 
   // 3. Subscription für Demo Tenant
   const subscription = await prisma.subscription.create({
@@ -192,12 +191,12 @@ async function main() {
   console.log('Zugangsdaten:');
   console.log('═══════════════════════════════════════════════');
   console.log('\n📊 Platform Admin (Software-Betreiber):');
-  console.log('   URL: http://localhost:5173/platform');
+  console.log('   URL: http://92.5.64.224:3000/platform');
   console.log('   Email: admin@sms-platform.com');
   console.log('   Password: Admin123!');
   console.log('\n🏢 Tenant App (Kunden-Portal):');
-  console.log('   URL: http://localhost:5173');
-  console.log('   License Key: demo-license-key-12345');
+  console.log('   URL: http://92.5.64.224:3000');
+  console.log('   Tenant ID: DEMO-001');
   console.log('═══════════════════════════════════════════════\n');
 }
 
