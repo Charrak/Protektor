@@ -164,6 +164,7 @@ async function main() {
       firstName: 'Demo',
       lastName: 'User',
       isActive: true,
+      tenant: { connect: { id: demoTenant.id } },
     },
   });
 
