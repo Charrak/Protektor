@@ -1,0 +1,443 @@
+{
+  "trainedAt": "2026-11-10T11:01:21.126Z",
+  "duration": "0.00s",
+  "dataPoints": {
+    "deployments": 50,
+    "shiftReports": 44,
+    "timeRecords": 50
+  },
+  "models": {
+    "employeePerformance": {
+      "count": 24,
+      "data": [
+        {
+          "employeeId": "emp-001",
+          "objectId": "obj-005",
+          "totalShifts": 3,
+          "completedShifts": 2,
+          "incidents": 0,
+          "successRate": 0.6666666666666666
+        },
+        {
+          "employeeId": "emp-005",
+          "objectId": "obj-005",
+          "totalShifts": 2,
+          "completedShifts": 2,
+          "incidents": 0,
+          "successRate": 1
+        },
+        {
+          "employeeId": "emp-003",
+          "objectId": "obj-002",
+          "totalShifts": 3,
+          "completedShifts": 2,
+          "incidents": 0,
+          "successRate": 0.6666666666666666
+        },
+        {
+          "employeeId": "emp-004",
+          "objectId": "obj-004",
+          "totalShifts": 2,
+          "completedShifts": 2,
+          "incidents": 0,
+          "successRate": 1
+        },
+        {
+          "employeeId": "emp-005",
+          "objectId": "obj-001",
+          "totalShifts": 2,
+          "completedShifts": 1,
+          "incidents": 0,
+          "successRate": 0.5
+        },
+        {
+          "employeeId": "emp-001",
+          "objectId": "obj-004",
+          "totalShifts": 4,
+          "completedShifts": 1,
+          "incidents": 2,
+          "successRate": 0.25
+        },
+        {
+          "employeeId": "emp-003",
+          "objectId": "obj-004",
+          "totalShifts": 4,
+          "completedShifts": 2,
+          "incidents": 0,
+          "successRate": 0.5
+        },
+        {
+          "employeeId": "emp-001",
+          "objectId": "obj-003",
+          "totalShifts": 1,
+          "completedShifts": 1,
+          "incidents": 1,
+          "successRate": 1
+        },
+        {
+          "employeeId": "emp-005",
+          "objectId": "obj-002",
+          "totalShifts": 3,
+          "completedShifts": 3,
+          "incidents": 1,
+          "successRate": 1
+        },
+        {
+          "employeeId": "emp-004",
+          "objectId": "obj-002",
+          "totalShifts": 3,
+          "completedShifts": 2,
+          "incidents": 2,
+          "successRate": 0.6666666666666666
+        },
+        {
+          "employeeId": "emp-001",
+          "objectId": "obj-001",
+          "totalShifts": 2,
+          "completedShifts": 2,
+          "incidents": 0,
+          "successRate": 1
+        },
+        {
+          "employeeId": "emp-003",
+          "objectId": "obj-005",
+          "totalShifts": 2,
+          "completedShifts": 2,
+          "incidents": 0,
+          "successRate": 1
+        },
+        {
+          "employeeId": "emp-002",
+          "objectId": "obj-002",
+          "totalShifts": 1,
+          "completedShifts": 1,
+          "incidents": 0,
+          "successRate": 1
+        },
+        {
+          "employeeId": "emp-003",
+          "objectId": "obj-001",
+          "totalShifts": 1,
+          "completedShifts": 1,
+          "incidents": 0,
+          "successRate": 1
+        },
+        {
+          "employeeId": "emp-005",
+          "objectId": "obj-003",
+          "totalShifts": 4,
+          "completedShifts": 3,
+          "incidents": 1,
+          "successRate": 0.75
+        },
+        {
+          "employeeId": "emp-005",
+          "objectId": "obj-004",
+          "totalShifts": 2,
+          "completedShifts": 2,
+          "incidents": 0,
+          "successRate": 1
+        },
+        {
+          "employeeId": "emp-002",
+          "objectId": "obj-001",
+          "totalShifts": 3,
+          "completedShifts": 3,
+          "incidents": 1,
+          "successRate": 1
+        },
+        {
+          "employeeId": "emp-001",
+          "objectId": "obj-002",
+          "totalShifts": 1,
+          "completedShifts": 1,
+          "incidents": 0,
+          "successRate": 1
+        },
+        {
+          "employeeId": "emp-002",
+          "objectId": "obj-003",
+          "totalShifts": 1,
+          "completedShifts": 1,
+          "incidents": 0,
+          "successRate": 1
+        },
+        {
+          "employeeId": "emp-002",
+          "objectId": "obj-004",
+          "totalShifts": 2,
+          "completedShifts": 1,
+          "incidents": 0,
+          "successRate": 0.5
+        },
+        {
+          "employeeId": "emp-004",
+          "objectId": "obj-005",
+          "totalShifts": 1,
+          "completedShifts": 1,
+          "incidents": 0,
+          "successRate": 1
+        },
+        {
+          "employeeId": "emp-004",
+          "objectId": "obj-001",
+          "totalShifts": 1,
+          "completedShifts": 0,
+          "incidents": 0,
+          "successRate": 0
+        },
+        {
+          "employeeId": "emp-004",
+          "objectId": "obj-003",
+          "totalShifts": 1,
+          "completedShifts": 1,
+          "incidents": 0,
+          "successRate": 1
+        },
+        {
+          "employeeId": "emp-003",
+          "objectId": "obj-003",
+          "totalShifts": 1,
+          "completedShifts": 1,
+          "incidents": 0,
+          "successRate": 1
+        }
+      ]
+    },
+    "objectRequirements": {
+      "count": 5,
+      "data": [
+        {
+          "objectId": "obj-001",
+          "avgPersonnelNeeded": 1.9,
+          "peakHours": {
+            "start": 8,
+            "end": 16
+          },
+          "incidentRate": 12.5,
+          "difficultyScore": 3
+        },
+        {
+          "objectId": "obj-002",
+          "avgPersonnelNeeded": 1.8,
+          "peakHours": {
+            "start": 8,
+            "end": 16
+          },
+          "incidentRate": 30,
+          "difficultyScore": 5
+        },
+        {
+          "objectId": "obj-003",
+          "avgPersonnelNeeded": 1.3,
+          "peakHours": {
+            "start": 8,
+            "end": 16
+          },
+          "incidentRate": 28.6,
+          "difficultyScore": 5
+        },
+        {
+          "objectId": "obj-004",
+          "avgPersonnelNeeded": 2.1,
+          "peakHours": {
+            "start": 8,
+            "end": 16
+          },
+          "incidentRate": 16.7,
+          "difficultyScore": 4
+        },
+        {
+          "objectId": "obj-005",
+          "avgPersonnelNeeded": 2,
+          "peakHours": {
+            "start": 8,
+            "end": 16
+          },
+          "incidentRate": 0,
+          "difficultyScore": 2
+        }
+      ]
+    },
+    "absencePredictions": {
+      "count": 5,
+      "data": [
+        {
+          "employeeId": "emp-001",
+          "absenceProbability": 0,
+          "riskFactors": [],
+          "recommendedActions": [
+            "Keine Maßnahmen erforderlich"
+          ]
+        },
+        {
+          "employeeId": "emp-002",
+          "absenceProbability": 0,
+          "riskFactors": [],
+          "recommendedActions": [
+            "Keine Maßnahmen erforderlich"
+          ]
+        },
+        {
+          "employeeId": "emp-003",
+          "absenceProbability": 0,
+          "riskFactors": [],
+          "recommendedActions": [
+            "Keine Maßnahmen erforderlich"
+          ]
+        },
+        {
+          "employeeId": "emp-004",
+          "absenceProbability": 0,
+          "riskFactors": [],
+          "recommendedActions": [
+            "Keine Maßnahmen erforderlich"
+          ]
+        },
+        {
+          "employeeId": "emp-005",
+          "absenceProbability": 0,
+          "riskFactors": [],
+          "recommendedActions": [
+            "Keine Maßnahmen erforderlich"
+          ]
+        }
+      ]
+    },
+    "optimalShiftSizes": {
+      "count": 5,
+      "data": [
+        {
+          "objectId": "obj-001",
+          "optimalSizes": {
+            "morning": 1,
+            "afternoon": 3,
+            "evening": 2,
+            "night": 1.8
+          },
+          "dataPoints": 8,
+          "confidence": "low"
+        },
+        {
+          "objectId": "obj-002",
+          "optimalSizes": {
+            "morning": 1.6,
+            "afternoon": 3,
+            "evening": 2.5,
+            "night": 1
+          },
+          "dataPoints": 10,
+          "confidence": "medium"
+        },
+        {
+          "objectId": "obj-003",
+          "optimalSizes": {
+            "morning": 1.5,
+            "afternoon": 1,
+            "evening": 1,
+            "night": 1.5
+          },
+          "dataPoints": 7,
+          "confidence": "low"
+        },
+        {
+          "objectId": "obj-004",
+          "optimalSizes": {
+            "morning": 2,
+            "afternoon": 3,
+            "evening": 1.8,
+            "night": 2.5
+          },
+          "dataPoints": 12,
+          "confidence": "medium"
+        },
+        {
+          "objectId": "obj-005",
+          "optimalSizes": {
+            "morning": 2,
+            "afternoon": 3,
+            "evening": 1,
+            "night": 1.7
+          },
+          "dataPoints": 7,
+          "confidence": "low"
+        }
+      ]
+    },
+    "timePreferences": {
+      "count": 5,
+      "data": [
+        {
+          "employeeId": "emp-001",
+          "preferredDays": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "preferredHour": 6,
+          "preferredShiftLength": 8,
+          "totalShifts": 11,
+          "confidence": "low"
+        },
+        {
+          "employeeId": "emp-002",
+          "preferredDays": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "preferredHour": 7,
+          "preferredShiftLength": 8,
+          "totalShifts": 7,
+          "confidence": "low"
+        },
+        {
+          "employeeId": "emp-003",
+          "preferredDays": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "preferredHour": 11,
+          "preferredShiftLength": 8,
+          "totalShifts": 11,
+          "confidence": "low"
+        },
+        {
+          "employeeId": "emp-004",
+          "preferredDays": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "preferredHour": 2,
+          "preferredShiftLength": 8,
+          "totalShifts": 8,
+          "confidence": "low"
+        },
+        {
+          "employeeId": "emp-005",
+          "preferredDays": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "preferredHour": 21,
+          "preferredShiftLength": 8,
+          "totalShifts": 13,
+          "confidence": "low"
+        }
+      ]
+    }
+  }
+}
