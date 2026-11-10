@@ -1,5 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/auth.service';
+import { prisma } from '../config/database';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 export class AuthController {
   /**
@@ -153,6 +156,117 @@ export class AuthController {
         res.status(400).json({ error: error.message });
         return;
       }
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/v1/auth/forgot-password
+   * Sendet eine E-Mail mit Reset-Link an die angegebene E-Mail-Adresse
+   */
+  async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        res.status(400).json({ error: 'E-Mail-Adresse erforderlich' });
+        return;
+      }
+
+      // User suchen
+      const user = await prisma.user.findFirst({
+        where: { email, isActive: true, deletedAt: null },
+        include: { tenant: true },
+      });
+
+      // Immer Erfolg zurückgeben (Security: keine Info, ob E-Mail existiert)
+      // Aber im Dev-Mode geben wir den Token trotzdem zurück
+      const isDev = process.env.NODE_ENV === 'development';
+
+      if (user) {
+        // Reset-Token generieren (gültig für 1 Stunde)
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 Stunde
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            passwordResetToken: resetToken,
+            passwordResetTokenExpiry: resetTokenExpiry,
+          },
+        });
+
+        // Im Dev-Mode: Token in Response zurückgeben
+        if (isDev) {
+          res.json({
+            message: 'Reset-Link wurde gesendet',
+            resetToken, // Nur im Dev-Mode!
+            resetUrl: `http://localhost:3000/reset-password?token=${resetToken}`,
+          });
+        } else {
+          // In Production: E-Mail senden
+          const resetUrl = `${req.headers.origin || 'https://sms-platform.de'}/reset-password?token=${resetToken}`;
+          // TODO: E-Mail-Versand implementieren
+          // await emailService.sendPasswordResetEmail(user.email, resetUrl);
+          res.json({ message: 'Reset-Link wurde gesendet' });
+        }
+      } else {
+        res.json({ message: 'Reset-Link wurde gesendet' });
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/v1/auth/reset-password
+   * Setzt ein neues Passwort mit dem Reset-Token
+   */
+  async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { token, newPassword } = req.body;
+
+      if (!token || !newPassword) {
+        res.status(400).json({ error: 'Token und neues Passwort erforderlich' });
+        return;
+      }
+
+      if (newPassword.length < 8) {
+        res.status(400).json({ error: 'Passwort muss mindestens 8 Zeichen lang sein' });
+        return;
+      }
+
+      // User mit gültigem Token suchen
+      const user = await prisma.user.findFirst({
+        where: {
+          passwordResetToken: token,
+          passwordResetTokenExpiry: { gte: new Date() },
+          isActive: true,
+          deletedAt: null,
+        },
+      });
+
+      if (!user) {
+        res.status(400).json({ error: 'Ungültiger oder abgelaufener Reset-Token' });
+        return;
+      }
+
+      // Passwort hashen und speichern
+      const passwordHash = await bcrypt.hash(newPassword, 12);
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash,
+          passwordResetToken: null,
+          passwordResetTokenExpiry: null,
+          failedLogins: 0,
+          lockedUntil: null,
+        },
+      });
+
+      res.json({ message: 'Passwort erfolgreich zurückgesetzt' });
+    } catch (error) {
       next(error);
     }
   }
