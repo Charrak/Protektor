@@ -281,8 +281,8 @@ async function main() {
   const createdPermissions = [];
   for (const perm of permissions) {
     const permission = await prisma.permission.upsert({
-      where: { slug: perm.slug },
-      update: {},
+      where: { name: perm.name },
+      update: { slug: perm.slug, module: perm.module, description: perm.description },
       create: perm,
     });
     createdPermissions.push(permission);
