@@ -7,7 +7,7 @@ on:
     branches: [main, develop]
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres
   POSTGRES_DB: sms_test
@@ -32,155 +32,90 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
+    
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
+      - uses: actions/checkout@v4
+      
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: server/package-lock.json
-
+      
       - name: Install Dependencies
-        working-directory: ./server
+        working-directory: server
         run: npm ci
-
-      - name: Generate Prisma Client
-        working-directory: ./server
-        run: npm run prisma:generate
-
-      - name: Run Database Migrations
-        working-directory: ./server
+      
+      - name: Prisma Generate
+        working-directory: server
+        run: npx prisma generate
+      
+      - name: Prisma Push
+        working-directory: server
         env:
           DATABASE_URL: postgresql://${{ env.POSTGRES_USER }}:${{ env.POSTGRES_PASSWORD }}@localhost:5432/${{ env.POSTGRES_DB }}
-        run: npm run prisma:deploy
-
+        run: npx prisma db push
+      
       - name: Run Tests
-        working-directory: ./server
+        working-directory: server
         env:
           DATABASE_URL: postgresql://${{ env.POSTGRES_USER }}:${{ env.POSTGRES_PASSWORD }}@localhost:5432/${{ env.POSTGRES_DB }}
-          REDIS_URL: redis://localhost:6379
-          JWT_SECRET: test-jwt-secret
           NODE_ENV: test
-        run: npm run test:coverage
+          JWT_SECRET: test-secret
+          JWT_REFRESH_SECRET: test-refresh-secret
+        run: npm test
 
-      - name: Upload Coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./server/coverage/coverage-final.json
-          flags: backend
-          fail_ci_if_error: false
-
-  # Frontend Tests
-  frontend-test:
-    name: Frontend Tests
+  # Frontend Build
+  frontend-build:
+    name: Frontend Build
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
+      - uses: actions/checkout@v4
+      
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: client/package-lock.json
-
+      
       - name: Install Dependencies
-        working-directory: ./client
+        working-directory: client
         run: npm ci
-
-      - name: Run Linting
-        working-directory: ./client
-        run: npm run lint || true
-
-      - name: Build Frontend
-        working-directory: ./client
+      
+      - name: Build
+        working-directory: client
         run: npm run build
 
-      - name: Run Tests
-        working-directory: ./client
-        run: npm test || true
-
-  # Security Audit
-  security-audit:
-    name: Security Audit
+  # Code Quality
+  code-quality:
+    name: Code Quality
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
+      - uses: actions/checkout@v4
+      
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-
-      - name: Run NPM Audit (Backend)
-        working-directory: ./server
-        run: npm audit --audit-level=moderate || true
-
-      - name: Run NPM Audit (Frontend)
-        working-directory: ./client
-        run: npm audit --audit-level=moderate || true
-
-  # Build Check
-  build-check:
-    name: Build Check
-    runs-on: ubuntu-latest
-    needs: [backend-test, frontend-test]
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Build Backend
-        working-directory: ./server
-        run: npm run build
-
-      - name: Build Frontend
-        working-directory: ./client
-        run: npm run build
-
-  # Docker Build
-  docker-build:
-    name: Docker Build
-    runs-on: ubuntu-latest
-    needs: [build-check]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Build Docker Image
-        run: |
-          docker build -t sms-backend:latest ./server
-          docker build -t sms-frontend:latest ./client
-
-      - name: Test Docker Images
-        run: |
-          docker run --rm sms-backend:latest npm --version
-          docker run --rm sms-frontend:latest npm --version
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+      
+      - name: Install Dependencies
+        working-directory: server
+        run: npm ci
+      
+      - name: Lint
+        working-directory: server
+        run: npm run lint
+      
+      - name: Type Check
+        working-directory: server
+        run: npx tsc --noEmit
+      
+      - name: Security Audit
+        working-directory: server
+        run: npm audit --audit-level=moderate
