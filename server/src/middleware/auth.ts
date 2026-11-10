@@ -31,11 +31,10 @@ interface JwtPayload {
 
 export async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    // Token aus Cookie oder Authorization Header
-    let token = req.cookies?.accessToken;
-    if (!token && req.headers.authorization?.startsWith('Bearer ')) {
-      token = req.headers.authorization.substring(7);
-    }
+    // Token aus Authorization Header (Vorrang) oder Cookie
+    let token = req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.substring(7)
+      : req.cookies?.accessToken;
 
     if (!token) {
       res.status(401).json({ error: 'UNAUTHORIZED', message: 'Kein Authentifizierungstoken vorhanden' });
