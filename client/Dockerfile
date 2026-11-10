@@ -3,7 +3,7 @@
 # ============================================
 
 # Basis-Image: Node.js 18 auf Alpine Linux
-FROM node:20-alpine
+FROM node:22-alpine
 
 # Arbeitsverzeichnis im Container
 WORKDIR /app
