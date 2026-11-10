@@ -867,7 +867,7 @@ model Customer {
   contractEndDate       DateTime? @db.Date
   terminationNoticePeriod Int    @default(90)        // Tage vor Vertragsende
   billingType           BillingType @default(hourly)
-  billingInterval       BillingInterval @default(monthly)
+  billingInterval       CustomerBillingInterval @default(monthly)
   
   // ZAHLUNGSBEDINGUNGEN
   paymentTerms          Int      @default(14)        // Tage
@@ -915,7 +915,7 @@ enum BillingType {
   mixed         // Mischform
 }
 
-enum BillingInterval {
+enum CustomerBillingInterval {
   monthly
   quarterly
   yearly
