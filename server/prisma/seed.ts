@@ -241,41 +241,41 @@ async function main() {
   // 7. Permissions erstellen
   const permissions = [
     // Employee-Permissions
-    { name: 'Employees: Create', slug: 'employees.create', module: 'employees', description: 'Mitarbeiter erstellen' },
-    { name: 'Employees: Read', slug: 'employees.read', module: 'employees', description: 'Mitarbeiter anzeigen' },
-    { name: 'Employees: Update', slug: 'employees.update', module: 'employees', description: 'Mitarbeiter bearbeiten' },
-    { name: 'Employees: Delete', slug: 'employees.delete', module: 'employees', description: 'Mitarbeiter löschen' },
+    { name: 'Employees: Create', slug: 'employees:create', module: 'employees', description: 'Mitarbeiter erstellen' },
+    { name: 'Employees: Read', slug: 'employees:view', module: 'employees', description: 'Mitarbeiter anzeigen' },
+    { name: 'Employees: Update', slug: 'employees:edit', module: 'employees', description: 'Mitarbeiter bearbeiten' },
+    { name: 'Employees: Delete', slug: 'employees:delete', module: 'employees', description: 'Mitarbeiter löschen' },
     
     // Customer-Permissions
-    { name: 'Customers: Create', slug: 'customers.create', module: 'customers', description: 'Kunden erstellen' },
-    { name: 'Customers: Read', slug: 'customers.read', module: 'customers', description: 'Kunden anzeigen' },
-    { name: 'Customers: Update', slug: 'customers.update', module: 'customers', description: 'Kunden bearbeiten' },
-    { name: 'Customers: Delete', slug: 'customers.delete', module: 'customers', description: 'Kunden löschen' },
+    { name: 'Customers: Create', slug: 'customers:create', module: 'customers', description: 'Kunden erstellen' },
+    { name: 'Customers: Read', slug: 'customers:view', module: 'customers', description: 'Kunden anzeigen' },
+    { name: 'Customers: Update', slug: 'customers:edit', module: 'customers', description: 'Kunden bearbeiten' },
+    { name: 'Customers: Delete', slug: 'customers:delete', module: 'customers', description: 'Kunden löschen' },
     
     // Object-Permissions
-    { name: 'Objects: Create', slug: 'objects.create', module: 'objects', description: 'Objekte erstellen' },
-    { name: 'Objects: Read', slug: 'objects.read', module: 'objects', description: 'Objekte anzeigen' },
-    { name: 'Objects: Update', slug: 'objects.update', module: 'objects', description: 'Objekte bearbeiten' },
-    { name: 'Objects: Delete', slug: 'objects.delete', module: 'objects', description: 'Objekte löschen' },
+    { name: 'Objects: Create', slug: 'objects:create', module: 'objects', description: 'Objekte erstellen' },
+    { name: 'Objects: Read', slug: 'objects:view', module: 'objects', description: 'Objekte anzeigen' },
+    { name: 'Objects: Update', slug: 'objects:edit', module: 'objects', description: 'Objekte bearbeiten' },
+    { name: 'Objects: Delete', slug: 'objects:delete', module: 'objects', description: 'Objekte löschen' },
     
     // Deployment-Permissions
-    { name: 'Deployments: Create', slug: 'deployments.create', module: 'deployments', description: 'Einsätze erstellen' },
-    { name: 'Deployments: Read', slug: 'deployments.read', module: 'deployments', description: 'Einsätze anzeigen' },
-    { name: 'Deployments: Update', slug: 'deployments.update', module: 'deployments', description: 'Einsätze bearbeiten' },
-    { name: 'Deployments: Delete', slug: 'deployments.delete', module: 'deployments', description: 'Einsätze löschen' },
+    { name: 'Deployments: Create', slug: 'deployments:create', module: 'deployments', description: 'Einsätze erstellen' },
+    { name: 'Deployments: Read', slug: 'deployments:view', module: 'deployments', description: 'Einsätze anzeigen' },
+    { name: 'Deployments: Update', slug: 'deployments:edit', module: 'deployments', description: 'Einsätze bearbeiten' },
+    { name: 'Deployments: Delete', slug: 'deployments:delete', module: 'deployments', description: 'Einsätze löschen' },
     
     // Invoice-Permissions
-    { name: 'Invoices: Create', slug: 'invoices.create', module: 'invoices', description: 'Rechnungen erstellen' },
-    { name: 'Invoices: Read', slug: 'invoices.read', module: 'invoices', description: 'Rechnungen anzeigen' },
-    { name: 'Invoices: Update', slug: 'invoices.update', module: 'invoices', description: 'Rechnungen bearbeiten' },
-    { name: 'Invoices: Delete', slug: 'invoices.delete', module: 'invoices', description: 'Rechnungen löschen' },
+    { name: 'Invoices: Create', slug: 'invoices:create', module: 'invoices', description: 'Rechnungen erstellen' },
+    { name: 'Invoices: Read', slug: 'invoices:view', module: 'invoices', description: 'Rechnungen anzeigen' },
+    { name: 'Invoices: Update', slug: 'invoices:edit', module: 'invoices', description: 'Rechnungen bearbeiten' },
+    { name: 'Invoices: Delete', slug: 'invoices:delete', module: 'invoices', description: 'Rechnungen löschen' },
     
     // Report-Permissions
-    { name: 'Reports: View', slug: 'reports.view', module: 'reports', description: 'Berichte anzeigen' },
+    { name: 'Reports: View', slug: 'reports:view', module: 'reports', description: 'Berichte anzeigen' },
     
     // Settings-Permissions
-    { name: 'Settings: View', slug: 'settings.view', module: 'settings', description: 'Einstellungen anzeigen' },
-    { name: 'Settings: Update', slug: 'settings.update', module: 'settings', description: 'Einstellungen bearbeiten' },
+    { name: 'Settings: View', slug: 'settings:view', module: 'settings', description: 'Einstellungen anzeigen' },
+    { name: 'Settings: Update', slug: 'settings:edit', module: 'settings', description: 'Einstellungen bearbeiten' },
   ];
 
   const createdPermissions = [];
@@ -337,23 +337,11 @@ async function main() {
     },
   });
 
-  // 10. User RolePermissions zuweisen
-  for (const rolePermission of adminRolePermissions) {
-    await prisma.user.update({
-      where: { id: demoUser.id },
-      data: {
-        rolePermissions: {
-          connect: { id: rolePermission.id },
-        },
-      },
-    });
-  }
-
   console.log('✅ Demo User erstellt:');
   console.log(`   Username: demo`);
   console.log(`   Password: Demo123!`);
   console.log(`   Rolle: Administrator`);
-  console.log(`   Berechtigungen: ${adminRolePermissions.length} Permissions zugewiesen\n`);
+  console.log(`   Berechtigungen: ${adminRolePermissions.length} Permissions über Admin-Rolle\n`);
 
   // 6. Demo Mitarbeiter erstellen
   const demoEmployees = [
