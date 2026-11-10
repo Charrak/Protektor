@@ -42,7 +42,7 @@ export class EmployeeController {
         return;
       }
 
-      const employee = await employeeService.create(req.body, req.user.id);
+      const employee = await employeeService.create(req.body, req.user.id, req.user.tenantId);
       
       // Trigger webhook event
       const { triggerWebhookEvent, WebhookEvents } = await import('../services/webhookExecution.service');

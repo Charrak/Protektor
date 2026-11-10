@@ -5,34 +5,93 @@ export interface Employee {
   personnelNumber: string;
   firstName: string;
   lastName: string;
-  email?: string;
-  phone?: string;
-  mobile?: string;
-  gender?: 'male' | 'female' | 'diverse';
+  // Persönlich
   dateOfBirth?: string;
+  birthPlace?: string;
+  gender?: 'male' | 'female' | 'diverse';
+  nationality?: string;
+  maritalStatus?: 'single' | 'married' | 'divorced' | 'widowed' | 'civil_partnership';
+  // Adresse
   street?: string;
   zipCode?: string;
   city?: string;
   country?: string;
+  // Kontakt
+  phone?: string;
+  mobile?: string;
+  email?: string;
+  // Notfallkontakt
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelation?: string;
+  // Bank
   bankName?: string;
   iban?: string;
   bic?: string;
+  // Steuern & Versicherung
   taxId?: string;
+  taxClass?: 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI';
+  religion?: 'none' | 'catholic' | 'protestant' | 'other';
+  children?: number;
   socialInsuranceId?: string;
+  pensionInsuranceId?: string;
   healthInsurance?: string;
   healthInsuranceId?: string;
+  healthInsuranceType?: 'statutory' | 'private' | 'family';
+  // Vertrag
   employmentType?: 'full_time' | 'part_time' | 'mini_job' | 'freelance';
+  contractType?: 'permanent' | 'fixed_term' | 'temp' | 'working_student';
   weeklyHours?: number;
   contractStart?: string;
   contractEnd?: string;
+  probationMonths?: number;
+  vacationDays?: number;
+  department?: string;
+  position?: string;
+  costCenter?: string;
+  // Vergütung
   hourlyRateBase?: number;
+  monthlySalary?: number;
   surchargeNight?: number;
   surchargeSunday?: number;
   surchargeHoliday?: number;
   maxHoursPerDay?: number;
   maxHoursPerWeek?: number;
   preferredRegion?: string;
+  // Zusatz
+  driverLicense?: string;
+  languages?: string;
+  uniformSize?: string;
+  shoeSize?: number;
+  // §34a GewO
+  bewachungserlaubnisNr?: string;
+  bewachungserlaubnisExpiry?: string;
+  bewachungserlaubnisAuthority?: string;
+  unterrichtungDatum?: string;
+  unterrichtungAuthority?: string;
+  sachkundeDatum?: string;
+  sachkundeNr?: string;
+  fuehrungszeugnisDatum?: string;
+  fuehrungszeugnisArt?: string;
+  zuverlaessigkeetspruefung?: string;
+  unterweisungDatum?: string;
+  unterweisungNext?: string;
+  // Qualifikationen
+  waffensachkunde?: boolean;
+  waffensachkundeExpiry?: string;
+  waffensachkundeNr?: string;
+  ersteHilfeCertified?: boolean;
+  ersteHilfeExpiry?: string;
+  ersteHilfeHours?: number;
+  sicherheitsstufe?: number;
+  hundefuehrer?: boolean;
+  hundefuehrerExpiry?: string;
+  brandschutzbeauftragter?: boolean;
+  brandschutzExpiry?: string;
+  ersteHilfeTrainer?: boolean;
+  // Sonstiges
   notes?: string;
+  photoUrl?: string;
   status: 'active' | 'inactive' | 'on_leave' | 'terminated';
   createdAt: string;
   updatedAt: string;
