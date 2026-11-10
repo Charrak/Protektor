@@ -1,154 +1,434 @@
 import { prisma } from '../config/database';
 import { logger } from '../config/logger';
+import { recurringAvailabilityService } from './recurringAvailability.service';
+import { employeeRestrictionService } from './employeeRestriction.service';
 
 export interface Candidate {
   employeeId: string;
   employeeName: string;
+  personnelNumber: string;
   score: number;
-  reasons: string[];
-  conflicts: string[];
+  reasons: string[];        // Warum dieser MA geeignet ist
+  conflicts: string[];      // Harte Konflikte (disqualifizierend)
+  warnings: string[];       // Weiche Warnungen (nicht disqualifizierend)
+  disqualified: boolean;
+  disqualificationReason?: string;
+}
+
+export interface PlanningRequest {
+  tenantId: string;
+  objectId: string;
+  date: Date;
+  startTime: string;
+  endTime: string;
+  requiredCount: number;
+  requiredQualificationIds?: string[];
+  notes?: string;
+}
+
+export interface PlanningResult {
+  request: PlanningRequest;
+  candidates: Candidate[];
+  selectedCount: number;
+  unselectedReasons: { employeeId: string; name: string; reason: string }[];
 }
 
 export class AutoPlannerService {
   /**
-   * Findet geeignete Kandidaten für einen Einsatz
+   * Hauptmethode: Findet geeignete Kandidaten für einen Einsatz
+   * mit vollständiger Constraint-Prüfung
    */
-  async findCandidates(params: {
-    objectId: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    requiredCount: number;
-  }): Promise<Candidate[]> {
-    const { objectId, date, startTime, endTime, requiredCount } = params;
+  async findCandidates(request: PlanningRequest): Promise<Candidate[]> {
+    const { tenantId, objectId, date, startTime, endTime } = request;
+    const start = new Date(`${date.toISOString().split('T')[0]}T${startTime}`);
+    const end = new Date(`${date.toISOString().split('T')[0]}T${endTime}`);
+    const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay(); // 1=Mo, 7=So
+    const startHour = start.getHours();
+    const endHour = end.getHours();
+    const shiftMinutes = (end.getTime() - start.getTime()) / 1000 / 60;
 
-    // Objekt-Anforderungen laden
-    const object = await prisma.sMSObject.findUnique({
-      where: { id: objectId },
+    // ═══════════════════════════════════════════════════
+    // 1. LADE ALLE DATEN
+    // ═══════════════════════════════════════════════════
+
+    // Objekt-Anforderungen
+    const object = await prisma.sMSObject.findFirst({
+      where: { id: objectId, tenantId },
       include: { requirements: { include: { qualification: true } } },
     });
-
     if (!object) return [];
 
-    const requiredQualIds = object.requirements
-      .filter((r: any) => r.isMandatory)
-      .map((r: any) => r.qualificationId);
+    const requiredQualIds = request.requiredQualificationIds ||
+      object.requirements.filter((r: any) => r.isMandatory).map((r: any) => r.qualificationId);
 
-    // Alle aktiven Mitarbeiter laden
+    // Alle aktiven Mitarbeiter
     const employees = await prisma.employee.findMany({
-      where: { status: 'active', deletedAt: null },
+      where: { tenantId, status: 'active', deletedAt: null },
       include: {
         qualifications: {
-          where: {
-            OR: [
-              { expiryDate: null },
-              { expiryDate: { gte: new Date() } },
-            ],
-          },
-        },
-        availabilities: {
-          where: {
-            startDate: { lte: new Date(date) },
-            endDate: { gte: new Date(date) },
-            status: 'approved',
-          },
+          include: { qualification: true },
+          where: { OR: [{ expiryDate: null }, { expiryDate: { gte: new Date() } }] },
         },
       },
     });
 
-    const start = new Date(`${date}T${startTime}`);
-    const end = new Date(`${date}T${endTime}`);
-
-    // Bestehende Einsätze am selben Tag laden
+    // Bestehende Einsätze am selben Tag
     const existingDeployments = await prisma.deployment.findMany({
-      where: {
-        date: new Date(date),
-        status: { not: 'cancelled' },
-      },
+      where: { tenantId, date, status: { not: 'cancelled' } },
     });
+
+    // Bestehende Zeitnachweise am selben Tag (für Arbeitszeit-Check)
+    const existingTimeRecords = await prisma.timeRecord.findMany({
+      where: { tenantId, date, status: { in: ['approved', 'locked'] } },
+    });
+
+    // ═══════════════════════════════════════════════════
+    // 2. PRÜFE JEDEN MITARBEITER
+    // ═══════════════════════════════════════════════════
 
     const candidates: Candidate[] = [];
 
-    for (const employee of employees) {
+    for (const emp of employees) {
       const reasons: string[] = [];
       const conflicts: string[] = [];
+      const warnings: string[] = [];
       let score = 0;
+      let disqualified = false;
+      let disqualificationReason = '';
 
-      // 1. Qualifikationsprüfung
-      const employeeQualIds = employee.qualifications.map((q: any) => q.qualificationId);
-      const missingQuals = requiredQualIds.filter((q: string) => !employeeQualIds.includes(q));
+      // ─── HARD CONSTRAINTS ───
 
+      // HC1: Qualifikationsprüfung
+      const empQualIds = emp.qualifications.map((q: any) => q.qualificationId);
+      const missingQuals = requiredQualIds.filter((q: string) => !empQualIds.includes(q));
       if (missingQuals.length > 0) {
-        conflicts.push(`Fehlende Qualifikationen: ${missingQuals.length}`);
-        continue; // Disqualifiziert
-      }
-
-      score += 40; // Qualifikationen erfüllt
-      reasons.push('Alle erforderlichen Qualifikationen vorhanden');
-
-      // 2. Verfügbarkeitsprüfung
-      if (employee.availabilities.length > 0) {
-        conflicts.push('Mitarbeiter ist abwesend');
+        disqualified = true;
+        disqualificationReason = 'Fehlende Qualifikationen';
+        candidates.push({
+          employeeId: emp.id,
+          employeeName: `${emp.firstName} ${emp.lastName}`,
+          personnelNumber: emp.personnelNumber,
+          score: 0,
+          reasons: [],
+          conflicts: [`Qualifikation fehlt: ${missingQuals.length} benötigt`],
+          warnings: [],
+          disqualified: true,
+          disqualificationReason,
+        });
         continue;
       }
+      score += 40;
+      reasons.push('✓ Alle Qualifikationen vorhanden');
 
+      // HC2: Einsatzrestriktionen prüfen
+      const restrictionCheck = await employeeRestrictionService.checkRestrictions(
+        tenantId, emp.id, date, start, end, objectId
+      );
+      if (!restrictionCheck.allowed) {
+        disqualified = true;
+        candidates.push({
+          employeeId: emp.id,
+          employeeName: `${emp.firstName} ${emp.lastName}`,
+          personnelNumber: emp.personnelNumber,
+          score: 0,
+          reasons: [],
+          conflicts: restrictionCheck.violations.map(v => v.message),
+          warnings: [],
+          disqualified: true,
+          disqualificationReason: restrictionCheck.violations[0]?.message || 'Restriktion',
+        });
+        continue;
+      }
+      score += 15;
+      reasons.push('✓ Keine Restriktionsverstöße');
+
+      // HC3: Wiederkehrende Verfügbarkeit prüfen
+      const availabilityCheck = await recurringAvailabilityService.isAvailable(
+        tenantId, emp.id, date, start, end
+      );
+      if (!availabilityCheck.available) {
+        disqualified = true;
+        candidates.push({
+          employeeId: emp.id,
+          employeeName: `${emp.firstName} ${emp.lastName}`,
+          personnelNumber: emp.personnelNumber,
+          score: 0,
+          reasons: [],
+          conflicts: [availabilityCheck.reason],
+          warnings: [],
+          disqualified: true,
+          disqualificationReason: availabilityCheck.reason,
+        });
+        continue;
+      }
       score += 20;
-      reasons.push('Verfügbar am gewählten Tag');
+      reasons.push('✓ Verfügbar am gewünschten Tag');
 
-      // 3. Konfliktprüfung (bereits geplante Einsätze)
-      const employeeDeployments = existingDeployments.filter((d: any) => d.employeeId === employee.id);
-      const hasConflict = employeeDeployments.some((d: any) => {
-        const dStart = new Date(`1970-01-01T${d.startTime}`);
-        const dEnd = new Date(`1970-01-01T${d.endTime}`);
-        return (start < dEnd && end > dStart);
+      // HC4: Keine Zeitüberschneidungen
+      const empDeployments = existingDeployments.filter((d: any) => d.employeeId === emp.id);
+      const hasOverlap = empDeployments.some((d: any) => {
+        const dStart = new Date(`${date.toISOString().split('T')[0]}T${d.startTime.toISOString().split('T')[1]}`);
+        const dEnd = new Date(`${date.toISOString().split('T')[0]}T${d.endTime.toISOString().split('T')[1]}`);
+        return start < dEnd && end > dStart;
       });
-
-      if (hasConflict) {
-        conflicts.push('Zeitkonflikt mit bestehendem Einsatz');
+      if (hasOverlap) {
+        disqualified = true;
+        candidates.push({
+          employeeId: emp.id,
+          employeeName: `${emp.firstName} ${emp.lastName}`,
+          personnelNumber: emp.personnelNumber,
+          score: 0,
+          reasons: [],
+          conflicts: ['Zeitüberschneidung mit bestehendem Einsatz'],
+          warnings: [],
+          disqualified: true,
+          disqualificationReason: 'Bereits zur gleichen Zeit eingeplant',
+        });
         continue;
       }
+      score += 15;
+      reasons.push('✓ Keine Zeitüberschneidungen');
 
-      score += 20;
-      reasons.push('Keine Zeitkonflikte');
-
-      // 4. Arbeitszeitgrenzen prüfen
-      const totalHoursToday = employeeDeployments.reduce((sum: number, d: any) => {
-        const dStart = new Date(`1970-01-01T${d.startTime}`);
-        const dEnd = new Date(`1970-01-01T${d.endTime}`);
-        const hours = (dEnd.getTime() - dStart.getTime()) / (1000 * 60 * 60);
-        return sum + hours;
+      // HC5: Max Tagesstunden (ArbZG §3)
+      const existingHours = empDeployments.reduce((sum: number, d: any) => {
+        const dStart = new Date(`${date.toISOString().split('T')[0]}T${d.startTime.toISOString().split('T')[1]}`);
+        const dEnd = new Date(`${date.toISOString().split('T')[0]}T${d.endTime.toISOString().split('T')[1]}`);
+        return sum + (dEnd.getTime() - dStart.getTime()) / (1000 * 60 * 60);
       }, 0);
+      const newShiftHours = shiftMinutes / 60;
+      const totalHoursToday = existingHours + newShiftHours;
+      if (totalHoursToday > Number(emp.maxDailyHours)) {
+        disqualified = true;
+        candidates.push({
+          employeeId: emp.id,
+          employeeName: `${emp.firstName} ${emp.lastName}`,
+          personnelNumber: emp.personnelNumber,
+          score: 0,
+          reasons: [],
+          conflicts: [`Maximale Tagesstunden überschritten (${emp.maxDailyHours}h, bereits ${existingHours.toFixed(1)}h geplant)`],
+          warnings: [],
+          disqualified: true,
+          disqualificationReason: `Tagesarbeitszeit würde ${emp.maxDailyHours}h überschreiten`,
+        });
+        continue;
+      }
+      score += 10;
+      reasons.push('✓ Tagesarbeitszeit eingehalten');
 
-      const newHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-      if (totalHoursToday + newHours > Number(employee.maxHoursPerDay)) {
-        conflicts.push(`Maximale Tagesstunden überschritten (${employee.maxHoursPerDay}h)`);
+      // HC6: Ruhezeit (ArbZG §5 - 11 Stunden)
+      const yesterday = new Date(date);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const tomorrow = new Date(date);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const yesterdayDeployments = existingDeployments.filter((d: any) =>
+        d.employeeId === emp.id && d.date.getTime() === yesterday.getTime()
+      );
+      if (yesterdayDeployments.length > 0) {
+        const lastEnd = yesterdayDeployments.reduce((latest: Date, d: any) => {
+          const dEnd = new Date(`${yesterday.toISOString().split('T')[0]}T${d.endTime.toISOString().split('T')[1]}`);
+          return dEnd > latest ? dEnd : latest;
+        }, new Date(0));
+
+        const restHours = (start.getTime() - lastEnd.getTime()) / (1000 * 60 * 60);
+        if (restHours < Number(emp.minRestHours)) {
+          disqualified = true;
+          candidates.push({
+            employeeId: emp.id,
+            employeeName: `${emp.firstName} ${emp.lastName}`,
+            personnelNumber: emp.personnelNumber,
+            score: 0,
+            reasons: [],
+            conflicts: [`Ruhezeit unterschritten (${restHours.toFixed(1)}h statt min. ${emp.minRestHours}h)`],
+            warnings: [],
+            disqualified: true,
+            disqualificationReason: `Ruhezeit von ${emp.minRestHours}h nicht eingehalten`,
+          });
+          continue;
+        }
+        reasons.push(`✓ Ruhezeit eingehalten (${restHours.toFixed(1)}h)`);
+      }
+
+      // HC7: Bewachungserlaubnis gültig?
+      if (emp.bewachungserlaubnisExpiry && new Date(emp.bewachungserlaubnisExpiry) < date) {
+        disqualified = true;
+        candidates.push({
+          employeeId: emp.id,
+          employeeName: `${emp.firstName} ${emp.lastName}`,
+          personnelNumber: emp.personnelNumber,
+          score: 0,
+          reasons: [],
+          conflicts: ['Bewachungserlaubnis abgelaufen'],
+          warnings: [],
+          disqualified: true,
+          disqualificationReason: 'Bewachungserlaubnis abgelaufen (§34a GewO)',
+        });
         continue;
       }
 
-      score += 10;
-      reasons.push('Arbeitszeitgrenzen eingehalten');
-
-      // 5. Bevorzugte Region (optional)
-      if (employee.preferredRegion && object.city) {
-        if (employee.preferredRegion.toLowerCase().includes(object.city.toLowerCase())) {
-          score += 10;
-          reasons.push('In bevorzugter Region');
+      // HC8: Nachtschicht-Alter prüfen
+      if (startHour >= 20 || endHour <= 6) {
+        if (emp.nightShiftMinAge) {
+          const birthDate = emp.dateOfBirth;
+          if (birthDate) {
+            const age = (date.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+            if (age < emp.nightShiftMinAge) {
+              disqualified = true;
+              candidates.push({
+                employeeId: emp.id,
+                employeeName: `${emp.firstName} ${emp.lastName}`,
+                personnelNumber: emp.personnelNumber,
+                score: 0,
+                reasons: [],
+                conflicts: [`Zu jung für Nachtschicht (min. ${emp.nightShiftMinAge} Jahre)`],
+                warnings: [],
+                disqualified: true,
+                disqualificationReason: 'Altersbeschränkung für Nachtschicht',
+              });
+              continue;
+            }
+          }
         }
       }
 
+      // ─── SOFT CONSTRAINTS (Scoring) ───
+
+      // SC1: Bevorzugte Region
+      if (emp.preferredRegion && object.city) {
+        if (emp.preferredRegion.toLowerCase().includes(object.city.toLowerCase())) {
+          score += 10;
+          reasons.push(`✓ Bevorzugte Region (${object.city})`);
+        } else {
+          warnings.push(`Bevorzugte Region: ${emp.preferredRegion}, Objekt in: ${object.city}`);
+        }
+      }
+
+      // SC2: Kontinuität - War MA schon oft an diesem Objekt?
+      const previousDeploymentsAtObject = await prisma.deployment.count({
+        where: { employeeId: emp.id, objectId, status: { not: 'cancelled' } },
+      });
+      if (previousDeploymentsAtObject > 5) {
+        score += 15;
+        reasons.push(`✓ Erfahrung am Objekt (${previousDeploymentsAtObject}x eingeplant)`);
+      } else if (previousDeploymentsAtObject === 0) {
+        warnings.push('Keine Erfahrung an diesem Objekt');
+      }
+
+      // SC3: Fairness - Wie viele Einsätze hatte der MA diese Woche?
+      const weekStart = new Date(date);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+
+      const weeklyDeployments = await prisma.deployment.count({
+        where: {
+          employeeId: emp.id,
+          date: { gte: weekStart, lte: weekEnd },
+          status: { not: 'cancelled' },
+        },
+      });
+      if (weeklyDeployments < 3) {
+        score += 10;
+        reasons.push(`✓ Geringe Wochenbelastung (${weeklyDeployments} Einsätze)`);
+      } else if (weeklyDeployments > 5) {
+        warnings.push(`Hohe Wochenbelastung (${weeklyDeployments} Einsätze)`);
+        score -= 5;
+      }
+
+      // SC4: Mitarbeiterpräferenz (wenn vorhanden)
+      // TODO: Aus recurringAvailability-Notizen extrahieren
+
+      // SC5: Sicherheitsstufe passend?
+      if (emp.sicherheitsstufe >= 3 && startHour >= 20) {
+        score += 5;
+        reasons.push('✓ Erfahrene Kraft für Nachtschicht');
+      }
+
       candidates.push({
-        employeeId: employee.id,
-        employeeName: `${employee.firstName} ${employee.lastName}`,
+        employeeId: emp.id,
+        employeeName: `${emp.firstName} ${emp.lastName}`,
+        personnelNumber: emp.personnelNumber,
         score,
         reasons,
-        conflicts,
+        conflicts: [],
+        warnings,
+        disqualified: false,
       });
     }
 
-    // Nach Score sortieren
+    // Sortiere: Beste zuerst
     candidates.sort((a, b) => b.score - a.score);
 
-    return candidates.slice(0, requiredCount * 2); // Mehr Kandidaten als benötigt
+    return candidates;
+  }
+
+  /**
+   * Generiert einen vollständigen Plan für mehrere Schichten
+   */
+  async generatePlan(tenantId: string, deployments: { objectId: string; date: Date; startTime: string; endTime: string; requiredCount: number }[]) {
+    const results: PlanningResult[] = [];
+
+    for (const dep of deployments) {
+      const candidates = await this.findCandidates({
+        tenantId,
+        ...dep,
+      });
+
+      const qualified = candidates.filter(c => !c.disqualified);
+      const unqualified = candidates.filter(c => c.disqualified);
+
+      results.push({
+        request: { tenantId, ...dep },
+        candidates: qualified,
+        selectedCount: dep.requiredCount,
+        unselectedReasons: unqualified.map(c => ({
+          employeeId: c.employeeId,
+          name: c.employeeName,
+          reason: c.disqualificationReason || c.conflicts.join(', '),
+        })),
+      });
+    }
+
+    return results;
+  }
+
+  /**
+   * Validiert einen manuell erstellten Einsatz gegen alle Constraints
+   */
+  async validateDeployment(tenantId: string, employeeId: string, objectId: string, date: Date, startTime: string, endTime: string) {
+    const start = new Date(`${date.toISOString().split('T')[0]}T${startTime}`);
+    const end = new Date(`${date.toISOString().split('T')[0]}T${endTime}`);
+
+    const violations: { type: 'hard' | 'soft'; message: string }[] = [];
+
+    // Restriktionen
+    const restrictionCheck = await employeeRestrictionService.checkRestrictions(
+      tenantId, employeeId, date, start, end, objectId
+    );
+    if (!restrictionCheck.allowed) {
+      for (const v of restrictionCheck.violations) {
+        violations.push({ type: 'hard', message: v.message });
+      }
+    }
+
+    // Verfügbarkeit
+    const availabilityCheck = await recurringAvailabilityService.isAvailable(
+      tenantId, employeeId, date, start, end
+    );
+    if (!availabilityCheck.available) {
+      violations.push({ type: 'hard', message: availabilityCheck.reason });
+    }
+
+    // Bewachungserlaubnis
+    const emp = await prisma.employee.findFirst({ where: { id: employeeId, tenantId } });
+    if (emp?.bewachungserlaubnisExpiry && new Date(emp.bewachungserlaubnisExpiry) < date) {
+      violations.push({ type: 'hard', message: 'Bewachungserlaubnis abgelaufen' });
+    }
+
+    return {
+      valid: violations.filter(v => v.type === 'hard').length === 0,
+      violations,
+    };
   }
 }
 
