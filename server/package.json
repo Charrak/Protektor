@@ -19,7 +19,9 @@
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed:addon-customer-portal": "tsx prisma/seed-addon-customer-portal.ts"
+    "seed:addon-customer-portal": "tsx prisma/seed-addon-customer-portal.ts",
+    "seed:extended": "tsx prisma/seed-demo-data-extended.ts",
+    "seed:all": "npm run seed && npm run seed:demo && npm run seed:extended"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
