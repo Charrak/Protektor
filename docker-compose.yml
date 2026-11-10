@@ -52,7 +52,7 @@ services:
       DATABASE_URL: postgresql://sms_user:sms_password@postgres:5432/sms_db
       REDIS_URL: redis://redis:6379
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
-      CORS_ORIGIN: http://localhost:3000
+      CORS_ORIGIN: http://92.5.64.224:3000
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
