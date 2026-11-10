@@ -3,6 +3,7 @@ import { logger } from '../config/logger';
 import { ConflictError, NotFoundError } from '../middleware/errorHandler';
 import { v4 as uuidv4 } from 'uuid';
 import { emailService } from './email.service';
+import { ensureDefaultRoles } from './defaultRoles.service';
 import crypto from 'crypto';
 
 export interface CreateTenantInput {
@@ -125,75 +126,83 @@ export class TenantService {
   }
 
   async create(input: CreateTenantInput, platformAdminId: string) {
-    const tenantId = `TNT-${uuidv4().substring(0, 8).toUpperCase()}`;
-
-    const tenant = await prisma.tenant.create({
-      data: {
-        tenantId,
-        companyName: input.companyName,
-        contactEmail: input.contactEmail,
-        contactPhone: input.contactPhone,
-        address: input.address,
-        taxNumber: input.taxNumber,
-        vatId: input.vatId,
-        employeeLimit: input.employeeLimit || 50,
-        licenseStatus: input.trialDays ? 'TEST' : 'ACTIVE',
-        createdById: platformAdminId,
-      },
-    });
-
-    // Trial-Abonnement erstellen falls gewünscht
-    if (input.trialDays && input.planId) {
-      const trialEnd = new Date();
-      trialEnd.setDate(trialEnd.getDate() + input.trialDays);
-
-      await prisma.subscription.create({
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Mandant erstellen
+      const tenantId = `TNT-${uuidv4().substring(0, 8).toUpperCase()}`;
+      const tenant = await tx.tenant.create({
         data: {
-          tenantId: tenant.id,
-          planId: input.planId,
-          status: 'TRIAL',
-          billingInterval: 'MONTHLY',
-          currentPeriodStart: new Date(),
-          currentPeriodEnd: trialEnd,
-          trialStart: new Date(),
-          trialEnd,
-          monthlyRevenue: 0,
+          tenantId,
+          companyName: input.companyName,
+          contactEmail: input.contactEmail,
+          contactPhone: input.contactPhone,
+          address: input.address,
+          taxNumber: input.taxNumber,
+          vatId: input.vatId,
+          employeeLimit: input.employeeLimit || 50,
+          licenseStatus: input.trialDays ? 'TEST' : 'ACTIVE',
+          createdById: platformAdminId,
         },
       });
-    }
 
-    // Generate temporary password for tenant admin
-    const tempPassword = crypto.randomBytes(12).toString('base64').substring(0, 12);
+      // 2. Trial-Abonnement erstellen falls gewünscht
+      if (input.trialDays && input.planId) {
+        const trialEnd = new Date();
+        trialEnd.setDate(trialEnd.getDate() + input.trialDays);
 
-    // Create initial admin user for tenant
-    const bcrypt = await import('bcryptjs');
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
-    
-    await prisma.user.create({
-      data: {
-        userId: uuidv4(),
-        tenantId: tenant.id,
-        username: input.contactEmail,
-        passwordHash: hashedPassword,
-        firstName: 'Administrator',
-        lastName: input.companyName,
-        email: input.contactEmail,
-        isActive: true,
-        roleId: (await prisma.role.findFirst({ where: { name: 'Admin' } }))?.id || '',
-      },
+        await tx.subscription.create({
+          data: {
+            tenantId: tenant.id,
+            planId: input.planId,
+            status: 'TRIAL',
+            billingInterval: 'MONTHLY',
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: trialEnd,
+            trialStart: new Date(),
+            trialEnd,
+            monthlyRevenue: 0,
+          },
+        });
+      }
+
+      // 3. Standardrollen und Berechtigungen erstellen
+      await ensureDefaultRoles(tx, tenant.id);
+
+      // 4. Admin-Benutzer erstellen
+      const tempPassword = crypto.randomBytes(12).toString('base64').substring(0, 12);
+      const bcrypt = await import('bcryptjs');
+      const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+      const adminRole = await tx.role.findUniqueOrThrow({
+        where: { tenantId_slug: { tenantId: tenant.id, slug: 'admin' } },
+      });
+
+      await tx.user.create({
+        data: {
+          tenantId: tenant.id,
+          username: input.contactEmail,
+          email: input.contactEmail,
+          passwordHash: hashedPassword,
+          firstName: 'Administrator',
+          lastName: input.companyName,
+          isActive: true,
+          roleId: adminRole.id,
+        },
+      });
+
+      return { tenant, tempPassword };
     });
 
-    // Send welcome email with password setup link
+    // 5. Willkommens-E-Mail erst nach erfolgreichem Commit senden
     try {
-      await emailService.sendWelcomeEmail(tenant.id, tempPassword);
-      logger.info(`Willkommens-E-Mail gesendet an: ${tenant.contactEmail}`);
+      await emailService.sendWelcomeEmail(result.tenant.id, result.tempPassword);
+      logger.info(`Willkommens-E-Mail gesendet an: ${result.tenant.contactEmail}`);
     } catch (emailError) {
       logger.error(`Fehler beim Senden der Willkommens-E-Mail: ${emailError}`);
-      // Don't fail tenant creation if email fails
+      // Tenant wurde erfolgreich erstellt, E-Mail-Fehler ist nicht kritisch
     }
 
-    logger.info(`Mandant erstellt: ${tenant.companyName} (${tenant.tenantId})`);
-    return tenant;
+    logger.info(`Mandant erstellt: ${result.tenant.companyName} (${result.tenant.tenantId})`);
+    return result.tenant;
   }
 
   async update(id: string, input: UpdateTenantInput, platformAdminId: string) {

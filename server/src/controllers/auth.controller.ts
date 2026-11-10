@@ -21,7 +21,8 @@ export class AuthController {
         username,
         password,
         req.ip || req.socket.remoteAddress || undefined,
-        req.headers['user-agent']
+        req.headers['user-agent'],
+        req.body.tenantId
       );
 
       // Tokens in HttpOnly-Cookies setzen
