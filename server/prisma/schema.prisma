@@ -143,6 +143,7 @@ model Tenant {
   employeeDocuments       EmployeeDocument[]
   timeCorrections         TimeCorrection[]
   availabilities          Availability[]
+  breaks                  Break[]
   
   // Security Features (Phase 36)
   roles              Role[]
@@ -319,6 +320,7 @@ model User {
   createdRestrictions EmployeeRestriction[] @relation("restrictionCreator")
   createdCorrections TimeCorrection[] @relation("correctionCreator")
   approvedCorrections TimeCorrection[] @relation("correctionApprover")
+  changedTimeRecords TimeRecord[] @relation("timeChangedBy")
   approvedDeployments Deployment[] @relation("confirmedByEmployee")
 
   @@unique([tenantId, username])
@@ -893,6 +895,7 @@ model SMSObject {
   deployments     Deployment[]
   rates           CustomerRate[]
   restrictions    EmployeeRestriction[]
+  timeRecords     TimeRecord[]
   
   // Security Features (Phase 36)
   securityKeys       SecurityKey[]
@@ -1021,6 +1024,11 @@ model TimeRecord {
   deploymentId     String?   @db.VarChar(36)
   date             DateTime  @db.Date
   
+  // Einsatzort & Tätigkeit
+  objectId         String?   @db.VarChar(36)
+  postNumber       String?   @db.VarChar(50)  // Postennummer
+  activityType     String?   @db.VarChar(100) // Tätigkeit
+  
   // Stempelzeiten
   clockIn          DateTime
   clockOut         DateTime?
@@ -1054,20 +1062,38 @@ model TimeRecord {
   sundaySurchargePct Decimal? @db.Decimal(5, 2) // z.B. 50%
   holidaySurchargePct Decimal? @db.Decimal(5, 2) // z.B. 100%
   
+  // Zuschläge in € (berechnet)
+  nightSurcharge   Decimal? @db.Decimal(8, 2)
+  sundaySurcharge  Decimal? @db.Decimal(8, 2)
+  holidaySurcharge Decimal? @db.Decimal(8, 2)
+  totalSurcharge   Decimal? @db.Decimal(8, 2)
+  
   // Notizen & Quelle
   notes            String?   @db.Text
   sourceType       TimeRecordSource @default(manual)  // manuell, stempel, app
   sourceDevice     String?   @db.VarChar(100)  // z.B. "Mobile App", "Terminal"
   
+  // Export
+  exportedForPayroll Boolean @default(false)
+  exportedForCustomer Boolean @default(false)
+  exportDate       DateTime?
+  
+  // Audit-Trail
+  changedById      String?   @db.VarChar(36)
+  changedAt        DateTime?
+  changeReason     String?   @db.Text
+  
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  tenant      Tenant      @relation(fields: [tenantId], references: [id])
-  employee    Employee    @relation(fields: [employeeId], references: [id])
-  deployment  Deployment? @relation(fields: [deploymentId], references: [id])
-  approvedBy  User?       @relation("approvedBy", fields: [approvedById], references: [id])
-  correctedBy User?       @relation("correctedBy", fields: [correctedById], references: [id])
-  lockedBy    User?       @relation("lockedBy", fields: [lockedById], references: [id])
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  employee    Employee     @relation(fields: [employeeId], references: [id])
+  deployment  Deployment?  @relation(fields: [deploymentId], references: [id])
+  object      SMSObject?   @relation(fields: [objectId], references: [id])
+  approvedBy  User?        @relation("approvedBy", fields: [approvedById], references: [id])
+  correctedBy User?        @relation("correctedBy", fields: [correctedById], references: [id])
+  lockedBy    User?        @relation("lockedBy", fields: [lockedById], references: [id])
+  changedBy   User?        @relation("timeChangedBy", fields: [changedById], references: [id])
   breaks      Break[]
   corrections TimeCorrection[]
 
@@ -1112,13 +1138,18 @@ model TimeCorrection {
 }
 
 model Break {
-  id            String    @id @default(uuid())
-  timeRecordId  String    @db.VarChar(36)
-  breakStart    DateTime
-  breakEnd      DateTime?
+  id              String    @id @default(uuid())
+  tenantId        String    @db.VarChar(36)
+  timeRecordId    String    @db.VarChar(36)
+  breakStart      DateTime
+  breakEnd        DateTime?
   durationMinutes Int?
-  createdAt     DateTime  @default(now())
+  breakType       String?   @db.VarChar(50)  // "paid", "unpaid", "meal"
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
   timeRecord TimeRecord @relation(fields: [timeRecordId], references: [id])
 
   @@map("breaks")
