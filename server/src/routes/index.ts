@@ -18,6 +18,7 @@ import recurringAvailabilityRoutes from './recurringAvailability.routes';
 import employeeRestrictionRoutes from './employeeRestriction.routes';
 import employeeDocumentRoutes from './employeeDocument.routes';
 import timeRecordRoutes from './timeRecord.routes';
+import complianceRoutes from './compliance.routes';
 import { tenantContext } from '../middleware/tenantContext';
 
 const router = Router();
@@ -58,6 +59,9 @@ router.use('/deployments', deploymentRoutes);
 router.use('/auto-planning', autoPlannerRoutes);
 router.use('/time-records', timeRecordRoutes);
 router.use('/billing', billingRoutes);
+
+// ─── Phase 9: Compliance & Audit ───
+router.use('/compliance', complianceRoutes);
 
 // ─── Phase 9: DATEV-Export für Lohnabrechnung ───
 router.use('/datev', datevRoutes);
