@@ -9,7 +9,7 @@ import { Request } from 'express';
 // Allgemeines API Rate Limit
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 Minuten
-  max: 100, // Limit pro IP
+  max: 600, // Limit pro IP (erhöht für Dashboard-Nutzung hinter Proxy)
   message: {
     error: 'Zu viele Anfragen',
     message: 'Bitte versuchen Sie es in 15 Minuten erneut',
