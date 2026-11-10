@@ -145,7 +145,33 @@ async function main() {
     console.log('✅ Subscription erstellt für Demo Tenant\n');
   }
 
-  // 5. Demo Mitarbeiter erstellen
+  // 5. Demo User für Tenant erstellen
+  const demoUserPassword = await bcrypt.hash('Demo123!', 12);
+  
+  await prisma.user.upsert({
+    where: {
+      tenantId_username: {
+        tenantId: demoTenant.id,
+        username: 'demo',
+      },
+    },
+    update: {},
+    create: {
+      tenantId: demoTenant.id,
+      username: 'demo',
+      email: 'demo@security-company.de',
+      passwordHash: demoUserPassword,
+      firstName: 'Demo',
+      lastName: 'User',
+      isActive: true,
+    },
+  });
+
+  console.log('✅ Demo User erstellt:');
+  console.log(`   Username: demo`);
+  console.log(`   Password: Demo123!\n`);
+
+  // 6. Demo Mitarbeiter erstellen
   const demoEmployees = [
     { firstName: 'Max', lastName: 'Mustermann', email: 'max@demo.de', personnelNumber: 'MA001' },
     { firstName: 'Anna', lastName: 'Schmidt', email: 'anna@demo.de', personnelNumber: 'MA002' },
@@ -201,6 +227,8 @@ async function main() {
   console.log('\n🏢 Tenant App (Kunden-Portal):');
   console.log('   URL: http://92.5.64.224:3000');
   console.log('   Tenant ID: DEMO-001');
+  console.log('   Username: demo');
+  console.log('   Password: Demo123!');
   console.log('═══════════════════════════════════════════════\n');
 }
 
