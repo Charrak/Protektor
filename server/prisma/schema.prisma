@@ -2238,3 +2238,77 @@ enum FeedbackStatus {
   COMPLETED
   REJECTED
 }
+
+// ═══════════════════════════════════════════════
+// USAGE TRACKING
+// ═══════════════════════════════════════════════
+
+model UsageEvent {
+  id        String   @id @default(uuid())
+  tenantId  String   @db.VarChar(36)
+  resource  String   @db.VarChar(100)
+  action    String   @db.VarChar(50)
+  count     Int      @default(1)
+  metadata  Json?
+  trackedAt DateTime @default(now())
+
+  @@index([tenantId, trackedAt])
+  @@map("usage_events")
+}
+
+model UsageStat {
+  id         String   @id @default(uuid())
+  tenantId   String   @db.VarChar(36)
+  resource   String   @db.VarChar(100)
+  action     String   @db.VarChar(50)
+  count      Int      @default(0)
+  period     DateTime @db.Date
+  periodType String   @db.VarChar(10) // DAILY, MONTHLY, YEARLY
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([tenantId, resource, action, period])
+  @@index([tenantId, period])
+  @@map("usage_stats")
+}
+
+// ═══════════════════════════════════════════════
+// ALLOWANCES (Zuschläge/Zulagen)
+// ═══════════════════════════════════════════════
+
+model Allowance {
+  id          String    @id @default(uuid())
+  tenantId    String    @db.VarChar(36)
+  employeeId  String    @db.VarChar(36)
+  date        DateTime  @db.Date
+  type        String    @db.VarChar(50) // NIGHT, SUNDAY, HOLIDAY, OVERTIME
+  amount      Decimal   @db.Decimal(10, 2)
+  hours       Decimal   @db.Decimal(5, 2)
+  description String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+
+  @@index([tenantId, date])
+  @@map("allowances")
+}
+
+// ═══════════════════════════════════════════════
+// WEBHOOKS (Kunden-Webhooks)
+// ═══════════════════════════════════════════════
+
+model Webhook {
+  id          String    @id @default(uuid())
+  tenantId    String    @db.VarChar(36)
+  url         String    @db.VarChar(500)
+  secret      String    @db.VarChar(255)
+  events      String[]  @db.VarChar(100) // Array von Event-Typen
+  isActive    Boolean   @default(true)
+  lastTrigger DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@map("webhooks")
+}

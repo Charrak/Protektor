@@ -140,7 +140,7 @@ export class DatevExportService {
     const startDate = new Date(period.year, period.month - 1, 1);
     const endDate = new Date(period.year, period.month, 0);
 
-    const timeEntries = await prisma.timeEntry.findMany({
+    const timeEntries = await prisma.timeRecord.findMany({
       where: {
         tenantId,
         date: {

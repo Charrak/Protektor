@@ -194,7 +194,7 @@ export class AuditRollbackService {
         await prisma.deployment.delete({ where: { id: entityId } });
         break;
       case 'TimeEntry':
-        await prisma.timeEntry.delete({ where: { id: entityId } });
+        await prisma.timeRecord.delete({ where: { id: entityId } });
         break;
       default:
         throw new Error(`Rollback für ${entityType} nicht implementiert`);
@@ -235,7 +235,7 @@ export class AuditRollbackService {
         });
         break;
       case 'TimeEntry':
-        await prisma.timeEntry.update({
+        await prisma.timeRecord.update({
           where: { id: entityId },
           data: oldValue,
         });
@@ -270,7 +270,7 @@ export class AuditRollbackService {
         await prisma.deployment.create({ data: oldValue });
         break;
       case 'TimeEntry':
-        await prisma.timeEntry.create({ data: oldValue });
+        await prisma.timeRecord.create({ data: oldValue });
         break;
       default:
         throw new Error(`Rollback für ${entityType} nicht implementiert`);

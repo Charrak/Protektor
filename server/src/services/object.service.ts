@@ -39,7 +39,7 @@ export class ObjectService {
     }
 
     const [objects, total] = await Promise.all([
-      prisma.object.findMany({
+      prisma.sMSObject.findMany({
         where,
         skip: ((page || 1) - 1) * (limit || 50),
         take: limit || 50,
@@ -52,7 +52,7 @@ export class ObjectService {
           },
         },
       }),
-      prisma.object.count({ where }),
+      prisma.sMSObject.count({ where }),
     ]);
 
     return {
@@ -68,7 +68,7 @@ export class ObjectService {
    * Ruft ein Objekt ab und entschlüsselt Zugangsdaten falls vorhanden
    */
   async getById(id: string) {
-    const object = await prisma.object.findUnique({
+    const object = await prisma.sMSObject.findUnique({
       where: { id },
       include: {
         customer: true,
@@ -127,7 +127,7 @@ export class ObjectService {
       data.accessCredentials = encrypted;
     }
 
-    const object = await prisma.object.create({
+    const object = await prisma.sMSObject.create({
       data: {
         objectNumber: data.objectNumber,
         customerId: data.customerId,
@@ -176,7 +176,7 @@ export class ObjectService {
       data.accessCredentials = encrypted;
     }
 
-    const object = await prisma.object.update({
+    const object = await prisma.sMSObject.update({
       where: { id },
       data,
     });
@@ -199,7 +199,7 @@ export class ObjectService {
    * Setzt Objekt-Anforderungen
    */
   async setRequirements(objectId: string, requirements: any[], userId: string) {
-    const object = await prisma.object.update({
+    const object = await prisma.sMSObject.update({
       where: { id: objectId },
       data: {
         requirements: requirements as any,

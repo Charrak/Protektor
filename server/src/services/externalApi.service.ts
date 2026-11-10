@@ -192,7 +192,7 @@ export class ExternalApiService {
    * POST /api/external/time-entries
    */
   async createTimeEntry(tenantId: string, data: any, apiKeyId: string) {
-    const entry = await prisma.timeEntry.create({
+    const entry = await prisma.timeRecord.create({
       data: {
         tenantId,
         employeeId: data.employeeId,
