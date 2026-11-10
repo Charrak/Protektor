@@ -18,7 +18,8 @@
     "seed:data": "tsx prisma/seed-demo-data.ts",
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "seed:addon-customer-portal": "tsx prisma/seed-addon-customer-portal.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

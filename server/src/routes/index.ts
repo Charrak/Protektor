@@ -22,6 +22,7 @@ import complianceRoutes from './compliance.routes';
 import customerDocumentRoutes from './customerDocument.routes';
 import shiftReportRoutes from './shiftReport.routes';
 import reminderRoutes from './reminder.routes';
+import customerPortalRoutes from './customerPortal.routes';
 import { tenantContext } from '../middleware/tenantContext';
 
 const router = Router();
@@ -57,6 +58,7 @@ router.use('/objects', objectRoutes);
 router.use('/customer-documents', customerDocumentRoutes);
 router.use('/shift-reports', shiftReportRoutes);
 router.use('/reminders', reminderRoutes);
+router.use('/customer-portal', customerPortalRoutes);
 
 // ─── Phase 4: Dienstplanung ───
 router.use('/deployments', deploymentRoutes);
