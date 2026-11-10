@@ -109,9 +109,9 @@ export class EmployeeService {
     if (!tenantId) {
       throw new ValidationError('Tenant-ID erforderlich');
     }
-    // Prüfen ob Personalnummer bereits vergeben
+    // Prüfen ob Personalnummer bereits vergeben (mandantenspezifisch)
     const existing = await prisma.employee.findFirst({
-      where: { personnelNumber: input.personnelNumber, deletedAt: null },
+      where: { tenantId, personnelNumber: input.personnelNumber },
     });
 
     if (existing) {

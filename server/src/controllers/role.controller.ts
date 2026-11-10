@@ -2,14 +2,11 @@ import { Request, Response, NextFunction } from 'express';
 import { roleService } from '../services/role.service';
 
 export class RoleController {
-  async list(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  async list(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const roles = await roleService.list();
-      console.log('[RoleController.list] Anzahl Rollen:', roles.length);
-      console.log('[RoleController.list] Rollen:', JSON.stringify(roles.map(r => ({ id: r.id, name: r.name, slug: r.slug })), null, 2));
+      const roles = await roleService.list(req.user!.tenantId);
       res.json(roles);
     } catch (error) {
-      console.error('[RoleController.list] Fehler:', error);
       next(error);
     }
   }
@@ -17,7 +14,7 @@ export class RoleController {
   async getById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const id = req.params.id as string;
-      const role = await roleService.getById(id);
+      const role = await roleService.getById(id, req.user!.tenantId);
       res.json(role);
     } catch (error) {
       next(error);
@@ -31,7 +28,7 @@ export class RoleController {
         res.status(400).json({ error: 'Name und Slug sind erforderlich' });
         return;
       }
-      const role = await roleService.create({ name, slug, description, tenantId: req.user?.tenantId });
+      const role = await roleService.create({ name, slug, description }, req.user!.tenantId);
       res.status(201).json(role);
     } catch (error) {
       next(error);
@@ -42,7 +39,7 @@ export class RoleController {
     try {
       const id = req.params.id as string;
       const { name, description } = req.body;
-      const role = await roleService.update(id, { name, description });
+      const role = await roleService.update(id, req.user!.tenantId, { name, description });
       res.json(role);
     } catch (error) {
       next(error);
@@ -57,7 +54,7 @@ export class RoleController {
         res.status(400).json({ error: 'permissionIds muss ein Array sein' });
         return;
       }
-      await roleService.setPermissions(id, permissionIds);
+      await roleService.setPermissions(id, req.user!.tenantId, permissionIds);
       res.json({ message: 'Berechtigungen aktualisiert' });
     } catch (error) {
       next(error);
@@ -67,7 +64,7 @@ export class RoleController {
   async delete(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const id = req.params.id as string;
-      await roleService.delete(id);
+      await roleService.delete(id, req.user!.tenantId);
       res.json({ message: 'Rolle gelöscht' });
     } catch (error) {
       next(error);

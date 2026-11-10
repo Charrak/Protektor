@@ -7,7 +7,7 @@ const router = Router();
 
 // Mitarbeiter-CRUD
 router.get('/', authenticate, requirePermission('employees:view'), (req, res, next) => employeeController.list(req, res, next));
-router.post('/', authenticate, requirePermission('employees:create'), (req, res, next) => employeeController.create(req, res, next));
+router.post('/', authenticate, requirePermission('employees:create'), tenantContextMiddleware, (req, res, next) => employeeController.create(req, res, next));
 router.get('/:id', authenticate, requirePermission('employees:view'), (req, res, next) => employeeController.getById(req, res, next));
 router.put('/:id', authenticate, requirePermission('employees:edit'), (req, res, next) => employeeController.update(req, res, next));
 router.delete('/:id', authenticate, requirePermission('employees:delete'), (req, res, next) => employeeController.delete(req, res, next));

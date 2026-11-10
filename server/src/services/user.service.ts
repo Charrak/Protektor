@@ -21,11 +21,11 @@ interface UpdateUserInput {
 }
 
 export class UserService {
-  async list(query: { search?: string; roleId?: string; isActive?: boolean; page?: number; limit?: number }) {
-    const { search, roleId, isActive, page = 1, limit = 25 } = query;
+  async list(query: { tenantId: string; search?: string; roleId?: string; isActive?: boolean; page?: number; limit?: number }) {
+    const { tenantId, search, roleId, isActive, page = 1, limit = 25 } = query;
     const skip = (page - 1) * limit;
 
-    const where: any = { deletedAt: null };
+    const where: any = { tenantId, deletedAt: null };
 
     if (search) {
       where.OR = [
@@ -59,9 +59,9 @@ export class UserService {
     };
   }
 
-  async getById(id: string) {
+  async getById(id: string, tenantId: string) {
     const user = await prisma.user.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, tenantId, deletedAt: null },
       include: {
         role: {
           include: {
@@ -94,15 +94,16 @@ export class UserService {
     };
   }
 
-  async create(input: CreateUserInput) {
-    // Prüfen ob Username oder Email bereits vergeben
+  async create(input: CreateUserInput, tenantId: string) {
+    // Prüfen ob Username oder Email bereits vergeben (mandantenspezifisch)
     const existing = await prisma.user.findFirst({
       where: {
+        tenantId,
+        deletedAt: null,
         OR: [
           { username: input.username },
           { email: input.email },
         ],
-        deletedAt: null,
       },
     });
 
@@ -113,50 +114,62 @@ export class UserService {
       throw new ConflictError('E-Mail-Adresse ist bereits vergeben');
     }
 
-    // Rolle prüfen
-    const role = await prisma.role.findUnique({ where: { id: input.roleId } });
+    // Rolle prüfen (muss zum Mandanten gehören)
+    const role = await prisma.role.findFirst({
+      where: { id: input.roleId, tenantId },
+    });
     if (!role) throw new NotFoundError('Rolle');
 
     const passwordHash = await bcrypt.hash(input.password, 12);
 
     const user = await prisma.user.create({
       data: {
+        tenantId,
         username: input.username,
         email: input.email,
         passwordHash,
         firstName: input.firstName,
         lastName: input.lastName,
-        roleId: input.roleId,
+        roleId: role.id,
       },
       include: { role: true },
     });
 
-    logger.info(`Benutzer erstellt: ${user.username} (${role.slug})`);
+    logger.info(`Benutzer erstellt: ${user.username} (${role.slug}) für Mandant ${tenantId}`);
 
     return this.toSafeUser(user);
   }
 
-  async update(id: string, input: UpdateUserInput) {
-    const existing = await prisma.user.findFirst({ where: { id, deletedAt: null } });
+  async update(id: string, tenantId: string, input: UpdateUserInput) {
+    const existing = await prisma.user.findFirst({ where: { id, tenantId, deletedAt: null } });
     if (!existing) throw new NotFoundError('Benutzer');
 
-    // Bei E-Mail-Änderung prüfen
+    // Bei E-Mail-Änderung prüfen (mandantenspezifisch)
     if (input.email && input.email !== existing.email) {
       const emailTaken = await prisma.user.findFirst({
-        where: { email: input.email, deletedAt: null, id: { not: id } },
+        where: { tenantId, email: input.email, deletedAt: null, id: { not: id } },
       });
       if (emailTaken) throw new ConflictError('E-Mail-Adresse ist bereits vergeben');
     }
 
+    // Bei Rollenänderung prüfen (muss zum Mandanten gehören)
+    if (input.roleId && input.roleId !== existing.roleId) {
+      const role = await prisma.role.findFirst({
+        where: { id: input.roleId, tenantId },
+      });
+      if (!role) throw new NotFoundError('Rolle');
+    }
+
+    const updateData: any = {};
+    if (input.email !== undefined) updateData.email = input.email;
+    if (input.firstName !== undefined) updateData.firstName = input.firstName;
+    if (input.lastName !== undefined) updateData.lastName = input.lastName;
+    if (input.roleId !== undefined) updateData.roleId = input.roleId;
+    if (input.isActive !== undefined) updateData.isActive = input.isActive;
+
     const user = await prisma.user.update({
       where: { id },
-      data: {
-        ...(input.email !== undefined && { email: input.email }),
-        ...(input.firstName !== undefined && { firstName: input.firstName }),
-        ...(input.lastName !== undefined && { lastName: input.lastName }),
-        ...(input.roleId !== undefined && { roleId: input.roleId }),
-        ...(input.isActive !== undefined && { isActive: input.isActive }),
-      },
+      data: updateData,
       include: { role: true },
     });
 
@@ -165,8 +178,8 @@ export class UserService {
     return this.toSafeUser(user);
   }
 
-  async resetPassword(id: string, newPassword: string) {
-    const user = await prisma.user.findFirst({ where: { id, deletedAt: null } });
+  async resetPassword(id: string, tenantId: string, newPassword: string) {
+    const user = await prisma.user.findFirst({ where: { id, tenantId, deletedAt: null } });
     if (!user) throw new NotFoundError('Benutzer');
 
     if (newPassword.length < 8) {
@@ -189,8 +202,8 @@ export class UserService {
     logger.info(`Passwort zurückgesetzt für: ${user.username}`);
   }
 
-  async delete(id: string) {
-    const user = await prisma.user.findFirst({ where: { id, deletedAt: null } });
+  async delete(id: string, tenantId: string) {
+    const user = await prisma.user.findFirst({ where: { id, tenantId, deletedAt: null } });
     if (!user) throw new NotFoundError('Benutzer');
 
     // Soft-Delete

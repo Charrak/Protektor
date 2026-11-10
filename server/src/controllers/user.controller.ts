@@ -6,6 +6,7 @@ export class UserController {
     try {
       const { search, roleId, isActive, page, limit } = req.query;
       const result = await userService.list({
+        tenantId: req.user!.tenantId,
         search: search as string,
         roleId: roleId as string,
         isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined,
@@ -21,7 +22,7 @@ export class UserController {
   async getById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const id = req.params.id as string;
-      const user = await userService.getById(id);
+      const user = await userService.getById(id, req.user!.tenantId);
       res.json(user);
     } catch (error) {
       next(error);
@@ -42,7 +43,10 @@ export class UserController {
         return;
       }
 
-      const user = await userService.create({ username, email, password, firstName, lastName, roleId });
+      const user = await userService.create(
+        { username, email, password, firstName, lastName, roleId },
+        req.user!.tenantId
+      );
       res.status(201).json(user);
     } catch (error) {
       next(error);
@@ -53,7 +57,7 @@ export class UserController {
     try {
       const id = req.params.id as string;
       const { email, firstName, lastName, roleId, isActive } = req.body;
-      const user = await userService.update(id, { email, firstName, lastName, roleId, isActive });
+      const user = await userService.update(id, req.user!.tenantId, { email, firstName, lastName, roleId, isActive });
       res.json(user);
     } catch (error) {
       next(error);
@@ -68,7 +72,7 @@ export class UserController {
         res.status(400).json({ error: 'Neues Passwort erforderlich' });
         return;
       }
-      await userService.resetPassword(id, newPassword);
+      await userService.resetPassword(id, req.user!.tenantId, newPassword);
       res.json({ message: 'Passwort erfolgreich zurückgesetzt' });
     } catch (error) {
       next(error);
@@ -83,7 +87,7 @@ export class UserController {
         res.status(400).json({ error: 'Eigener Account kann nicht deaktiviert werden' });
         return;
       }
-      await userService.delete(id);
+      await userService.delete(id, req.user!.tenantId);
       res.json({ message: 'Benutzer deaktiviert' });
     } catch (error) {
       next(error);
