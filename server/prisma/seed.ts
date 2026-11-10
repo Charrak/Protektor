@@ -54,22 +54,7 @@ async function main() {
   console.log(`   Tenant ID: DEMO-001`);
   console.log(`   Lizenz: ACTIVE\n`);
 
-  // 3. Subscription für Demo Tenant
-  const subscription = await prisma.subscription.create({
-    data: {
-      tenantId: demoTenant.id,
-      planId: plans[1]?.id || 'professional-plan-id', // Professional Plan
-      status: 'ACTIVE',
-      billingInterval: 'MONTHLY',
-      currentPeriodStart: new Date(),
-      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // +30 Tage
-      monthlyRevenue: 149.99, // Professional Plan Preis
-    },
-  });
-
-  console.log('✅ Subscription erstellt für Demo Tenant\n');
-
-  // 4. Pläne erstellen
+  // 3. Pläne erstellen
   const plans = [
     {
       name: 'Starter',
@@ -142,6 +127,23 @@ async function main() {
   console.log('   - Starter (49.99€/Monat, 10 Mitarbeiter)');
   console.log('   - Professional (149.99€/Monat, 50 Mitarbeiter)');
   console.log('   - Enterprise (399.99€/Monat, 200 Mitarbeiter)\n');
+
+  // 4. Subscription für Demo Tenant
+  const professionalPlan = await prisma.plan.findUnique({ where: { slug: 'professional' } });
+  if (professionalPlan) {
+    const subscription = await prisma.subscription.create({
+      data: {
+        tenantId: demoTenant.id,
+        planId: professionalPlan.id,
+        status: 'ACTIVE',
+        billingInterval: 'MONTHLY',
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // +30 Tage
+        monthlyRevenue: 149.99,
+      },
+    });
+    console.log('✅ Subscription erstellt für Demo Tenant\n');
+  }
 
   // 5. Demo Mitarbeiter erstellen
   const demoEmployees = [
