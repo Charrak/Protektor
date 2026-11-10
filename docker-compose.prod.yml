@@ -3,7 +3,7 @@ version: '3.8'
 # ============================================
 # SMS - Production Docker Compose
 # For Customers - No Source Code Required
-# Uses Pre-built Docker Images
+# Uses Pre-built Docker Images with Nginx Reverse Proxy
 # ============================================
 
 services:
@@ -53,11 +53,11 @@ services:
       DATABASE_URL: postgresql://sms_user:${POSTGRES_PASSWORD}@postgres:5432/sms_db
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET}
-      CORS_ORIGIN: http://localhost:5173
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
       PLATFORM_ADMIN_EMAIL: ${PLATFORM_ADMIN_EMAIL:-admin@sms-platform.com}
       PLATFORM_ADMIN_PASSWORD: ${PLATFORM_ADMIN_PASSWORD:-Admin123!}
-    ports:
-      - "5000:5000"
+    expose:
+      - "5000"
     volumes:
       - uploads_data:/app/uploads
     depends_on:
@@ -74,17 +74,32 @@ services:
       retries: 3
       start_period: 40s
 
-  # Frontend React App (Production Build)
+  # Frontend React App (Production Build served by Nginx)
   frontend:
-    image: ghcr.io/charrak/protektor/frontend:latest
+    build:
+      context: ./client
+      dockerfile: Dockerfile.prod
     container_name: sms-frontend
     restart: unless-stopped
-    environment:
-      VITE_API_URL: http://localhost:5000/api
-    ports:
-      - "5173:80"
+    expose:
+      - "80"
     depends_on:
       - backend
+    networks:
+      - sms-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: sms-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
     networks:
       - sms-network
 
