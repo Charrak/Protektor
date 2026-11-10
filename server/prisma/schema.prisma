@@ -547,6 +547,9 @@ model Employee {
   reportedIncidents    SecurityIncident[] @relation("incidentReporter")
   resolvedIncidents    SecurityIncident[] @relation("incidentResolver")
   accessPermissions    AccessPermission[]
+  
+  // Allowances (Zuschläge)
+  allowances           Allowance[]
 
   @@unique([tenantId, personnelNumber])
   @@map("employees")
