@@ -11,7 +11,7 @@ import multer from 'multer';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']; // SVG entfernt (Stored XSS Risiko)
 
 // Ensure upload directory exists
 async function ensureUploadDir(): Promise<void> {

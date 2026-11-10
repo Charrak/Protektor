@@ -18,8 +18,7 @@ import { tenantMiddleware } from './middleware/tenantMiddleware';
 import { authenticate } from './middleware/auth';
 import { startLockCleanupJob } from './services/locking.service';
 import stripeWebhookRoutes from './routes/stripeWebhook.routes';
-import { apiLimiter, authLimiter, platformLimiter, webhookLimiter, suspiciousActivityDetector } from './middleware/rateLimiter';
-import { sanitizeInput } from './utils/validation';
+import { apiLimiter, authLimiter, platformLimiter, webhookLimiter } from './middleware/rateLimiter';
 import { customSecurityHeaders } from './middleware/security';
 
 const app = express();
@@ -36,11 +35,8 @@ app.use(helmet({
 // Custom Security Headers
 app.use(customSecurityHeaders);
 
-// Suspicious Activity Detection
-app.use(suspiciousActivityDetector);
-
-// Input Sanitization
-app.use(sanitizeInput);
+// Suspicious Activity Detection entfernt (blockiert normale Texte mit ; oder --)
+// Input Sanitization entfernt (läuft vor express.json() und hat keine Wirkung)
 
 // Stripe Webhook (braucht raw Body, MUSS vor express.json() stehen!)
 app.use('/api/platform/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhookRoutes);
@@ -62,8 +58,9 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 // ─── Rate Limiting ───
 app.use('/api/', apiLimiter);
 
-// Strikteres Rate Limiting für Login
+// Strikteres Rate Limiting für Login (Tenant + Platform)
 app.use('/api/v1/auth/login', authLimiter);
+app.use('/api/platform/auth/login', authLimiter);
 
 // Platform API Rate Limiting
 app.use('/api/platform', platformLimiter);

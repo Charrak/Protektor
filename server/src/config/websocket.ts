@@ -17,47 +17,76 @@ export function initWebSocket(server: HttpServer): Server {
   // Namespace: /sms
   const smsNamespace = io.of('/sms');
 
-  smsNamespace.use((socket: Socket, next) => {
-    // Authentifizierung über Token im Handshake
-    const token = socket.handshake.auth?.token;
-    if (!token) {
-      logger.warn(`WebSocket-Verbindung abgelehnt: Kein Token`);
-      return next(new Error('Authentifizierung erforderlich'));
+  smsNamespace.use(async (socket: Socket, next) => {
+    // Echte JWT-Authentifizierung im Handshake
+    try {
+      const token = socket.handshake.auth?.token;
+      if (!token) {
+        logger.warn(`WebSocket-Verbindung abgelehnt: Kein Token`);
+        return next(new Error('Authentifizierung erforderlich'));
+      }
+
+      // JWT validieren
+      const jwt = (await import('jsonwebtoken')).default;
+      const decoded = jwt.verify(token, config.jwtSecret) as { userId: string; sessionId: string };
+
+      // Session prüfen
+      const session = await prisma.session.findFirst({
+        where: {
+          id: decoded.sessionId,
+          userId: decoded.userId,
+          isActive: true,
+          expiresAt: { gt: new Date() },
+        },
+        include: {
+          user: { include: { role: true } },
+        },
+      });
+
+      if (!session || !session.user.isActive) {
+        logger.warn(`WebSocket-Verbindung abgelehnt: Ungültige Sitzung`);
+        return next(new Error('Ungültige Sitzung'));
+      }
+
+      // Socket-Daten setzen
+      socket.data = {
+        userId: session.userId,
+        tenantId: session.user.tenantId,
+        role: session.user.role.slug,
+      };
+
+      next();
+    } catch (err) {
+      logger.warn(`WebSocket-Verbindung abgelehnt: Ungültiger Token`);
+      next(new Error('Ungültiger Token'));
     }
-    // Token wird später im auth:login Event validiert
-    next();
   });
 
   smsNamespace.on('connection', (socket: Socket) => {
-    logger.info(`WebSocket verbunden: ${socket.id}`);
+    const { userId, tenantId, role } = socket.data;
+    logger.info(`WebSocket verbunden: ${socket.id} (User: ${userId}, Tenant: ${tenantId})`);
 
-    // Authentication Event
-    socket.on('auth:login', (data: { userId: string; role: string }) => {
-      socket.join('authenticated');
-      socket.join(`user:${data.userId}`);
-      socket.join(`role:${data.role}`);
+    // Automatisch zu Rooms joinen (mandantenspezifisch)
+    socket.join(`tenant:${tenantId}`);
+    socket.join(`user:${userId}`);
+    socket.join(`role:${tenantId}:${role}`);
+    socket.join('authenticated');
 
-      // Andere Benutzer benachrichtigen
-      socket.broadcast.to('authenticated').emit('user:joined', {
-        userId: data.userId,
-        role: data.role,
-        timestamp: new Date().toISOString(),
-      });
-
-      logger.info(`WebSocket authentifiziert: User ${data.userId}, Rolle: ${data.role}`);
+    // Andere Benutzer im Tenant benachrichtigen
+    socket.broadcast.to(`tenant:${tenantId}`).emit('user:joined', {
+      userId,
+      role,
+      timestamp: new Date().toISOString(),
     });
+
+    logger.info(`WebSocket authentifiziert: User ${userId}, Tenant ${tenantId}, Rolle: ${role}`);
 
     socket.on('disconnect', (reason: string) => {
       logger.info(`WebSocket getrennt: ${socket.id} (${reason})`);
-
-      // Benutzer-Info aus Socket-Daten
-      const userId = socket.data?.userId;
-      if (userId) {
-        smsNamespace.to('authenticated').emit('user:left', {
-          userId,
-          timestamp: new Date().toISOString(),
-        });
-      }
+      smsNamespace.to(`tenant:${tenantId}`).emit('user:left', {
+        userId,
+        timestamp: new Date().toISOString(),
+      });
     });
   });
 

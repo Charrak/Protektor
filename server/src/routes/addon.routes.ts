@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { addonController } from '../controllers/addon.controller';
 import { authenticate } from '../middleware/auth';
+import { requirePermission } from '../middleware/authorization';
 
 const router = Router();
 
@@ -33,14 +34,14 @@ router.get('/monthly-cost', addonController.getMonthlyCost);
  * @desc    Aktiviert ein Add-on für den aktuellen Tenant
  * @access  Private (Admin)
  */
-router.post('/:addonId/activate', addonController.activateAddon);
+router.post('/:addonId/activate', requirePermission('admin:settings'), addonController.activateAddon);
 
 /**
  * @route   POST /api/v1/addons/:tenantAddonId/deactivate
  * @desc    Deaktiviert ein Add-on
  * @access  Private (Admin)
  */
-router.post('/:tenantAddonId/deactivate', addonController.deactivateAddon);
+router.post('/:tenantAddonId/deactivate', requirePermission('admin:settings'), addonController.deactivateAddon);
 
 /**
  * @route   GET /api/v1/features
