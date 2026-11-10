@@ -151,6 +151,7 @@ model Tenant {
   reminders               Reminder[]
   customerAccessLogs      CustomerAccessLog[]
   customerUsers           CustomerUser[]
+  contactPersons          ContactPerson[]
   tenantFieldConfigs      TenantFieldConfig[]
   
   // Security Features (Phase 36)
@@ -950,6 +951,7 @@ model ContactPerson {
   customer Customer  @relation(fields: [customerId], references: [id])
   objects  SMSObject[]
   portalUsers CustomerUser[]
+  invoices CustomerInvoice[] @relation("invoiceBillingContact")
 
   @@map("contact_persons")
 }
@@ -1330,7 +1332,7 @@ model CustomerInvoice {
 
   tenant          Tenant            @relation(fields: [tenantId], references: [id])
   customer        Customer          @relation(fields: [customerId], references: [id])
-  billingContact  ContactPerson?    @relation(fields: [billingContactId], references: [id])
+  billingContact  ContactPerson?    @relation("invoiceBillingContact", fields: [billingContactId], references: [id])
   positions       InvoicePosition[]
   createdBy       User              @relation(fields: [createdById], references: [id])
   reminders       Reminder[]
@@ -1397,8 +1399,6 @@ model CustomerDocument {
   deleteAt        DateTime?   // Automatisches Löschdatum
   
   // Metadaten
-  uploadedById    String?  @db.VarChar(36)
-  verifiedById    String?  @db.VarChar(36)
   verifiedAt      DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -1406,8 +1406,10 @@ model CustomerDocument {
 
   tenant          Tenant   @relation(fields: [tenantId], references: [id])
   customer        Customer @relation(fields: [customerId], references: [id])
-  uploadedBy      User?    @relation("customerDocUploadedBy")
-  verifiedBy      User?    @relation("customerDocVerifiedBy")
+  uploadedById    String?  @db.VarChar(36)
+  verifiedById    String?  @db.VarChar(36)
+  uploadedBy      User?    @relation("customerDocUploadedBy", fields: [uploadedById], references: [id])
+  verifiedBy      User?    @relation("customerDocVerifiedBy", fields: [verifiedById], references: [id])
 
   @@map("customer_documents")
 }
@@ -1611,6 +1613,8 @@ model TenantFieldConfig {
   sortOrder       Int      @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
 
   @@unique([tenantId, entityType, fieldName])
   @@map("tenant_field_configs")
@@ -2156,6 +2160,8 @@ model ContactRequest {
   
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  
+  tenant       Tenant?   @relation(fields: [tenantId], references: [id])
   
   @@index([status, createdAt])
   @@map("contact_requests")
