@@ -445,8 +445,8 @@ async function main() {
     await prisma.employee.upsert({
       where: {
         tenantId_personnelNumber: {
-          tenantId: tenant1.id,
-          personnelNumber: `SN${String(i + 1).padStart(3, '0')}`,
+          tenantId: tenant2.id,
+          personnelNumber: `SA${String(i + 1).padStart(3, '0')}`,
         },
       },
       update: {},
@@ -486,8 +486,8 @@ async function main() {
     await prisma.employee.upsert({
       where: {
         tenantId_personnelNumber: {
-          tenantId: tenant1.id,
-          personnelNumber: `SN${String(i + 1).padStart(3, '0')}`,
+          tenantId: tenant3.id,
+          personnelNumber: `SS${String(i + 1).padStart(3, '0')}`,
         },
       },
       update: {},
