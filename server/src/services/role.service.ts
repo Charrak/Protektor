@@ -3,12 +3,9 @@ import { logger } from '../config/logger';
 import { ConflictError, NotFoundError } from '../middleware/errorHandler';
 
 export class RoleService {
-  async list(tenantId?: string) {
-    const where: any = {};
-    if (tenantId) where.tenantId = tenantId;
-
+  async list(_tenantId?: string) {
+    // Rollen sind systemweit - kein tenantId-Filter
     const roles = await prisma.role.findMany({
-      where,
       include: {
         rolePermissions: {
           include: { permission: true },
@@ -65,9 +62,9 @@ export class RoleService {
     };
   }
 
-  async create(data: { name: string; slug: string; description?: string; tenantId: string }) {
+  async create(data: { name: string; slug: string; description?: string; tenantId?: string }) {
     const existing = await prisma.role.findFirst({
-      where: { tenantId: data.tenantId, slug: data.slug },
+      where: { slug: data.slug },
     });
     if (existing) throw new ConflictError('Rollen-Slug ist bereits vergeben');
 
