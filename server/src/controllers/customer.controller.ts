@@ -34,14 +34,7 @@ export class CustomerController {
         return;
       }
 
-      const { customerNumber, companyName } = req.body;
-
-      if (!customerNumber || !companyName) {
-        res.status(400).json({ error: 'Kundennummer und Firmenname sind erforderlich' });
-        return;
-      }
-
-      const customer = await customerService.create(req.body, req.user.id);
+      const customer = await customerService.create(req.body, req.user.id, req.user.tenantId);
       res.status(201).json(customer);
     } catch (error) {
       next(error);
@@ -56,7 +49,7 @@ export class CustomerController {
       }
 
       const id = req.params.id as string;
-      const customer = await customerService.update(id, req.body, req.user.id);
+      const customer = await customerService.update(id, req.body, req.user.id, req.user.tenantId);
       res.json(customer);
     } catch (error) {
       next(error);
@@ -71,7 +64,7 @@ export class CustomerController {
       }
 
       const id = req.params.id as string;
-      await customerService.delete(id, req.user.id);
+      await customerService.delete(id, req.user.id, req.user.tenantId);
       res.json({ message: 'Kunde deaktiviert' });
     } catch (error) {
       next(error);
@@ -86,14 +79,7 @@ export class CustomerController {
       }
 
       const customerId = req.params.id as string;
-      const { firstName, lastName } = req.body;
-
-      if (!firstName || !lastName) {
-        res.status(400).json({ error: 'Vorname und Nachname sind erforderlich' });
-        return;
-      }
-
-      const contact = await customerService.addContactPerson(customerId, req.body, req.user.id);
+      const contact = await customerService.addContactPerson(customerId, req.body, req.user.id, req.user.tenantId);
       res.status(201).json(contact);
     } catch (error) {
       next(error);
@@ -109,7 +95,7 @@ export class CustomerController {
 
       const customerId = req.params.id as string;
       const contactId = req.params.cid as string;
-      const contact = await customerService.updateContactPerson(customerId, contactId, req.body, req.user.id);
+      const contact = await customerService.updateContactPerson(customerId, contactId, req.body, req.user.id, req.user.tenantId);
       res.json(contact);
     } catch (error) {
       next(error);
@@ -125,7 +111,7 @@ export class CustomerController {
 
       const customerId = req.params.id as string;
       const contactId = req.params.cid as string;
-      await customerService.deleteContactPerson(customerId, contactId, req.user.id);
+      await customerService.deleteContactPerson(customerId, contactId, req.user.id, req.user.tenantId);
       res.json({ message: 'Ansprechpartner entfernt' });
     } catch (error) {
       next(error);
