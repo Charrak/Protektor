@@ -3,9 +3,9 @@ import { logger } from '../config/logger';
 import { ConflictError, NotFoundError } from '../middleware/errorHandler';
 
 export class RoleService {
-  async list(_tenantId?: string) {
-    // Rollen sind systemweit - kein tenantId-Filter
+  async list(tenantId: string) {
     const roles = await prisma.role.findMany({
+      where: { tenantId },
       include: {
         rolePermissions: {
           include: { permission: true },
@@ -31,9 +31,9 @@ export class RoleService {
     }));
   }
 
-  async getById(id: string) {
-    const role = await prisma.role.findUnique({
-      where: { id },
+  async getById(id: string, tenantId: string) {
+    const role = await prisma.role.findFirst({
+      where: { id, tenantId },
       include: {
         rolePermissions: {
           include: { permission: true },
@@ -62,19 +62,21 @@ export class RoleService {
     };
   }
 
-  async create(data: { name: string; slug: string; description?: string; tenantId?: string }) {
-    const existing = await prisma.role.findFirst({
-      where: { slug: data.slug },
+  async create(data: { name: string; slug: string; description?: string }, tenantId: string) {
+    const existing = await prisma.role.findUnique({
+      where: { tenantId_slug: { tenantId, slug: data.slug } },
     });
     if (existing) throw new ConflictError('Rollen-Slug ist bereits vergeben');
 
-    const role = await prisma.role.create({ data });
-    logger.info(`Rolle erstellt: ${role.slug}`);
+    const role = await prisma.role.create({
+      data: { ...data, tenantId },
+    });
+    logger.info(`Rolle erstellt: ${role.slug} für Mandant ${tenantId}`);
     return role;
   }
 
-  async update(id: string, data: { name?: string; description?: string }) {
-    const role = await prisma.role.findUnique({ where: { id } });
+  async update(id: string, tenantId: string, data: { name?: string; description?: string }) {
+    const role = await prisma.role.findFirst({ where: { id, tenantId } });
     if (!role) throw new NotFoundError('Rolle');
 
     const updated = await prisma.role.update({
@@ -89,30 +91,36 @@ export class RoleService {
     return updated;
   }
 
-  async setPermissions(roleId: string, permissionIds: string[]) {
-    const role = await prisma.role.findUnique({ where: { id: roleId } });
+  async setPermissions(roleId: string, tenantId: string, permissionIds: string[]) {
+    const role = await prisma.role.findFirst({ where: { id: roleId, tenantId } });
     if (!role) throw new NotFoundError('Rolle');
 
-    // Bestehende Berechtigungen löschen
-    await prisma.rolePermission.deleteMany({ where: { roleId } });
-
-    // Neue Berechtigungen hinzufügen
-    if (permissionIds.length > 0) {
-      await prisma.rolePermission.createMany({
-        data: permissionIds.map(permissionId => ({
-          roleId,
-          permissionId,
-          granted: true,
-        })),
-      });
+    // Admin-Systemrolle darf nicht geändert werden
+    if (role.isSystem && role.slug === 'admin') {
+      throw new ConflictError('Rechte der Administrator-Rolle können nicht geändert werden');
     }
 
-    logger.info(`Berechtigungen aktualisiert für Rolle: ${role.slug} (${permissionIds.length} Berechtigungen)`);
+    // Berechtigungen validieren
+    const validPerms = await prisma.permission.findMany({
+      where: { id: { in: permissionIds } },
+      select: { id: true },
+    });
+    const validIds = validPerms.map(p => p.id);
+
+    // In Transaktion: löschen und neu erstellen
+    await prisma.$transaction([
+      prisma.rolePermission.deleteMany({ where: { roleId } }),
+      prisma.rolePermission.createMany({
+        data: validIds.map(permissionId => ({ roleId, permissionId, granted: true })),
+      }),
+    ]);
+
+    logger.info(`Berechtigungen aktualisiert für Rolle: ${role.slug} (${validIds.length} Berechtigungen)`);
   }
 
-  async delete(id: string) {
-    const role = await prisma.role.findUnique({
-      where: { id },
+  async delete(id: string, tenantId: string) {
+    const role = await prisma.role.findFirst({
+      where: { id, tenantId },
       include: { _count: { select: { users: true } } },
     });
 
