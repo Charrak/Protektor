@@ -5,8 +5,11 @@ export class RoleController {
   async list(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const roles = await roleService.list();
+      console.log('[RoleController.list] Anzahl Rollen:', roles.length);
+      console.log('[RoleController.list] Rollen:', JSON.stringify(roles.map(r => ({ id: r.id, name: r.name, slug: r.slug })), null, 2));
       res.json(roles);
     } catch (error) {
+      console.error('[RoleController.list] Fehler:', error);
       next(error);
     }
   }
