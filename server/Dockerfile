@@ -3,7 +3,7 @@
 # ============================================
 
 # Basis-Image: Node.js 18 auf Alpine Linux (klein & sicher)
-FROM node:18-alpine
+FROM node:20-alpine
 
 # OpenSSL 3 installieren (für Prisma auf Alpine)
 RUN apk add --no-cache openssl
