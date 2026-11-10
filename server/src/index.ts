@@ -91,7 +91,7 @@ app.use('/api/v1/api', apiUsageRoutes);
 
 // ─── API Routes (für Kunden) ───
 // authenticate VOR tenantMiddleware, damit req.user existiert
-const PUBLIC_PATHS = ['/auth', '/help'];
+const PUBLIC_PATHS = ['/auth', '/help', '/customer-portal/login', '/customer-portal/forgot-password', '/customer-portal/reset-password'];
 const isPublic = (path: string) => PUBLIC_PATHS.some(p => path === p || path.startsWith(p + '/'));
 
 app.use('/api/v1',
