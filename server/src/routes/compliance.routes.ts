@@ -45,7 +45,7 @@ router.get('/dsgvo/export/:employeeId', authenticate, requirePermission('employe
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    const exportData = await complianceService.generateDataExport(req.user.tenantId, req.params.employeeId);
+    const exportData = await complianceService.generateDataExport(req.user.tenantId, req.params.employeeId as string);
     res.json(exportData);
   } catch (error) {
     next(error);

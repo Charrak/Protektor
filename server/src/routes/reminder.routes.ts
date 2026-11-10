@@ -15,7 +15,7 @@ router.get(
   requirePermission('customers:view'),
   async (req, res, next) => {
     try {
-      const { customerId } = req.params;
+      const customerId = req.params.customerId as string;
       const { tenantId } = req.user!;
       const reminders = await reminderService.listByCustomer(tenantId, customerId);
       res.json(reminders);
@@ -35,7 +35,7 @@ router.get(
   requirePermission('customers:view'),
   async (req, res, next) => {
     try {
-      const { invoiceId } = req.params;
+      const invoiceId = req.params.invoiceId as string;
       const { tenantId } = req.user!;
       const reminders = await reminderService.listByInvoice(tenantId, invoiceId);
       res.json(reminders);
@@ -55,7 +55,7 @@ router.get(
   requirePermission('customers:view'),
   async (req, res, next) => {
     try {
-      const { reminderId } = req.params;
+      const reminderId = req.params.reminderId as string;
       const { tenantId } = req.user!;
       const reminder = await reminderService.getById(tenantId, reminderId);
       res.json(reminder);
@@ -94,7 +94,7 @@ router.post(
   requirePermission('customers:edit'),
   async (req, res, next) => {
     try {
-      const { reminderId } = req.params;
+      const reminderId = req.params.reminderId as string;
       const { tenantId, id: userId } = req.user!;
       const reminder = await reminderService.markAsPaid(tenantId, reminderId, userId);
       res.json(reminder);
@@ -114,7 +114,7 @@ router.post(
   requirePermission('customers:edit'),
   async (req, res, next) => {
     try {
-      const { reminderId } = req.params;
+      const reminderId = req.params.reminderId as string;
       const { sentVia } = req.body;
       const { tenantId, id: userId } = req.user!;
       
@@ -199,7 +199,7 @@ router.delete(
   requirePermission('customers:edit'),
   async (req, res, next) => {
     try {
-      const { reminderId } = req.params;
+      const reminderId = req.params.reminderId as string;
       const { tenantId, id: userId } = req.user!;
       await reminderService.delete(tenantId, reminderId, userId);
       res.json({ message: 'Mahnung gelöscht' });

@@ -12,7 +12,7 @@ router.get('/employee/:employeeId', authenticate, requirePermission('employees:v
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    const availabilities = await recurringAvailabilityService.listByEmployee(req.user.tenantId, req.params.employeeId);
+    const availabilities = await recurringAvailabilityService.listByEmployee(req.user.tenantId, req.params.employeeId as string);
     res.json(availabilities);
   } catch (error) {
     next(error);
@@ -26,7 +26,7 @@ router.get('/day/:dayOfWeek', authenticate, requirePermission('scheduling:view')
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    const dayOfWeek = parseInt(req.params.dayOfWeek);
+    const dayOfWeek = parseInt(req.params.dayOfWeek as string);
     if (dayOfWeek < 1 || dayOfWeek > 7) {
       res.status(400).json({ error: 'Wochentag muss zwischen 1 und 7 sein' });
       return;
@@ -60,7 +60,7 @@ router.put('/:id/approve', authenticate, requirePermission('scheduling:edit'), a
       return;
     }
     const { approved } = req.body;
-    const result = await recurringAvailabilityService.approve(req.user.tenantId, req.params.id, approved, req.user.id);
+    const result = await recurringAvailabilityService.approve(req.user.tenantId, req.params.id as string, approved, req.user.id);
     res.json(result);
   } catch (error) {
     next(error);
@@ -74,7 +74,7 @@ router.put('/:id', authenticate, requirePermission('scheduling:edit'), async (re
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    const result = await recurringAvailabilityService.update(req.user.tenantId, req.params.id, req.body);
+    const result = await recurringAvailabilityService.update(req.user.tenantId, req.params.id as string, req.body);
     res.json(result);
   } catch (error) {
     next(error);
@@ -88,7 +88,7 @@ router.delete('/:id', authenticate, requirePermission('scheduling:delete'), asyn
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    await recurringAvailabilityService.delete(req.user.tenantId, req.params.id);
+    await recurringAvailabilityService.delete(req.user.tenantId, req.params.id as string);
     res.json({ success: true });
   } catch (error) {
     next(error);
@@ -109,7 +109,7 @@ router.get('/check/:employeeId', authenticate, requirePermission('scheduling:vie
     }
     const result = await recurringAvailabilityService.isAvailable(
       req.user.tenantId,
-      req.params.employeeId,
+      req.params.employeeId as string,
       new Date(date as string),
       new Date(startTime as string),
       new Date(endTime as string)

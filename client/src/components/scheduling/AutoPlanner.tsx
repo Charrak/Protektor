@@ -61,7 +61,7 @@ export function AutoPlanner() {
       const candidates = await response.json();
       setResult({
         candidates,
-        unselectedReasons: candidates.filter(c => c.disqualified).map(c => ({
+        unselectedReasons: candidates.filter((c: any) => c.disqualified).map((c: any) => ({
           employeeId: c.employeeId,
           name: c.employeeName,
           reason: c.disqualificationReason || c.conflicts.join(', '),
@@ -74,8 +74,8 @@ export function AutoPlanner() {
     }
   };
 
-  const qualifiedCandidates = result?.candidates.filter(c => !c.disqualified) || [];
-  const disqualifiedCandidates = result?.candidates.filter(c => c.disqualified) || [];
+  const qualifiedCandidates = result?.candidates.filter((c: any) => !c.disqualified) || [];
+  const disqualifiedCandidates = result?.candidates.filter((c: any) => c.disqualified) || [];
 
   return (
     <div className="p-6">

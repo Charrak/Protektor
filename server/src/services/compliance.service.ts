@@ -242,7 +242,7 @@ export class ComplianceService {
         taxClass: employee.taxClass,
         healthInsurance: employee.healthInsurance,
       },
-      qualifications: employee.qualifications.map(q => ({
+      qualifications: employee.qualifications.map((q: any) => ({
         name: q.qualification.name,
         obtainedDate: q.obtainedDate,
         expiryDate: q.expiryDate,
@@ -266,7 +266,7 @@ export class ComplianceService {
     retainedRecords: number;
     retentionPeriod: string;
   }> {
-    const { employeeId, reason, retainPeriod = 120 } = // 10 Jahre = 120 Monate
+    const { employeeId, reason, retainPeriod = 120 } = request; // 10 Jahre = 120 Monate
     const now = new Date();
     const retentionDate = new Date(now);
     retentionDate.setMonth(retentionDate.getMonth() + retainPeriod);
@@ -332,13 +332,13 @@ export class ComplianceService {
     });
 
     return {
-      invoices: invoices.map(inv => ({
+      invoices: invoices.map((inv: any) => ({
         id: inv.id,
         date: inv.invoiceDate,
         retentionUntil: new Date(inv.invoiceDate.getFullYear() + 10, 11, 31),
         status: 'can_be_archived',
       })),
-      timeRecords: timeRecords.map(tr => ({
+      timeRecords: timeRecords.map((tr: any) => ({
         id: tr.id,
         date: tr.date,
         retentionUntil: new Date(tr.date.getFullYear() + 10, 11, 31),

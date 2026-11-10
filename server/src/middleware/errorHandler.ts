@@ -34,6 +34,13 @@ export class ConflictError extends AppError {
   }
 }
 
+export class UnauthorizedError extends AppError {
+  constructor(message: string = 'Nicht autorisiert') {
+    super(message, 401);
+    this.name = 'UnauthorizedError';
+  }
+}
+
 export class ForbiddenError extends AppError {
   constructor(message: string = 'Zugriff verweigert') {
     super(message, 403);

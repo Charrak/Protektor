@@ -46,7 +46,7 @@ export default function BrandingSettingsPage() {
     try {
       setUploading('logo');
       const result = await brandingService.uploadLogo(file);
-      setLogoUrl(result.logoUrl);
+      setLogoUrl(result.logoUrl ?? null);
       setMessage({ type: 'success', text: 'Logo erfolgreich hochgeladen' });
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Fehler beim Hochladen' });
@@ -68,7 +68,7 @@ export default function BrandingSettingsPage() {
     try {
       setUploading('favicon');
       const result = await brandingService.uploadFavicon(file);
-      setFaviconUrl(result.faviconUrl);
+      setFaviconUrl(result.faviconUrl ?? null);
       setMessage({ type: 'success', text: 'Favicon erfolgreich hochgeladen' });
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Fehler beim Hochladen' });

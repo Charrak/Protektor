@@ -19,7 +19,7 @@ router.get('/employee/:employeeId', authenticate, requirePermission('attendance:
       status: status as string,
       objectId: objectId as string,
     };
-    const records = await timeRecordService.listByEmployee(req.user.tenantId, req.params.employeeId, filters);
+    const records = await timeRecordService.listByEmployee(req.user.tenantId, req.params.employeeId as string, filters);
     res.json(records);
   } catch (error) {
     next(error);
@@ -56,7 +56,7 @@ router.post('/:id/clock-out', authenticate, requirePermission('attendance:create
       ...req.body,
       clockOut: new Date(req.body.clockOut),
     };
-    const record = await timeRecordService.clockOut(req.user.tenantId, req.params.id, input, req.user.id);
+    const record = await timeRecordService.clockOut(req.user.tenantId, req.params.id as string, input, req.user.id);
     res.json(record);
   } catch (error) {
     next(error);
@@ -70,7 +70,7 @@ router.post('/:id/break/start', authenticate, requirePermission('attendance:crea
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    const break_ = await timeRecordService.startBreak(req.user.tenantId, req.params.id, req.body, req.user.id);
+    const break_ = await timeRecordService.startBreak(req.user.tenantId, req.params.id as string, req.body, req.user.id);
     res.status(201).json(break_);
   } catch (error) {
     next(error);
@@ -88,7 +88,7 @@ router.post('/break/:breakId/end', authenticate, requirePermission('attendance:c
       ...req.body,
       breakEnd: req.body.breakEnd ? new Date(req.body.breakEnd) : undefined,
     };
-    const break_ = await timeRecordService.endBreak(req.user.tenantId, req.params.breakId, input, req.user.id);
+    const break_ = await timeRecordService.endBreak(req.user.tenantId, req.params.breakId as string, input, req.user.id);
     res.json(break_);
   } catch (error) {
     next(error);
@@ -102,7 +102,7 @@ router.post('/:id/approve', authenticate, requirePermission('attendance:approve'
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    const record = await timeRecordService.approve(req.user.tenantId, req.params.id, req.user.id, req.body);
+    const record = await timeRecordService.approve(req.user.tenantId, req.params.id as string, req.user.id, req.body);
     res.json(record);
   } catch (error) {
     next(error);
@@ -116,7 +116,7 @@ router.post('/:id/reject', authenticate, requirePermission('attendance:approve')
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    const record = await timeRecordService.reject(req.user.tenantId, req.params.id, req.user.id, req.body);
+    const record = await timeRecordService.reject(req.user.tenantId, req.params.id as string, req.user.id, req.body);
     res.json(record);
   } catch (error) {
     next(error);
@@ -130,7 +130,7 @@ router.post('/:id/lock', authenticate, requirePermission('attendance:approve'), 
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    const record = await timeRecordService.lock(req.user.tenantId, req.params.id, req.user.id, req.body);
+    const record = await timeRecordService.lock(req.user.tenantId, req.params.id as string, req.user.id, req.body);
     res.json(record);
   } catch (error) {
     next(error);
@@ -144,7 +144,7 @@ router.post('/:id/correct', authenticate, requirePermission('attendance:edit'), 
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    const result = await timeRecordService.correct(req.user.tenantId, req.params.id, req.user.id, req.body);
+    const result = await timeRecordService.correct(req.user.tenantId, req.params.id as string, req.user.id, req.body);
     res.json(result);
   } catch (error) {
     next(error);

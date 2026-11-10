@@ -27,7 +27,7 @@ export function MobileTimeTracking() {
   const loadEmployees = async () => {
     try {
       const response = await employeeService.list();
-      setEmployees(response.data.filter((e: any) => e.status === 'active'));
+      setEmployees(response.employees.filter((e: any) => e.status === 'active'));
     } catch (err: any) {
       setError('Fehler beim Laden der Mitarbeiter');
     }

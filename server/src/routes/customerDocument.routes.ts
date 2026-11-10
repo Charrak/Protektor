@@ -15,7 +15,7 @@ router.get(
   requirePermission('customers:view'),
   async (req, res, next) => {
     try {
-      const { customerId } = req.params;
+      const customerId = req.params.customerId as string;
       const { tenantId, id: userId } = req.user!;
       const documents = await customerDocumentService.listByCustomer(tenantId, customerId);
       res.json(documents);
@@ -35,7 +35,7 @@ router.get(
   requirePermission('customers:view'),
   async (req, res, next) => {
     try {
-      const { documentId } = req.params;
+      const documentId = req.params.documentId as string;
       const { tenantId } = req.user!;
       const document = await customerDocumentService.getById(tenantId, documentId);
       res.json(document);
@@ -74,7 +74,7 @@ router.put(
   requirePermission('customers:edit'),
   async (req, res, next) => {
     try {
-      const { documentId } = req.params;
+      const documentId = req.params.documentId as string;
       const { tenantId, id: userId } = req.user!;
       const document = await customerDocumentService.verify(tenantId, documentId, userId);
       res.json(document);
@@ -94,7 +94,7 @@ router.delete(
   requirePermission('customers:edit'),
   async (req, res, next) => {
     try {
-      const { documentId } = req.params;
+      const documentId = req.params.documentId as string;
       const { tenantId, id: userId } = req.user!;
       await customerDocumentService.delete(tenantId, documentId, userId);
       res.json({ message: 'Dokument gelöscht' });
@@ -153,7 +153,7 @@ router.post(
   requirePermission('admin:settings'),
   async (req, res, next) => {
     try {
-      const { documentId } = req.params;
+      const documentId = req.params.documentId as string;
       const { tenantId, id: userId } = req.user!;
       await customerDocumentService.permanentDelete(tenantId, documentId, userId);
       res.json({ message: 'Dokument physisch gelöscht' });
@@ -173,7 +173,7 @@ router.get(
   requirePermission('customers:view'),
   async (req, res, next) => {
     try {
-      const { documentId } = req.params;
+      const documentId = req.params.documentId as string;
       const { tenantId } = req.user!;
       const versions = await customerDocumentService.getVersionHistory(tenantId, documentId);
       res.json(versions);
@@ -193,7 +193,7 @@ router.get(
   requirePermission('customers:view'),
   async (req, res, next) => {
     try {
-      const { customerId } = req.params;
+      const customerId = req.params.customerId as string;
       const { tenantId } = req.user!;
       const grouped = await customerDocumentService.getGroupedByCategory(tenantId, customerId);
       res.json(grouped);

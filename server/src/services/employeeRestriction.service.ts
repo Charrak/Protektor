@@ -157,7 +157,7 @@ export class EmployeeRestrictionService {
     const todayRecords = await prisma.timeRecord.findMany({
       where: { employeeId, tenantId, date: { equals: date } },
     });
-    const todayMinutes = todayRecords.reduce((sum, r) => sum + (r.totalHours ? Number(r.totalHours) * 60 : 0), 0);
+    const todayMinutes = todayRecords.reduce((sum: number, r: any) => sum + (r.totalHours ? Number(r.totalHours) * 60 : 0), 0);
     const shiftMinutes = (endHour - startHour) * 60 + (endTime.getMinutes() - startTime.getMinutes());
     const totalMinutes = todayMinutes + shiftMinutes;
     

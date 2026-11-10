@@ -22,6 +22,13 @@ export interface CreateCheckoutSessionInput {
   cancelUrl: string;
 }
 
+function getStripe(): Stripe {
+  if (!stripe) {
+    throw new Error('Stripe ist nicht konfiguriert. Bitte STRIPE_SECRET_KEY setzen.');
+  }
+  return stripe;
+}
+
 export class StripeService {
   /**
    * Erstellt eine Checkout-Session für ein neues Abonnement
@@ -59,7 +66,7 @@ export class StripeService {
     let customerId = tenant.stripeCustomerId;
 
     if (!customerId) {
-      const customer = await stripe.customers.create({
+      const customer = await getStripe().customers.create({
         email: tenant.contactEmail,
         name: tenant.companyName,
         metadata: {
@@ -78,7 +85,7 @@ export class StripeService {
     }
 
     // Checkout Session erstellen
-    const session = await (stripe.checkout.sessions as any).create({
+    const session = await (getStripe().checkout.sessions as any).create({
       customer: customerId,
       payment_method_types: ['card', 'sepa_debit'],
       line_items: [
@@ -123,7 +130,7 @@ export class StripeService {
       throw new Error('Tenant oder Stripe Customer nicht gefunden');
     }
 
-    const session = await stripe.billingPortal.sessions.create({
+    const session = await getStripe().billingPortal.sessions.create({
       customer: tenant.stripeCustomerId,
       return_url: returnUrl,
     });
@@ -139,7 +146,7 @@ export class StripeService {
    * Ruft Abonnement-Details von Stripe ab
    */
   async getSubscription(subscriptionId: string) {
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const subscription = await getStripe().subscriptions.retrieve(subscriptionId);
     return subscription;
   }
 
@@ -158,7 +165,7 @@ export class StripeService {
     }
 
     try {
-      const event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+      const event = getStripe().webhooks.constructEvent(payload, signature, webhookSecret);
       return event;
     } catch (err) {
       logger.error('Webhook-Signatur-Verifizierung fehlgeschlagen', err);

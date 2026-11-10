@@ -348,7 +348,7 @@ export class ShiftReportService {
 
     return {
       total,
-      byStatus: byStatus.reduce((acc, item) => {
+      byStatus: byStatus.reduce((acc: any, item: any) => {
         acc[item.status] = item._count;
         return acc;
       }, {} as Record<string, number>),

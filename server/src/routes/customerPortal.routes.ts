@@ -173,7 +173,7 @@ router.put(
 
       const user = await customerPortalService.updatePortalUser(
         req.user.tenantId,
-        req.params.id,
+        req.params.id as string,
         req.body
       );
       res.json(user);
@@ -200,7 +200,7 @@ router.delete(
 
       const result = await customerPortalService.deletePortalUser(
         req.user.tenantId,
-        req.params.id
+        req.params.id as string
       );
       res.json(result);
     } catch (error) {
