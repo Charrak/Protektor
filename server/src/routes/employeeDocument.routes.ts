@@ -12,7 +12,7 @@ router.get('/employee/:employeeId', authenticate, requirePermission('employees:v
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    const documents = await employeeDocumentService.listByEmployee(req.user.tenantId, req.params.employeeId);
+    const documents = await employeeDocumentService.listByEmployee(req.user.tenantId, req.params.employeeId as string);
     res.json(documents);
   } catch (error) {
     next(error);
@@ -26,7 +26,7 @@ router.get('/employee/:employeeId/grouped', authenticate, requirePermission('emp
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    const grouped = await employeeDocumentService.getGroupedByCategory(req.user.tenantId, req.params.employeeId);
+    const grouped = await employeeDocumentService.getGroupedByCategory(req.user.tenantId, req.params.employeeId as string);
     res.json(grouped);
   } catch (error) {
     next(error);
@@ -54,7 +54,7 @@ router.put('/:id/verify', authenticate, requirePermission('employees:edit'), asy
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    const result = await employeeDocumentService.verify(req.user.tenantId, req.params.id, req.user.id);
+    const result = await employeeDocumentService.verify(req.user.tenantId, req.params.id as string, req.user.id);
     res.json(result);
   } catch (error) {
     next(error);
@@ -68,7 +68,7 @@ router.delete('/:id', authenticate, requirePermission('employees:edit'), async (
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    await employeeDocumentService.delete(req.user.tenantId, req.params.id);
+    await employeeDocumentService.delete(req.user.tenantId, req.params.id as string);
     res.json({ success: true });
   } catch (error) {
     next(error);
@@ -97,7 +97,7 @@ router.get('/:id/versions', authenticate, requirePermission('employees:view'), a
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    const versions = await employeeDocumentService.getVersionHistory(req.user.tenantId, req.params.id);
+    const versions = await employeeDocumentService.getVersionHistory(req.user.tenantId, req.params.id as string);
     res.json(versions);
   } catch (error) {
     next(error);

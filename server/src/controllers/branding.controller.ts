@@ -4,7 +4,7 @@
  */
 
 import { Request, Response } from 'express';
-import prisma from '../index';
+import { prisma } from '../config/database';
 import { uploadBrandingFile, deleteUploadFile } from '../services/upload.service';
 
 /**

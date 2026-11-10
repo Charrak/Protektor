@@ -14,8 +14,8 @@ interface UpdateEmployeeInput extends Partial<CreateEmployeeInput> {}
 
 interface ListQuery {
   search?: string;
-  status?: EmployeeStatus;
-  employmentType?: EmploymentType;
+  status?: string;
+  employmentType?: string;
   page?: number;
   limit?: number;
 }

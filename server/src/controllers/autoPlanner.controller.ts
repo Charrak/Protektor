@@ -12,6 +12,7 @@ export class AutoPlannerController {
       }
 
       const candidates = await autoPlannerService.findCandidates({
+        tenantId: req.user!.tenantId || req.user!.id,
         objectId,
         date,
         startTime,

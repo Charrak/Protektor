@@ -165,7 +165,7 @@ export class TimeRecordService {
     const duration = this.calculateDuration(
       timeRecord.clockIn,
       input.clockOut,
-      timeRecord.breaks.reduce((sum, b) => sum + (b.durationMinutes || 0), 0)
+      timeRecord.breaks.reduce((sum: number, b: any) => sum + (b.durationMinutes || 0), 0)
     );
 
     // Berechne Zuschläge
@@ -174,7 +174,7 @@ export class TimeRecordService {
       timeRecord.employeeId,
       timeRecord.clockIn,
       input.clockOut,
-      timeRecord.breaks.reduce((sum, b) => sum + (b.durationMinutes || 0), 0) + (input.breakDuration || 0)
+      timeRecord.breaks.reduce((sum: number, b: any) => sum + (b.durationMinutes || 0), 0) + (input.breakDuration || 0)
     );
 
     const updated = await prisma.timeRecord.update({
@@ -390,7 +390,7 @@ export class TimeRecordService {
 
     // Markiere als exportiert
     await prisma.timeRecord.updateMany({
-      where: { id: { in: records.map(r => r.id) } },
+      where: { id: { in: records.map((r: any) => r.id) } },
       data: {
         exportedForPayroll: true,
         exportDate: new Date(),
@@ -425,7 +425,7 @@ export class TimeRecordService {
 
     // Markiere als exportiert
     await prisma.timeRecord.updateMany({
-      where: { id: { in: records.map(r => r.id) } },
+      where: { id: { in: records.map((r: any) => r.id) } },
       data: {
         exportedForCustomer: true,
         exportDate: new Date(),

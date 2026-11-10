@@ -12,7 +12,7 @@ router.get('/employee/:employeeId', authenticate, requirePermission('employees:v
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    const restrictions = await employeeRestrictionService.listByEmployee(req.user.tenantId, req.params.employeeId);
+    const restrictions = await employeeRestrictionService.listByEmployee(req.user.tenantId, req.params.employeeId as string);
     res.json(restrictions);
   } catch (error) {
     next(error);
@@ -40,7 +40,7 @@ router.put('/:id', authenticate, requirePermission('employees:edit'), async (req
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    const result = await employeeRestrictionService.update(req.user.tenantId, req.params.id, req.body);
+    const result = await employeeRestrictionService.update(req.user.tenantId, req.params.id as string, req.body);
     res.json(result);
   } catch (error) {
     next(error);
@@ -54,7 +54,7 @@ router.delete('/:id', authenticate, requirePermission('employees:edit'), async (
       res.status(401).json({ error: 'Nicht angemeldet' });
       return;
     }
-    await employeeRestrictionService.delete(req.user.tenantId, req.params.id);
+    await employeeRestrictionService.delete(req.user.tenantId, req.params.id as string);
     res.json({ success: true });
   } catch (error) {
     next(error);

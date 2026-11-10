@@ -4,20 +4,20 @@ import { z } from 'zod';
 // KUNDEN-VALIDATOR
 // ═══════════════════════════════════════════════════
 
-export const customerCreateSchema = z.object({
+const customerBaseSchema = z.object({
   // Pflichtfelder (global, nicht konfigurierbar)
   companyName: z.string().min(1, 'Firmenname ist erforderlich').max(200),
   street: z.string().min(1, 'Straße ist erforderlich').max(200),
   zipCode: z.string().min(1, 'PLZ ist erforderlich').max(20),
   city: z.string().min(1, 'Stadt ist erforderlich').max(100),
-  country: z.string().default('DE').max(100),
+  country: z.string().max(100).default('DE'),
   
   // Rechnungsdaten (Pflicht für Rechnungsstellung)
   invoiceEmail: z.string().email('Ungültige E-Mail-Adresse').optional(),
   invoiceStreet: z.string().max(200).optional(),
   invoiceZipCode: z.string().max(20).optional(),
   invoiceCity: z.string().max(100).optional(),
-  invoiceCountry: z.string().default('DE').max(100),
+  invoiceCountry: z.string().max(100).default('DE'),
   invoiceRecipientName: z.string().max(200).optional(),
   invoicePhone: z.string().max(50).optional(),
   invoiceDeliveryMethod: z.enum(['email', 'portal', 'post']).default('email'),
@@ -54,7 +54,9 @@ export const customerCreateSchema = z.object({
   // Sonstiges
   notes: z.string().optional(),
   status: z.enum(['active', 'inactive', 'prospect']).default('active'),
-}).refine(
+});
+
+export const customerCreateSchema = customerBaseSchema.refine(
   (data) => {
     // Wenn invoiceEmail gesetzt ist, muss es eine gültige E-Mail sein
     if (data.invoiceDeliveryMethod === 'email' && !data.invoiceEmail) {
@@ -68,13 +70,13 @@ export const customerCreateSchema = z.object({
   }
 );
 
-export const customerUpdateSchema = customerCreateSchema.partial();
+export const customerUpdateSchema = customerBaseSchema.partial();
 
 // ═══════════════════════════════════════════════════
 // KONTAKTPERSON-VALIDATOR
 // ═══════════════════════════════════════════════════
 
-export const contactPersonCreateSchema = z.object({
+const contactPersonBaseSchema = z.object({
   firstName: z.string().min(1, 'Vorname ist erforderlich').max(100),
   lastName: z.string().min(1, 'Nachname ist erforderlich').max(100),
   role: z.string().max(100).optional(),
@@ -86,7 +88,9 @@ export const contactPersonCreateSchema = z.object({
   isEmergencyContact: z.boolean().default(false),
   availability: z.string().max(200).optional(),
   notes: z.string().optional(),
-}).refine(
+});
+
+export const contactPersonCreateSchema = contactPersonBaseSchema.refine(
   (data) => {
     // Wenn isInvoiceContact true ist, muss email oder phone gesetzt sein
     if (data.isInvoiceContact && !data.email && !data.phone) {
@@ -100,7 +104,7 @@ export const contactPersonCreateSchema = z.object({
   }
 );
 
-export const contactPersonUpdateSchema = contactPersonCreateSchema.partial();
+export const contactPersonUpdateSchema = contactPersonBaseSchema.partial();
 
 // ═══════════════════════════════════════════════════
 // OBJEKT-VALIDATOR

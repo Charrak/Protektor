@@ -15,7 +15,7 @@ router.get(
   requirePermission('customers:view'),
   async (req, res, next) => {
     try {
-      const { customerId } = req.params;
+      const customerId = req.params.customerId as string;
       const { tenantId } = req.user!;
       
       const filters = {
@@ -43,7 +43,7 @@ router.get(
   requirePermission('customers:view'),
   async (req, res, next) => {
     try {
-      const { objectId } = req.params;
+      const objectId = req.params.objectId as string;
       const { tenantId } = req.user!;
       const limit = parseInt(req.query.limit as string) || 50;
       const reports = await shiftReportService.listByObject(tenantId, objectId, limit);
@@ -64,7 +64,7 @@ router.get(
   requirePermission('customers:view'),
   async (req, res, next) => {
     try {
-      const { reportId } = req.params;
+      const reportId = req.params.reportId as string;
       const { tenantId } = req.user!;
       const report = await shiftReportService.getById(tenantId, reportId);
       res.json(report);
@@ -103,7 +103,7 @@ router.put(
   requirePermission('customers:edit'),
   async (req, res, next) => {
     try {
-      const { reportId } = req.params;
+      const reportId = req.params.reportId as string;
       const { tenantId, id: userId } = req.user!;
       const report = await shiftReportService.update(tenantId, reportId, req.body, userId);
       res.json(report);
@@ -123,7 +123,7 @@ router.post(
   requirePermission('customers:edit'),
   async (req, res, next) => {
     try {
-      const { reportId } = req.params;
+      const reportId = req.params.reportId as string;
       const { tenantId, id: userId } = req.user!;
       const report = await shiftReportService.submit(tenantId, reportId, userId);
       res.json(report);
@@ -143,7 +143,7 @@ router.post(
   requirePermission('customers:edit'),
   async (req, res, next) => {
     try {
-      const { reportId } = req.params;
+      const reportId = req.params.reportId as string;
       const { tenantId, id: userId } = req.user!;
       const report = await shiftReportService.approve(tenantId, reportId, userId);
       res.json(report);
@@ -163,7 +163,7 @@ router.post(
   requirePermission('customers:edit'),
   async (req, res, next) => {
     try {
-      const { reportId } = req.params;
+      const reportId = req.params.reportId as string;
       const { tenantId, id: userId } = req.user!;
       const report = await shiftReportService.archive(tenantId, reportId, userId);
       res.json(report);
@@ -183,7 +183,7 @@ router.delete(
   requirePermission('customers:edit'),
   async (req, res, next) => {
     try {
-      const { reportId } = req.params;
+      const reportId = req.params.reportId as string;
       const { tenantId, id: userId } = req.user!;
       await shiftReportService.delete(tenantId, reportId, userId);
       res.json({ message: 'Schichtbericht gelöscht' });

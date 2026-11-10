@@ -115,8 +115,8 @@ export class CustomerService {
         
         // Vertragsdaten
         contractNumber: data.contractNumber,
-        contractStartDate: data.contractStartDate ? new Date(data.contractStartDate) : null,
-        contractEndDate: data.contractEndDate ? new Date(data.contractEndDate) : null,
+        contractStartDate: data.contractStartDate ? new Date(data.contractStartDate as string) : undefined,
+        contractEndDate: data.contractEndDate ? new Date(data.contractEndDate as string) : undefined,
         terminationNoticePeriod: data.terminationNoticePeriod,
         billingType: data.billingType,
         billingInterval: data.billingInterval,

@@ -47,7 +47,7 @@ export async function getApiUsageStats(req: Request, res: Response) {
     // Aggregate by endpoint
     const endpointStats = new Map<string, { count: number; errors: number }>();
     
-    apiUsageEvents.forEach(event => {
+    apiUsageEvents.forEach((event: any) => {
       const endpoint = event.entityType || 'unknown';
       const stats = endpointStats.get(endpoint) || { count: 0, errors: 0 };
       
@@ -76,7 +76,7 @@ export async function getApiUsageStats(req: Request, res: Response) {
 
     // Daily usage trend
     const dailyUsage = new Map<string, number>();
-    apiUsageEvents.forEach(event => {
+    apiUsageEvents.forEach((event: any) => {
       const date = event.createdAt.toISOString().split('T')[0];
       dailyUsage.set(date, (dailyUsage.get(date) || 0) + 1);
     });
@@ -146,7 +146,7 @@ export async function getApiKeyUsage(req: Request, res: Response) {
     // Aggregate by endpoint
     const endpointStats = new Map<string, { count: number; lastUsed: Date }>();
     
-    usageEvents.forEach(event => {
+    usageEvents.forEach((event: any) => {
       const endpoint = event.metadata?.endpoint as string || 'unknown';
       const stats = endpointStats.get(endpoint) || { count: 0, lastUsed: event.createdAt };
       
