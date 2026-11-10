@@ -14,6 +14,9 @@ import lockingRoutes from './locking.routes';
 import platformRoutes from './platform.routes';
 import datevRoutes from './datev.routes';
 import addonRoutes from './addon.routes';
+import recurringAvailabilityRoutes from './recurringAvailability.routes';
+import employeeRestrictionRoutes from './employeeRestriction.routes';
+import employeeDocumentRoutes from './employeeDocument.routes';
 import { tenantContext } from '../middleware/tenantContext';
 
 const router = Router();
@@ -37,6 +40,11 @@ router.use('/locks', lockingRoutes);
 // ─── Phase 2: Mitarbeiter & Qualifikationen ───
 router.use('/employees', employeeRoutes);
 router.use('/qualifications', qualificationRoutes);
+
+// ─── Phase 2a: Verfügbarkeiten, Restriktionen, Dokumente ───
+router.use('/recurring-availabilities', recurringAvailabilityRoutes);
+router.use('/employee-restrictions', employeeRestrictionRoutes);
+router.use('/employee-documents', employeeDocumentRoutes);
 
 // ─── Phase 3: Kunden & Objekte ───
 router.use('/customers', customerRoutes);
