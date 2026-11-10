@@ -559,18 +559,123 @@ async function main() {
   console.log(`✅ ${customers1.length} Kunden mit ${customers1.reduce((sum, c) => sum + c.objects, 0)} Objekten erstellt\n`);
 
   // ═══════════════════════════════════════════════════════
-  // 10. EINSÄTZE & ZEITEINTRÄGE
+  // 8B. KUNDEN & OBJEKTE für Tenant 2
   // ═══════════════════════════════════════════════════════
-  console.log('📅 Erstelle Einsätze und Zeiteinträge...');
+  console.log('🏭 Erstelle Kunden und Objekte für Schutz & Dienstleistungen AG...');
+  
+  const customers2 = [
+    { name: 'BMW Werk München', number: 'K101', objects: 6 },
+    { name: 'Allianz Arena GmbH', number: 'K102', objects: 4 },
+    { name: 'Messe München', number: 'K103', objects: 3 },
+    { name: 'Klinikum Rechts der Isar', number: 'K104', objects: 2 },
+    { name: 'Bayerische Staatsoper', number: 'K105', objects: 2 },
+    { name: 'Hofbräuhaus München', number: 'K106', objects: 1 },
+  ];
+
+  for (const customer of customers2) {
+    const dbCustomer = await prisma.customer.create({
+      data: {
+        tenantId: tenant2.id,
+        companyName: customer.name,
+        customerNumber: customer.number,
+        email: `info@${customer.name.toLowerCase().replace(/[^a-z]/g, '')}.de`,
+        phone: '+49 89 ' + Math.floor(1000000 + Math.random() * 9000000),
+        status: 'active',
+        street: `Münchner Straße ${Math.floor(Math.random() * 100)}`,
+        zipCode: '80539',
+        city: 'München',
+        country: 'DE',
+      },
+    });
+
+    for (let i = 0; i < customer.objects; i++) {
+      await prisma.object.create({
+        data: {
+          tenantId: tenant2.id,
+          customerId: dbCustomer.id,
+          name: `${customer.name} - Objekt ${i + 1}`,
+          objectNumber: `${customer.number}-O${String(i + 1).padStart(2, '0')}`,
+          street: `Objektstraße ${20 + i}`,
+          zipCode: '80539',
+          city: 'München',
+          specialInstructions: i % 2 === 0 ? 'Sicherheitsüberprüfung erforderlich' : 'Standard Bewachung',
+        },
+      });
+    }
+  }
+
+  console.log(`✅ ${customers2.length} Kunden mit ${customers2.reduce((sum, c) => sum + c.objects, 0)} Objekten erstellt\n`);
+
+  // ═══════════════════════════════════════════════════════
+  // 8C. KUNDEN & OBJEKTE für Tenant 3
+  // ═══════════════════════════════════════════════════════
+  console.log('🏭 Erstelle Kunden und Objekte für Secure Solutions UG...');
+  
+  const customers3 = [
+    { name: 'Berlin Mall', number: 'K201', objects: 2 },
+    { name: 'Charité Berlin', number: 'K202', objects: 2 },
+    { name: 'Deutsche Bank Berlin', number: 'K203', objects: 3 },
+  ];
+
+  for (const customer of customers3) {
+    const dbCustomer = await prisma.customer.create({
+      data: {
+        tenantId: tenant3.id,
+        companyName: customer.name,
+        customerNumber: customer.number,
+        email: `info@${customer.name.toLowerCase().replace(/[^a-z]/g, '')}.de`,
+        phone: '+49 30 ' + Math.floor(1000000 + Math.random() * 9000000),
+        status: 'active',
+        street: `Berliner Straße ${Math.floor(Math.random() * 100)}`,
+        zipCode: '10117',
+        city: 'Berlin',
+        country: 'DE',
+      },
+    });
+
+    for (let i = 0; i < customer.objects; i++) {
+      await prisma.object.create({
+        data: {
+          tenantId: tenant3.id,
+          customerId: dbCustomer.id,
+          name: `${customer.name} - Objekt ${i + 1}`,
+          objectNumber: `${customer.number}-O${String(i + 1).padStart(2, '0')}`,
+          street: `Objektstraße ${30 + i}`,
+          zipCode: '10117',
+          city: 'Berlin',
+          specialInstructions: 'Standard Bewachung',
+        },
+      });
+    }
+  }
+
+  console.log(`✅ ${customers3.length} Kunden mit ${customers3.reduce((sum, c) => sum + c.objects, 0)} Objekten erstellt\n`);
+
+  // ═══════════════════════════════════════════════════════
+  // 10. EINSÄTZE & ZEITEINTRÄGE (3 Monate zurück + 4 Wochen Zukunft)
+  // ═══════════════════════════════════════════════════════
+  console.log('📅 Erstelle Einsätze und Zeiteinträge (3 Monate zurück + 4 Wochen Zukunft)...');
   
   const today = new Date();
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - 90); // 3 Monate zurück
+  
+  const endDate = new Date(today);
+  endDate.setDate(today.getDate() + 28); // 4 Wochen Zukunft
+  
   let deploymentCount = 0;
   let timeEntryCount = 0;
 
-  // Einsätze für die letzten 30 Tage
-  for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
-    const deploymentDate = new Date(today);
-    deploymentDate.setDate(today.getDate() - dayOffset);
+  // Einsätze für den gesamten Zeitraum
+  const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  for (let dayOffset = 0; dayOffset < totalDays; dayOffset++) {
+    const deploymentDate = new Date(startDate);
+    deploymentDate.setDate(startDate.getDate() + dayOffset);
+    
+    // Wochenende überspringen (0 = Sonntag, 6 = Samstag)
+    const dayOfWeek = deploymentDate.getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) continue;
 
     // Tenant 1: ~5 Einsätze pro Tag
     const tenant1Employees = await prisma.employee.findMany({
@@ -589,6 +694,11 @@ async function main() {
       const endTime = new Date(deploymentDate);
       endTime.setHours(16, 0, 0, 0);
 
+      // Status abhängig vom Datum
+      const isFuture = deploymentDate > today;
+      const isToday = deploymentDate.toDateString() === today.toDateString();
+      const deploymentStatus = isFuture ? 'PLANNED' : isToday ? 'IN_PROGRESS' : 'COMPLETED';
+
       const deployment = await prisma.deployment.create({
         data: {
           tenantId: tenant1.id,
@@ -597,25 +707,28 @@ async function main() {
           date: deploymentDate,
           startTime,
           endTime,
-          status: 'COMPLETED',
-          confirmedAt: new Date(),
+          status: deploymentStatus,
+          confirmedAt: isFuture ? null : new Date(),
         },
       });
 
-      await prisma.timeRecord.create({
-        data: {
-          tenantId: tenant1.id,
-          employeeId: tenant1Employees[i].id,
-          deploymentId: deployment.id,
-          date: deploymentDate,
-          clockIn: startTime,
-          clockOut: endTime,
-          regularHours: 8,
-        },
-      });
+      // Nur für Vergangenheit und heute TimeRecords erstellen
+      if (!isFuture) {
+        await prisma.timeRecord.create({
+          data: {
+            tenantId: tenant1.id,
+            employeeId: tenant1Employees[i].id,
+            deploymentId: deployment.id,
+            date: deploymentDate,
+            clockIn: startTime,
+            clockOut: endTime,
+            regularHours: 8,
+          },
+        });
+        timeEntryCount++;
+      }
 
       deploymentCount++;
-      timeEntryCount++;
     }
 
     // Tenant 2: ~3 Einsätze pro Tag
@@ -635,6 +748,11 @@ async function main() {
       const endTime = new Date(deploymentDate);
       endTime.setHours(15, 0, 0, 0);
 
+      // Status abhängig vom Datum
+      const isFuture = deploymentDate > today;
+      const isToday = deploymentDate.toDateString() === today.toDateString();
+      const deploymentStatus = isFuture ? 'PLANNED' : isToday ? 'IN_PROGRESS' : 'COMPLETED';
+
       const deployment = await prisma.deployment.create({
         data: {
           tenantId: tenant2.id,
@@ -643,30 +761,88 @@ async function main() {
           date: deploymentDate,
           startTime,
           endTime,
-          status: 'COMPLETED',
-          confirmedAt: new Date(),
+          status: deploymentStatus,
+          confirmedAt: isFuture ? null : new Date(),
         },
       });
 
-      await prisma.timeRecord.create({
-        data: {
-          tenantId: tenant2.id,
-          employeeId: tenant2Employees[i].id,
-          deploymentId: deployment.id,
-          date: deploymentDate,
-          clockIn: startTime,
-          clockOut: endTime,
-          regularHours: 8,
-        },
-      });
+      // Nur für Vergangenheit und heute TimeRecords erstellen
+      if (!isFuture) {
+        await prisma.timeRecord.create({
+          data: {
+            tenantId: tenant2.id,
+            employeeId: tenant2Employees[i].id,
+            deploymentId: deployment.id,
+            date: deploymentDate,
+            clockIn: startTime,
+            clockOut: endTime,
+            regularHours: 8,
+          },
+        });
+        timeEntryCount++;
+      }
 
       deploymentCount++;
-      timeEntryCount++;
+    }
+
+    // Tenant 3: ~2 Einsätze pro Tag
+    const tenant3Employees = await prisma.employee.findMany({
+      where: { tenantId: tenant3.id },
+      take: 2,
+    });
+
+    const tenant3Objects = await prisma.object.findMany({
+      where: { tenantId: tenant3.id },
+      take: 2,
+    });
+
+    for (let i = 0; i < Math.min(2, tenant3Employees.length); i++) {
+      const startTime = new Date(deploymentDate);
+      startTime.setHours(9, 0, 0, 0);
+      const endTime = new Date(deploymentDate);
+      endTime.setHours(17, 0, 0, 0);
+
+      // Status abhängig vom Datum
+      const isFuture = deploymentDate > today;
+      const isToday = deploymentDate.toDateString() === today.toDateString();
+      const deploymentStatus = isFuture ? 'PLANNED' : isToday ? 'IN_PROGRESS' : 'COMPLETED';
+
+      const deployment = await prisma.deployment.create({
+        data: {
+          tenantId: tenant3.id,
+          employeeId: tenant3Employees[i].id,
+          objectId: tenant3Objects[i % tenant3Objects.length].id,
+          date: deploymentDate,
+          startTime,
+          endTime,
+          status: deploymentStatus,
+          confirmedAt: isFuture ? null : new Date(),
+        },
+      });
+
+      // Nur für Vergangenheit und heute TimeRecords erstellen
+      if (!isFuture) {
+        await prisma.timeRecord.create({
+          data: {
+            tenantId: tenant3.id,
+            employeeId: tenant3Employees[i].id,
+            deploymentId: deployment.id,
+            date: deploymentDate,
+            clockIn: startTime,
+            clockOut: endTime,
+            regularHours: 8,
+          },
+        });
+        timeEntryCount++;
+      }
+
+      deploymentCount++;
     }
   }
 
   console.log(`✅ ${deploymentCount} Einsätze erstellt`);
-  console.log(`✅ ${timeEntryCount} Zeiteinträge erstellt\n`);
+  console.log(`✅ ${timeEntryCount} Zeiteinträge erstellt`);
+  console.log(`📅 Zeitraum: ${startDate.toLocaleDateString('de-DE')} bis ${endDate.toLocaleDateString('de-DE')}\n`);
 
   // ═══════════════════════════════════════════════════════
   // 11. ZUSAMMENFASSUNG
