@@ -2,9 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import { roleService } from '../services/role.service';
 
 export class RoleController {
-  async list(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async list(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const roles = await roleService.list(req.user?.tenantId);
+      const roles = await roleService.list();
       res.json(roles);
     } catch (error) {
       next(error);
@@ -28,7 +28,7 @@ export class RoleController {
         res.status(400).json({ error: 'Name und Slug sind erforderlich' });
         return;
       }
-      const role = await roleService.create({ name, slug, description, tenantId: req.user!.tenantId });
+      const role = await roleService.create({ name, slug, description, tenantId: req.user?.tenantId });
       res.status(201).json(role);
     } catch (error) {
       next(error);
