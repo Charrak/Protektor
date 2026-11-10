@@ -364,11 +364,17 @@ async function main() {
 
   for (const emp of demoEmployees) {
     await prisma.employee.upsert({
-      where: { email: emp.email },
+      where: {
+        tenantId_personnelNumber: {
+          tenantId: demoTenant.id,
+          personnelNumber: emp.personnelNumber,
+        },
+      },
       update: {},
       create: {
         tenantId: demoTenant.id,
         ...emp,
+        country: 'DE',
         status: 'active',
       },
     });
