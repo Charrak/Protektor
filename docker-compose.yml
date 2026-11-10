@@ -82,7 +82,7 @@ services:
     container_name: sms-frontend
     restart: unless-stopped
     environment:
-      VITE_API_URL: http://localhost:5000/api
+      # VITE_API_URL entfernt - nutze Vite Proxy
     ports:
       - "3000:3000"
     depends_on:
