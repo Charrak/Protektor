@@ -1,0 +1,126 @@
+{
+  "trainingDate": "2026-11-10T11:01:21.126Z",
+  "duration": "< 1s",
+  "environment": "Sandbox (Offline-Training)",
+  "summary": {
+    "totalEmployees": 5,
+    "totalObjects": 5,
+    "totalEmployeeObjectPairs": 24,
+    "averageSuccessRate": 0.72,
+    "averageIncidentRate": 0.176,
+    "dataPoints": {
+      "deployments": 50,
+      "shiftReports": 44,
+      "timeRecords": 50
+    }
+  },
+  "topPerformers": [
+    {
+      "employee": "Peter Wagner",
+      "object": "Messehalle Berlin",
+      "successRate": 1.0,
+      "completedShifts": 2,
+      "totalShifts": 2,
+      "incidents": 0,
+      "recommendation": "Optimal für dieses Objekt"
+    },
+    {
+      "employee": "Lisa Fischer",
+      "object": "TechPark - Gebäude B",
+      "successRate": 1.0,
+      "completedShifts": 2,
+      "totalShifts": 2,
+      "incidents": 0,
+      "recommendation": "Optimal für dieses Objekt"
+    },
+    {
+      "employee": "Max Mustermann",
+      "object": "TechPark - Gebäude A",
+      "successRate": 1.0,
+      "completedShifts": 1,
+      "totalShifts": 1,
+      "incidents": 1,
+      "recommendation": "Gut, aber Vorfall dokumentiert"
+    }
+  ],
+  "riskyObjects": [
+    {
+      "object": "Kulturzentrum Berlin",
+      "incidentRate": 0.30,
+      "difficulty": 5,
+      "recommendation": "Nur erfahrene Mitarbeiter einsetzen"
+    },
+    {
+      "object": "TechPark - Gebäude A",
+      "incidentRate": 0.286,
+      "difficulty": 5,
+      "recommendation": "Regelmäßige Kontrollgänge erforderlich"
+    }
+  ],
+  "optimalAssignments": [
+    {
+      "employee": "Peter Wagner",
+      "preferredObject": "Messehalle Berlin",
+      "reason": "100% Erfolgsquote, 0 Vorfälle"
+    },
+    {
+      "employee": "Lisa Fischer",
+      "preferredObject": "TechPark - Gebäude B",
+      "reason": "100% Erfolgsquote, 0 Vorfälle"
+    },
+    {
+      "employee": "Max Mustermann",
+      "avoidObject": "TechPark - Gebäude B",
+      "reason": "Nur 25% Erfolgsquote, 2 Vorfälle"
+    }
+  ],
+  "shiftSizeRecommendations": {
+    "Müller GmbH - Hauptgebäude": {
+      "morning": 1,
+      "afternoon": 3,
+      "evening": 2,
+      "night": 2
+    },
+    "Kulturzentrum Berlin": {
+      "morning": 2,
+      "afternoon": 3,
+      "evening": 3,
+      "night": 1
+    },
+    "TechPark - Gebäude A": {
+      "morning": 2,
+      "afternoon": 1,
+      "evening": 1,
+      "night": 2
+    },
+    "TechPark - Gebäude B": {
+      "morning": 2,
+      "afternoon": 3,
+      "evening": 2,
+      "night": 3
+    },
+    "Messehalle Berlin": {
+      "morning": 2,
+      "afternoon": 3,
+      "evening": 1,
+      "night": 2
+    }
+  },
+  "absenceRisk": {
+    "highRisk": [],
+    "mediumRisk": [],
+    "lowRisk": [
+      "Max Mustermann",
+      "Anna Schmidt",
+      "Tom Weber",
+      "Lisa Fischer",
+      "Peter Wagner"
+    ]
+  },
+  "nextSteps": [
+    "Top-Performer für ihre optimalen Objekte einplanen",
+    "Risikoreiche Objekte nur mit erfahrenen Mitarbeitern besetzen",
+    "Spätschichten mit zusätzlichem Personal besetzen",
+    "Nach 3 Monaten Retraining durchführen"
+  ]
+}
