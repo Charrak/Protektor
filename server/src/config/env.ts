@@ -10,6 +10,18 @@ function requireEnv(key: string): string {
   return value;
 }
 
+/**
+ * Secret mit Pflicht-Prüfung in Produktion
+ */
+function secret(key: string, devDefault: string): string {
+  const v = process.env[key];
+  if (v) return v;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(`${key} muss in Produktion gesetzt sein`);
+  }
+  return devDefault;
+}
+
 export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '4000', 10),
@@ -17,14 +29,17 @@ export const config = {
   // Datenbank
   databaseUrl: process.env.DATABASE_URL || 'postgresql://sms_user:sms_password@localhost:5432/sms?schema=public',
 
-  // JWT
-  jwtSecret: process.env.JWT_SECRET || 'dev-jwt-secret-change-me',
-  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'dev-jwt-refresh-secret-change-me',
+  // JWT (in Produktion Pflicht!)
+  jwtSecret: secret('JWT_SECRET', 'dev-jwt-secret-change-me'),
+  jwtRefreshSecret: secret('JWT_REFRESH_SECRET', 'dev-jwt-refresh-secret-change-me'),
   jwtExpiresIn: '15m',
   jwtRefreshExpiresIn: '7d',
 
   // CORS
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+
+  // App URL (für Password-Reset-Links)
+  appUrl: process.env.APP_URL || 'http://localhost:3000',
 
   // Uploads
   uploadDir: process.env.UPLOAD_DIR || './uploads',

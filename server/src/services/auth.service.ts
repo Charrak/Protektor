@@ -72,6 +72,7 @@ export class AuthService {
 
       if (failedLogins >= config.maxFailedLogins) {
         updateData.lockedUntil = new Date(Date.now() + config.lockoutDurationMs);
+        updateData.failedLogins = 0; // Reset nach Sperre
         logger.warn(`Konto gesperrt wegen zu vieler Fehlversuche: ${username}`);
       }
 
