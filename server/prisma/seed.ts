@@ -145,7 +145,100 @@ async function main() {
     console.log('✅ Subscription erstellt für Demo Tenant\n');
   }
 
-  // 5. Demo User für Tenant erstellen
+  // 5. Rollen erstellen
+  const adminRole = await prisma.role.upsert({
+    where: {
+      tenantId_slug: {
+        tenantId: demoTenant.id,
+        slug: 'admin',
+      },
+    },
+    update: {},
+    create: {
+      tenantId: demoTenant.id,
+      name: 'Administrator',
+      slug: 'admin',
+      description: 'Vollzugriff auf alle Funktionen',
+      isSystem: true,
+    },
+  });
+
+  const dispatcherRole = await prisma.role.upsert({
+    where: {
+      tenantId_slug: {
+        tenantId: demoTenant.id,
+        slug: 'dispatcher',
+      },
+    },
+    update: {},
+    create: {
+      tenantId: demoTenant.id,
+      name: 'Disponent',
+      slug: 'dispatcher',
+      description: 'Dienstplanung und Einsatzsteuerung',
+      isSystem: true,
+    },
+  });
+
+  const teamLeaderRole = await prisma.role.upsert({
+    where: {
+      tenantId_slug: {
+        tenantId: demoTenant.id,
+        slug: 'teamleader',
+      },
+    },
+    update: {},
+    create: {
+      tenantId: demoTenant.id,
+      name: 'Teamleiter',
+      slug: 'teamleader',
+      description: 'Teamverwaltung und Zeitgenehmigung',
+      isSystem: true,
+    },
+  });
+
+  const employeeRole = await prisma.role.upsert({
+    where: {
+      tenantId_slug: {
+        tenantId: demoTenant.id,
+        slug: 'employee',
+      },
+    },
+    update: {},
+    create: {
+      tenantId: demoTenant.id,
+      name: 'Mitarbeiter',
+      slug: 'employee',
+      description: 'Eigene Daten einsehen',
+      isSystem: true,
+    },
+  });
+
+  const accountantRole = await prisma.role.upsert({
+    where: {
+      tenantId_slug: {
+        tenantId: demoTenant.id,
+        slug: 'accountant',
+      },
+    },
+    update: {},
+    create: {
+      tenantId: demoTenant.id,
+      name: 'Buchhaltung',
+      slug: 'accountant',
+      description: 'Abrechnung und Gehälter',
+      isSystem: true,
+    },
+  });
+
+  console.log('✅ Rollen erstellt:');
+  console.log('   - Administrator');
+  console.log('   - Disponent');
+  console.log('   - Teamleiter');
+  console.log('   - Mitarbeiter');
+  console.log('   - Buchhaltung\n');
+
+  // 6. Demo User für Tenant erstellen
   const demoUserPassword = await bcrypt.hash('Demo123!', 12);
   
   await prisma.user.upsert({
@@ -165,12 +258,14 @@ async function main() {
       lastName: 'User',
       isActive: true,
       tenant: { connect: { id: demoTenant.id } },
+      role: { connect: { id: adminRole.id } },
     },
   });
 
   console.log('✅ Demo User erstellt:');
   console.log(`   Username: demo`);
-  console.log(`   Password: Demo123!\n`);
+  console.log(`   Password: Demo123!`);
+  console.log(`   Rolle: Administrator\n`);
 
   // 6. Demo Mitarbeiter erstellen
   const demoEmployees = [
