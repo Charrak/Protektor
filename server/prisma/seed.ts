@@ -70,7 +70,7 @@ async function main() {
         emailSupport: true,
       },
       isActive: true,
-      displayOrder: 1,
+      sortOrder: 1,
     },
     {
       name: 'Professional',
@@ -89,7 +89,7 @@ async function main() {
         emailSupport: true,
       },
       isActive: true,
-      displayOrder: 2,
+      sortOrder: 2,
     },
     {
       name: 'Enterprise',
@@ -111,7 +111,7 @@ async function main() {
         dedicatedSupport: true,
       },
       isActive: true,
-      displayOrder: 3,
+      sortOrder: 3,
     },
   ];
 
