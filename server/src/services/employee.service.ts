@@ -2,43 +2,12 @@ import { prisma } from '../config/database';
 import { logger } from '../config/logger';
 import { ConflictError, NotFoundError, ValidationError } from '../middleware/errorHandler';
 
-type EmploymentType = 'full_time' | 'part_time' | 'mini_job' | 'freelance';
-type Gender = 'male' | 'female' | 'diverse';
-type EmployeeStatus = 'active' | 'inactive' | 'on_leave' | 'terminated';
-
+// Alle Felder als any für Flexibilität - Prisma validiert die Typen
 interface CreateEmployeeInput {
+  [key: string]: any;
   personnelNumber: string;
   firstName: string;
   lastName: string;
-  email?: string;
-  phone?: string;
-  mobile?: string;
-  gender?: Gender;
-  dateOfBirth?: string;
-  street?: string;
-  zipCode?: string;
-  city?: string;
-  country?: string;
-  bankName?: string;
-  iban?: string;
-  bic?: string;
-  taxId?: string;
-  socialInsuranceId?: string;
-  healthInsurance?: string;
-  healthInsuranceId?: string;
-  employmentType?: EmploymentType;
-  weeklyHours?: number;
-  contractStart?: string;
-  contractEnd?: string;
-  hourlyRateBase?: number;
-  surchargeNight?: number;
-  surchargeSunday?: number;
-  surchargeHoliday?: number;
-  maxHoursPerDay?: number;
-  maxHoursPerWeek?: number;
-  preferredRegion?: string;
-  notes?: string;
-  status?: EmployeeStatus;
 }
 
 interface UpdateEmployeeInput extends Partial<CreateEmployeeInput> {}
@@ -133,7 +102,10 @@ export class EmployeeService {
     return employee;
   }
 
-  async create(input: CreateEmployeeInput, userId: string) {
+  async create(input: CreateEmployeeInput, userId: string, tenantId?: string) {
+    if (!tenantId) {
+      throw new ValidationError('Tenant-ID erforderlich');
+    }
     // Prüfen ob Personalnummer bereits vergeben
     const existing = await prisma.employee.findFirst({
       where: { personnelNumber: input.personnelNumber, deletedAt: null },
@@ -143,39 +115,103 @@ export class EmployeeService {
       throw new ConflictError('Personalnummer ist bereits vergeben');
     }
 
+    // Helper für optionale Date-Konvertierung
+    const toDate = (v: any) => v ? new Date(v) : null;
+    const toDec = (v: any) => v !== undefined && v !== null && v !== '' ? Number(v) : null;
+    const toInt = (v: any) => v !== undefined && v !== null && v !== '' ? parseInt(v) : null;
+
     const employee = await prisma.employee.create({
       data: {
+        tenantId,
         personnelNumber: input.personnelNumber,
         firstName: input.firstName,
         lastName: input.lastName,
-        email: input.email,
-        phone: input.phone,
-        mobile: input.mobile,
-        gender: input.gender,
-        dateOfBirth: input.dateOfBirth ? new Date(input.dateOfBirth) : undefined,
-        street: input.street,
-        zipCode: input.zipCode,
-        city: input.city,
+        // Persönlich
+        email: input.email || null,
+        phone: input.phone || null,
+        mobile: input.mobile || null,
+        gender: input.gender || null,
+        dateOfBirth: toDate(input.dateOfBirth),
+        birthPlace: input.birthPlace || null,
+        nationality: input.nationality || null,
+        maritalStatus: input.maritalStatus || null,
+        // Adresse
+        street: input.street || null,
+        zipCode: input.zipCode || null,
+        city: input.city || null,
         country: input.country || 'DE',
-        bankName: input.bankName,
-        iban: input.iban,
-        bic: input.bic,
-        taxId: input.taxId,
-        socialInsuranceId: input.socialInsuranceId,
-        healthInsurance: input.healthInsurance,
-        healthInsuranceId: input.healthInsuranceId,
-        employmentType: input.employmentType,
-        weeklyHours: input.weeklyHours,
-        contractStart: input.contractStart ? new Date(input.contractStart) : undefined,
-        contractEnd: input.contractEnd ? new Date(input.contractEnd) : undefined,
-        hourlyRateBase: input.hourlyRateBase,
-        surchargeNight: input.surchargeNight || 0,
-        surchargeSunday: input.surchargeSunday || 0,
-        surchargeHoliday: input.surchargeHoliday || 0,
-        maxHoursPerDay: input.maxHoursPerDay || 10,
-        maxHoursPerWeek: input.maxHoursPerWeek || 48,
-        preferredRegion: input.preferredRegion,
-        notes: input.notes,
+        // Notfallkontakt
+        emergencyContactName: input.emergencyContactName || null,
+        emergencyContactPhone: input.emergencyContactPhone || null,
+        emergencyContactRelation: input.emergencyContactRelation || null,
+        // Bank
+        bankName: input.bankName || null,
+        iban: input.iban || null,
+        bic: input.bic || null,
+        // Steuern & Versicherung
+        taxId: input.taxId || null,
+        taxClass: input.taxClass || null,
+        religion: input.religion || null,
+        children: toInt(input.children) ?? 0,
+        socialInsuranceId: input.socialInsuranceId || null,
+        pensionInsuranceId: input.pensionInsuranceId || null,
+        healthInsurance: input.healthInsurance || null,
+        healthInsuranceId: input.healthInsuranceId || null,
+        healthInsuranceType: input.healthInsuranceType || null,
+        // Vertrag
+        employmentType: input.employmentType || null,
+        contractType: input.contractType || null,
+        weeklyHours: toDec(input.weeklyHours),
+        contractStart: toDate(input.contractStart),
+        contractEnd: toDate(input.contractEnd),
+        probationMonths: toInt(input.probationMonths),
+        vacationDays: toInt(input.vacationDays) ?? 30,
+        department: input.department || null,
+        position: input.position || null,
+        costCenter: input.costCenter || null,
+        // Vergütung
+        hourlyRateBase: toDec(input.hourlyRateBase),
+        monthlySalary: toDec(input.monthlySalary),
+        surchargeNight: toDec(input.surchargeNight) ?? 0,
+        surchargeSunday: toDec(input.surchargeSunday) ?? 0,
+        surchargeHoliday: toDec(input.surchargeHoliday) ?? 0,
+        maxHoursPerDay: toDec(input.maxHoursPerDay) ?? 10,
+        maxHoursPerWeek: toDec(input.maxHoursPerWeek) ?? 48,
+        preferredRegion: input.preferredRegion || null,
+        // Zusatz
+        driverLicense: input.driverLicense || null,
+        languages: input.languages || null,
+        uniformSize: input.uniformSize || null,
+        shoeSize: toDec(input.shoeSize),
+        // §34a GewO
+        bewachungserlaubnisNr: input.bewachungserlaubnisNr || null,
+        bewachungserlaubnisExpiry: toDate(input.bewachungserlaubnisExpiry),
+        bewachungserlaubnisAuthority: input.bewachungserlaubnisAuthority || null,
+        unterrichtungDatum: toDate(input.unterrichtungDatum),
+        unterrichtungAuthority: input.unterrichtungAuthority || null,
+        sachkundeDatum: toDate(input.sachkundeDatum),
+        sachkundeNr: input.sachkundeNr || null,
+        fuehrungszeugnisDatum: toDate(input.fuehrungszeugnisDatum),
+        fuehrungszeugnisArt: input.fuehrungszeugnisArt || null,
+        zuverlaessigkeetspruefung: toDate(input.zuverlaessigkeetspruefung),
+        unterweisungDatum: toDate(input.unterweisungDatum),
+        unterweisungNext: toDate(input.unterweisungNext),
+        // Qualifikationen
+        waffensachkunde: input.waffensachkunde || false,
+        waffensachkundeExpiry: toDate(input.waffensachkundeExpiry),
+        waffensachkundeNr: input.waffensachkundeNr || null,
+        ersteHilfeCertified: input.ersteHilfeCertified || false,
+        ersteHilfeExpiry: toDate(input.ersteHilfeExpiry),
+        ersteHilfeHours: toInt(input.ersteHilfeHours),
+        sicherheitsstufe: toInt(input.sicherheitsstufe) ?? 1,
+        hundefuehrer: input.hundefuehrer || false,
+        hundefuehrerExpiry: toDate(input.hundefuehrerExpiry),
+        brandschutzbeauftragter: input.brandschutzbeauftragter || false,
+        brandschutzExpiry: toDate(input.brandschutzExpiry),
+        ersteHilfeTrainer: input.ersteHilfeTrainer || false,
+        // Sonstiges
+        notes: input.notes || null,
+        photoUrl: input.photoUrl || null,
         status: input.status || 'active',
       },
     });
@@ -197,42 +233,64 @@ export class EmployeeService {
       if (taken) throw new ConflictError('Personalnummer ist bereits vergeben');
     }
 
+    const toDate = (v: any) => v ? new Date(v) : null;
+    const toDec = (v: any) => v !== undefined && v !== null && v !== '' ? Number(v) : null;
+    const toInt = (v: any) => v !== undefined && v !== null && v !== '' ? parseInt(v) : null;
+
+    // Generischer Update-Data-Builder
+    const updateData: any = {};
+    
+    // Für jedes Feld im Input: prüfen ob es definiert ist und zum Schema passt
+    const strFields = ['personnelNumber','firstName','lastName','email','phone','mobile','birthPlace','nationality',
+      'street','zipCode','city','country','emergencyContactName','emergencyContactPhone','emergencyContactRelation',
+      'bankName','iban','bic','taxId','socialInsuranceId','pensionInsuranceId','healthInsurance','healthInsuranceId',
+      'department','position','costCenter','preferredRegion','driverLicense','languages','uniformSize','notes','photoUrl',
+      'bewachungserlaubnisNr','bewachungserlaubnisAuthority','unterrichtungAuthority','sachkundeNr',
+      'fuehrungszeugnisArt','waffensachkundeNr'];
+    
+    const enumFields = ['gender','maritalStatus','taxClass','religion','healthInsuranceType',
+      'employmentType','contractType','status'];
+    
+    const dateFields = ['dateOfBirth','contractStart','contractEnd',
+      'bewachungserlaubnisExpiry','unterrichtungDatum','sachkundeDatum',
+      'fuehrungszeugnisDatum','zuverlaessigkeetspruefung','unterweisungDatum','unterweisungNext',
+      'waffensachkundeExpiry','ersteHilfeExpiry','hundefuehrerExpiry','brandschutzExpiry'];
+    
+    const decFields = ['weeklyHours','hourlyRateBase','monthlySalary','surchargeNight','surchargeSunday','surchargeHoliday',
+      'maxHoursPerDay','maxHoursPerWeek','shoeSize'];
+    
+    const intFields = ['children','probationMonths','vacationDays','ersteHilfeHours','sicherheitsstufe'];
+    
+    const boolFields = ['waffensachkunde','ersteHilfeCertified','hundefuehrer','brandschutzbeauftragter','ersteHilfeTrainer'];
+
+    for (const f of strFields) {
+      if (f in input) updateData[f] = input[f] || null;
+    }
+    for (const f of enumFields) {
+      if (f in input) updateData[f] = input[f] || null;
+    }
+    for (const f of dateFields) {
+      if (f in input) updateData[f] = toDate(input[f]);
+    }
+    for (const f of decFields) {
+      if (f in input) {
+        const v = toDec(input[f]);
+        if (v !== null) updateData[f] = v;
+      }
+    }
+    for (const f of intFields) {
+      if (f in input) {
+        const v = toInt(input[f]);
+        if (v !== null) updateData[f] = v;
+      }
+    }
+    for (const f of boolFields) {
+      if (f in input) updateData[f] = Boolean(input[f]);
+    }
+
     const employee = await prisma.employee.update({
       where: { id },
-      data: {
-        ...(input.personnelNumber !== undefined && { personnelNumber: input.personnelNumber }),
-        ...(input.firstName !== undefined && { firstName: input.firstName }),
-        ...(input.lastName !== undefined && { lastName: input.lastName }),
-        ...(input.email !== undefined && { email: input.email }),
-        ...(input.phone !== undefined && { phone: input.phone }),
-        ...(input.mobile !== undefined && { mobile: input.mobile }),
-        ...(input.gender !== undefined && { gender: input.gender }),
-        ...(input.dateOfBirth !== undefined && { dateOfBirth: input.dateOfBirth ? new Date(input.dateOfBirth) : null }),
-        ...(input.street !== undefined && { street: input.street }),
-        ...(input.zipCode !== undefined && { zipCode: input.zipCode }),
-        ...(input.city !== undefined && { city: input.city }),
-        ...(input.country !== undefined && { country: input.country }),
-        ...(input.bankName !== undefined && { bankName: input.bankName }),
-        ...(input.iban !== undefined && { iban: input.iban }),
-        ...(input.bic !== undefined && { bic: input.bic }),
-        ...(input.taxId !== undefined && { taxId: input.taxId }),
-        ...(input.socialInsuranceId !== undefined && { socialInsuranceId: input.socialInsuranceId }),
-        ...(input.healthInsurance !== undefined && { healthInsurance: input.healthInsurance }),
-        ...(input.healthInsuranceId !== undefined && { healthInsuranceId: input.healthInsuranceId }),
-        ...(input.employmentType !== undefined && { employmentType: input.employmentType }),
-        ...(input.weeklyHours !== undefined && { weeklyHours: input.weeklyHours }),
-        ...(input.contractStart !== undefined && { contractStart: input.contractStart ? new Date(input.contractStart) : null }),
-        ...(input.contractEnd !== undefined && { contractEnd: input.contractEnd ? new Date(input.contractEnd) : null }),
-        ...(input.hourlyRateBase !== undefined && { hourlyRateBase: input.hourlyRateBase }),
-        ...(input.surchargeNight !== undefined && { surchargeNight: input.surchargeNight }),
-        ...(input.surchargeSunday !== undefined && { surchargeSunday: input.surchargeSunday }),
-        ...(input.surchargeHoliday !== undefined && { surchargeHoliday: input.surchargeHoliday }),
-        ...(input.maxHoursPerDay !== undefined && { maxHoursPerDay: input.maxHoursPerDay }),
-        ...(input.maxHoursPerWeek !== undefined && { maxHoursPerWeek: input.maxHoursPerWeek }),
-        ...(input.preferredRegion !== undefined && { preferredRegion: input.preferredRegion }),
-        ...(input.notes !== undefined && { notes: input.notes }),
-        ...(input.status !== undefined && { status: input.status }),
-      },
+      data: updateData,
     });
 
     logger.info(`Mitarbeiter aktualisiert: ${employee.firstName} ${employee.lastName}`);

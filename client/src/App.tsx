@@ -4,6 +4,8 @@ import { PlatformAuthProvider, usePlatformAuth } from './contexts/PlatformAuthCo
 import { WebSocketProvider } from './contexts/WebSocketContext';
 import { Layout } from './components/layout/Layout';
 import { LoginPage } from './pages/auth/LoginPage';
+import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import SetupPasswordPage from './pages/auth/SetupPasswordPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { EmployeesPage } from './pages/employees/EmployeesPage';
@@ -64,6 +66,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/setup-password" element={<SetupPasswordPage />} />
       <Route path="/platform/login" element={<PlatformLoginPage />} />
       <Route path="/platform/*" element={<PlatformLayout />} />

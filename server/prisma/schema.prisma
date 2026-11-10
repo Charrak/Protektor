@@ -369,7 +369,10 @@ model Employee {
   firstName         String    @db.VarChar(100)
   lastName          String    @db.VarChar(100)
   dateOfBirth       DateTime? @db.Date
+  birthPlace        String?   @db.VarChar(150)  // Geburtsort
   gender            Gender?
+  nationality       String?   @db.VarChar(100)  // Staatsangehörigkeit
+  maritalStatus     MaritalStatus?              // Familienstand
   street            String?   @db.VarChar(200)
   zipCode           String?   @db.VarChar(20)
   city              String?   @db.VarChar(100)
@@ -377,18 +380,43 @@ model Employee {
   phone             String?   @db.VarChar(50)
   mobile            String?   @db.VarChar(50)
   email             String?   @db.VarChar(255)
+  
+  // Notfallkontakt (Pflicht!)
+  emergencyContactName  String? @db.VarChar(200)
+  emergencyContactPhone String? @db.VarChar(50)
+  emergencyContactRelation String? @db.VarChar(100)
+  
+  // Bankverbindung
   bankName          String?   @db.VarChar(100)
   iban              String?   @db.VarChar(34)
   bic               String?   @db.VarChar(11)
-  taxId             String?   @db.VarChar(20)
-  socialInsuranceId String?   @db.VarChar(30)
-  healthInsurance   String?   @db.VarChar(100)
-  healthInsuranceId String?   @db.VarChar(30)
+  
+  // Steuern & Sozialversicherung
+  taxId             String?   @db.VarChar(20)   // Steuer-ID
+  taxClass          TaxClass?                   // Steuerklasse (1-6)
+  religion          Religion?                   // Konfession (für Kirchensteuer)
+  children          Int       @default(0)       // Kinderanzahl (für Steuerklasse)
+  socialInsuranceId String?   @db.VarChar(30)   // Sozialversicherungsnummer
+  pensionInsuranceId String?  @db.VarChar(30)   // Rentenversicherungsnummer
+  healthInsurance   String?   @db.VarChar(100)  // Krankenkasse
+  healthInsuranceId String?   @db.VarChar(30)   // Versichertennummer
+  healthInsuranceType InsuranceType?            // Gesetzlich/Privat
+  
+  // Arbeitsvertrag
   employmentType    EmploymentType?
+  contractType      ContractType?               // Unbefristet/Befristet
   weeklyHours       Decimal?  @db.Decimal(5, 2)
   contractStart     DateTime? @db.Date
   contractEnd       DateTime? @db.Date
+  probationMonths   Int?                        // Probezeit in Monaten
+  vacationDays      Int       @default(30)      // Urlaubstage
+  department        String?   @db.VarChar(100)
+  position          String?   @db.VarChar(100)
+  costCenter        String?   @db.VarChar(50)
+  
+  // Vergütung
   hourlyRateBase    Decimal?  @db.Decimal(8, 2)
+  monthlySalary     Decimal?  @db.Decimal(10, 2)  // Monatliches Festgehalt
   surchargeNight    Decimal?  @default(0) @db.Decimal(5, 2)
   surchargeSunday   Decimal?  @default(0) @db.Decimal(5, 2)
   surchargeHoliday  Decimal?  @default(0) @db.Decimal(5, 2)
@@ -396,21 +424,57 @@ model Employee {
   maxHoursPerWeek   Decimal   @default(48.00) @db.Decimal(5, 2)
   preferredRegion   String?   @db.VarChar(100)
   
-  // Sicherheits-relevante Felder für Sicherheitsfirmen
-  bewachungserlaubnisNr    String? @db.VarChar(100)  // §34a GewO Lizenznummer
-  bewachungserlaubnisExpiry DateTime? @db.Date  // Ablaufdatum Bewachungserlaubnis
-  waffensachkunde          Boolean @default(false)  // Waffensachkundenachweis vorhanden
-  waffensachkundeExpiry    DateTime? @db.Date  // Ablaufdatum Waffensachkunde
-  ersteHilfeCertified      Boolean @default(false)  // Erste Hilfe Ausbildung
-  ersteHilfeExpiry         DateTime? @db.Date  // Ablaufdatum Erste Hilfe (alle 2 Jahre)
-  sicherheitsstufe         Int @default(1)  // 1-5: Einfacher Dienst bis Führungsposition
-  fuehrungszeugnisDatum    DateTime? @db.Date  // Letzte Prüfung Führungszeugnis
-  zuverlaessigkeetspruefung DateTime? @db.Date  // §7 GewO Zuverlässigkeitsprüfung
-  unterweisungDatum        DateTime? @db.Date  // Letzte Sicherheitsunterweisung
-  hundefuehrer             Boolean @default(false)  // Hundeführer-Schein
-  brandschutzbeauftragter  Boolean @default(false)  // Brandschutzhelfer
-  ersteHilfeTrainer        Boolean @default(false)  // Erste Hilfe Ausbilder
+  // Zusatzinformationen
+  driverLicense     String?   @db.VarChar(200)  // Führerschein-Klassen
+  languages         String?   @db.VarChar(500)  // Sprachen
+  uniformSize       String?   @db.VarChar(20)   // Uniformgröße
+  shoeSize          Decimal?  @db.Decimal(3, 1) // Schuhgröße
   
+  // ═══════════════════════════════════════════════════
+  // SICHERHEITS-RELEVANTE FELDER (§34a GewO)
+  // ═══════════════════════════════════════════════════
+  bewachungserlaubnisNr    String? @db.VarChar(100)  // §34a GewO Lizenznummer
+  bewachungserlaubnisExpiry DateTime? @db.Date        // Ablaufdatum Bewachungserlaubnis
+  bewachungserlaubnisAuthority String? @db.VarChar(200) // Ausstellende Behörde
+  
+  // Unterrichtung nach §34a Abs. 1 Satz 4 GewO
+  unterrichtungDatum    DateTime? @db.Date
+  unterrichtungAuthority String? @db.VarChar(200)
+  
+  // Sachkundeprüfung §34a Abs. 1a GewO
+  sachkundeDatum        DateTime? @db.Date
+  sachkundeNr           String?   @db.VarChar(100)
+  
+  // Führungszeugnis (Pflicht!)
+  fuehrungszeugnisDatum    DateTime? @db.Date
+  fuehrungszeugnisArt      String?   @db.VarChar(100) // Privat/Gewerbe
+  
+  // Zuverlässigkeitsprüfung §7 GewO
+  zuverlaessigkeetspruefung DateTime? @db.Date
+  
+  // Sicherheitsunterweisung
+  unterweisungDatum        DateTime? @db.Date  // Letzte Sicherheitsunterweisung
+  unterweisungNext         DateTime? @db.Date  // Nächste Unterweisung
+  
+  // Waffensachkunde (falls bewaffneter Dienst)
+  waffensachkunde          Boolean @default(false)
+  waffensachkundeExpiry    DateTime? @db.Date
+  waffensachkundeNr        String?   @db.VarChar(100)
+  
+  // Erste Hilfe (alle 2 Jahre Auffrischung!)
+  ersteHilfeCertified      Boolean @default(false)
+  ersteHilfeExpiry         DateTime? @db.Date
+  ersteHilfeHours          Int?                        // Anzahl Stunden
+  
+  // Zusatzqualifikationen
+  sicherheitsstufe         Int @default(1)  // 1-5: Einfacher Dienst bis Führungsposition
+  hundefuehrer             Boolean @default(false)
+  hundefuehrerExpiry       DateTime? @db.Date
+  brandschutzbeauftragter  Boolean @default(false)
+  brandschutzExpiry        DateTime? @db.Date
+  ersteHilfeTrainer        Boolean @default(false)
+  
+  // Sonstiges
   notes             String?   @db.Text
   photoUrl          String?   @db.VarChar(500)
   status            EmployeeStatus @default(active)
@@ -454,6 +518,43 @@ enum EmployeeStatus {
   inactive
   on_leave
   terminated
+}
+
+enum MaritalStatus {
+  single
+  married
+  divorced
+  widowed
+  civil_partnership
+}
+
+enum TaxClass {
+  I
+  II
+  III
+  IV
+  V
+  VI
+}
+
+enum Religion {
+  none
+  catholic
+  protestant
+  other
+}
+
+enum InsuranceType {
+  statutory   // Gesetzlich
+  private     // Privat
+  family      // Familienversicherung
+}
+
+enum ContractType {
+  permanent      // Unbefristet
+  fixed_term     // Befristet
+  temp           // Leiharbeit
+  working_student // Werkstudent
 }
 
 // ═══════════════════════════════════════════════════
