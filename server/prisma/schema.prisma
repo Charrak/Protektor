@@ -159,6 +159,10 @@ model Tenant {
   securityIncidents  SecurityIncident[]
   emergencyProtocols EmergencyProtocol[]
   accessPermissions  AccessPermission[]
+  
+  // Support & Feedback
+  supportTickets     SupportTicket[]
+  contactRequests    ContactRequest[]
 
   @@map("tenants")
 }
@@ -2063,4 +2067,168 @@ enum AccessPermissionType {
   LIMITED_HOURS
   ESCORTED_ONLY
   SPECIFIC_AREAS
+}
+
+// ═══════════════════════════════════════════════════
+// SUPPORT-TICKETS & KONTAKT
+// ═══════════════════════════════════════════════════
+
+model SupportTicket {
+  id           String    @id @default(uuid())
+  tenantId     String    @db.VarChar(36)
+  userId       String    @db.VarChar(36)
+  ticketNumber String    @unique @db.VarChar(20) // SUP-2026-0001
+  
+  category     String    @db.VarChar(50) // technical, billing, feature_request, bug, other
+  priority     TicketPriority @default(MEDIUM)
+  status       TicketStatus @default(OPEN)
+  
+  subject      String    @db.VarChar(200)
+  description  String    @db.Text
+  
+  // Kontakt-Info
+  contactEmail String?   @db.VarChar(100)
+  contactPhone String?   @db.VarChar(30)
+  
+  // Zuweisung
+  assignedTo   String?   @db.VarChar(36)
+  
+  // Anhänge
+  attachments  Json?     // Array von File-IDs
+  
+  // Lösung
+  resolution   String?   @db.Text
+  resolvedAt   DateTime?
+  
+  // Bewertungen
+  rating       Int?      // 1-5 Sterne
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  closedAt     DateTime?
+  
+  tenant       Tenant     @relation(fields: [tenantId], references: [id])
+  messages     SupportTicketMessage[]
+  
+  @@index([tenantId, status])
+  @@index([userId])
+  @@map("support_tickets")
+}
+
+model SupportTicketMessage {
+  id        String    @id @default(uuid())
+  ticketId  String    @db.VarChar(36)
+  userId    String?   @db.VarChar(36) // NULL bei System-Nachrichten
+  isAdmin   Boolean   @default(false)
+  
+  message   String    @db.Text
+  attachments Json?   // Array von File-IDs
+  
+  isRead    Boolean   @default(false)
+  
+  createdAt DateTime  @default(now())
+  
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+  @@index([ticketId, createdAt])
+  @@map("support_ticket_messages")
+}
+
+model ContactRequest {
+  id           String    @id @default(uuid())
+  tenantId     String?   @db.VarChar(36) // NULL bei öffentlichen Anfragen
+  
+  name         String    @db.VarChar(100)
+  email        String    @db.VarChar(100)
+  phone        String?   @db.VarChar(30)
+  company      String?   @db.VarChar(200)
+  
+  subject      String    @db.VarChar(200)
+  message      String    @db.Text
+  
+  // Typ der Anfrage
+  requestType  String    @db.VarChar(50) // demo, pricing, support, partnership, other
+  
+  // Status
+  status       ContactRequestStatus @default(NEW)
+  processedAt  DateTime?
+  processedBy  String?   @db.VarChar(36)
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  
+  @@index([status, createdAt])
+  @@map("contact_requests")
+}
+
+model Feedback {
+  id           String    @id @default(uuid())
+  tenantId     String?   @db.VarChar(36)
+  userId       String?   @db.VarChar(36)
+  
+  // Feedback-Typ
+  feedbackType FeedbackType
+  
+  // Inhalt
+  subject      String    @db.VarChar(200)
+  message      String    @db.Text
+  
+  // Kontext (welcher Bereich)
+  context      String?   @db.VarChar(100) // z.B. "dashboard", "scheduling", "billing"
+  url          String?   @db.VarChar(500)
+  
+  // Bewertung
+  rating       Int?      // 1-5 Sterne
+  
+  // Technische Daten
+  userAgent    String?   @db.VarChar(500)
+  browser      String?   @db.VarChar(100)
+  
+  // Status
+  status       FeedbackStatus @default(NEW)
+  processedAt  DateTime?
+  
+  createdAt    DateTime  @default(now())
+  
+  @@index([feedbackType, createdAt])
+  @@map("feedback")
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_FOR_CUSTOMER
+  WAITING_FOR_SUPPORT
+  RESOLVED
+  CLOSED
+}
+
+enum ContactRequestStatus {
+  NEW
+  IN_PROGRESS
+  RESPONDED
+  CLOSED
+}
+
+enum FeedbackType {
+  BUG_REPORT
+  FEATURE_REQUEST
+  IMPROVEMENT
+  COMPLIMENT
+  GENERAL
+}
+
+enum FeedbackStatus {
+  NEW
+  ACKNOWLEDGED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
 }

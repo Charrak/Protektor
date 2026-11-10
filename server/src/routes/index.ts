@@ -23,9 +23,15 @@ import customerDocumentRoutes from './customerDocument.routes';
 import shiftReportRoutes from './shiftReport.routes';
 import reminderRoutes from './reminder.routes';
 import customerPortalRoutes from './customerPortal.routes';
+import helpRoutes from './help.routes';
+import notificationRoutes from './notification.routes';
+import supportRoutes from './support.routes';
 import { tenantContext } from '../middleware/tenantContext';
 
 const router = Router();
+
+// ─── Help & Support (öffentlich) ───
+router.use('/help', helpRoutes);
 
 // ─── Plattform-Verwaltung (SaaS Admin) ───
 router.use('/platform', platformRoutes);
@@ -77,9 +83,12 @@ router.use('/datev', datevRoutes);
 // ─── Phase 10: Add-on-System & Feature-Management ───
 router.use('/addons', addonRoutes);
 
+// ─── Support & Kommunikation ───
+router.use('/notifications', notificationRoutes);
+router.use('/support', supportRoutes);
+
 // router.use('/reports', reportRoutes);
 // router.use('/admin', adminRoutes);
-// router.use('/notifications', notificationRoutes);
 // router.use('/replacement', replacementRoutes);
 // router.use('/uploads', uploadRoutes);
 
