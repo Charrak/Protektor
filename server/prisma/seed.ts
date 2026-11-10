@@ -386,13 +386,18 @@ async function main() {
 
   // 6. Demo Kunden erstellen
   const demoCustomers = [
-    { companyName: 'ABC GmbH', customerNumber: 'K001', contactEmail: 'info@abc-gmbh.de' },
-    { companyName: 'XYZ AG', customerNumber: 'K002', contactEmail: 'kontakt@xyz-ag.de' },
+    { companyName: 'ABC GmbH', customerNumber: 'K001', email: 'info@abc-gmbh.de', street: 'Industriestraße 1', zipCode: '10115', city: 'Berlin' },
+    { companyName: 'XYZ AG', customerNumber: 'K002', email: 'kontakt@xyz-ag.de', street: 'Hauptstraße 42', zipCode: '80331', city: 'München' },
   ];
 
   for (const cust of demoCustomers) {
     await prisma.customer.upsert({
-      where: { customerNumber: cust.customerNumber },
+      where: {
+        tenantId_customerNumber: {
+          tenantId: demoTenant.id,
+          customerNumber: cust.customerNumber,
+        },
+      },
       update: {},
       create: {
         tenantId: demoTenant.id,
