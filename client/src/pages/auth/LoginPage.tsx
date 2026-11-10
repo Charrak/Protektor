@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { brandingService, BrandingSettings } from '../../services/branding.service';
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,6 +19,13 @@ export function LoginPage() {
       .catch(() => {}); // Silently fail, use defaults
   }, []);
 
+  useEffect(() => {
+    // Wenn User bereits eingeloggt ist, zum Dashboard navigieren
+    if (user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -25,6 +33,8 @@ export function LoginPage() {
 
     try {
       await login(username, password);
+      // Nach erfolgreichem Login explizit navigieren
+      navigate('/', { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.error || 'Anmeldung fehlgeschlagen. Bitte Zugangsdaten prüfen.');
     } finally {

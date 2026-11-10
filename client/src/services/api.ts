@@ -34,7 +34,12 @@ api.interceptors.response.use(
           return api(error.config);
         }
       } catch {
-        window.location.href = '/login';
+        // Token-Refresh fehlgeschlagen - Tokens löschen
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('sessionId');
+        // Kein window.location.href - AuthContext wird getMe() aufrufen,
+        // was fehlschlägt und user auf null setzt, dann navigiert die Route zu /login
       }
     }
     return Promise.reject(error);
