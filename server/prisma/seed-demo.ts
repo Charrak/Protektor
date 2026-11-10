@@ -399,7 +399,14 @@ async function main() {
 
   for (let i = 0; i < employeeNames1.length; i++) {
     const [firstName, lastName] = employeeNames1[i];
-    await prisma.employee.create({
+    await prisma.employee.upsert({
+      where: {
+        tenantId_personnelNumber: {
+          tenantId: tenant1.id,
+          personnelNumber: `SN${String(i + 1).padStart(3, '0')}`,
+        },
+      },
+      update: {},
       data: {
         tenantId: tenant1.id,
         firstName,
@@ -435,7 +442,14 @@ async function main() {
 
   for (let i = 0; i < employeeNames2.length; i++) {
     const [firstName, lastName] = employeeNames2[i];
-    await prisma.employee.create({
+    await prisma.employee.upsert({
+      where: {
+        tenantId_personnelNumber: {
+          tenantId: tenant1.id,
+          personnelNumber: `SN${String(i + 1).padStart(3, '0')}`,
+        },
+      },
+      update: {},
       data: {
         tenantId: tenant2.id,
         firstName,
@@ -469,7 +483,14 @@ async function main() {
 
   for (let i = 0; i < employeeNames3.length; i++) {
     const [firstName, lastName] = employeeNames3[i];
-    await prisma.employee.create({
+    await prisma.employee.upsert({
+      where: {
+        tenantId_personnelNumber: {
+          tenantId: tenant1.id,
+          personnelNumber: `SN${String(i + 1).padStart(3, '0')}`,
+        },
+      },
+      update: {},
       data: {
         tenantId: tenant3.id,
         firstName,
