@@ -86,6 +86,10 @@ app.use('/api/v1/password-setup', passwordSetupRoutes);
 app.use('/api/v1/branding', brandingRoutes);
 app.use('/api/v1/api', apiUsageRoutes);
 
+// ─── External API Routes (API-Key Auth) ───
+import externalRoutes from './routes/external.routes';
+app.use('/api/v1/external', externalRoutes);
+
 // ─── API Routes (für Kunden) ───
 // authenticate VOR tenantMiddleware, damit req.user existiert
 const PUBLIC_PATHS = ['/auth', '/help', '/customer-portal/login', '/customer-portal/forgot-password', '/customer-portal/reset-password'];
