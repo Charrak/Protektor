@@ -29,10 +29,13 @@ export class AuthService {
   /**
    * Benutzer anmelden
    */
-  async login(username: string, password: string, ipAddress?: string, userAgent?: string): Promise<LoginResult> {
-    // Benutzer laden
+  async login(username: string, password: string, ipAddress?: string, userAgent?: string, tenantId?: string): Promise<LoginResult> {
+    // Benutzer laden (optional mandantenspezifisch)
+    const userWhere: any = { username, deletedAt: null };
+    if (tenantId) userWhere.tenantId = tenantId;
+
     const user = await prisma.user.findFirst({
-      where: { username, deletedAt: null },
+      where: userWhere,
       include: {
         role: {
           include: {
