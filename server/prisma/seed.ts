@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { ensureDefaultRoles } from '../src/services/defaultRoles.service';
 
 const prisma = new PrismaClient();
 
@@ -145,184 +146,15 @@ async function main() {
     console.log('✅ Subscription erstellt für Demo Tenant\n');
   }
 
-  // 5. Rollen erstellen
-  const adminRole = await prisma.role.upsert({
-    where: {
-      tenantId_slug: {
-        tenantId: demoTenant.id,
-        slug: 'admin',
-      },
-    },
-    update: {},
-    create: {
-      tenantId: demoTenant.id,
-      name: 'Administrator',
-      slug: 'admin',
-      description: 'Vollzugriff auf alle Funktionen',
-      isSystem: true,
-    },
+  // 5. Standardrollen und Permissions erstellen (zentral)
+  await ensureDefaultRoles(prisma, demoTenant.id);
+
+  console.log('✅ 5 Standardrollen + alle Permissions erstellt\n');
+
+  // 6. Demo User für Tenant erstellen (mit Admin-Rolle)
+  const adminRole = await prisma.role.findUniqueOrThrow({
+    where: { tenantId_slug: { tenantId: demoTenant.id, slug: 'admin' } },
   });
-
-  const dispatcherRole = await prisma.role.upsert({
-    where: {
-      tenantId_slug: {
-        tenantId: demoTenant.id,
-        slug: 'dispatcher',
-      },
-    },
-    update: {},
-    create: {
-      tenantId: demoTenant.id,
-      name: 'Disponent',
-      slug: 'dispatcher',
-      description: 'Dienstplanung und Einsatzsteuerung',
-      isSystem: true,
-    },
-  });
-
-  const teamLeaderRole = await prisma.role.upsert({
-    where: {
-      tenantId_slug: {
-        tenantId: demoTenant.id,
-        slug: 'teamleader',
-      },
-    },
-    update: {},
-    create: {
-      tenantId: demoTenant.id,
-      name: 'Teamleiter',
-      slug: 'teamleader',
-      description: 'Teamverwaltung und Zeitgenehmigung',
-      isSystem: true,
-    },
-  });
-
-  const employeeRole = await prisma.role.upsert({
-    where: {
-      tenantId_slug: {
-        tenantId: demoTenant.id,
-        slug: 'employee',
-      },
-    },
-    update: {},
-    create: {
-      tenantId: demoTenant.id,
-      name: 'Mitarbeiter',
-      slug: 'employee',
-      description: 'Eigene Daten einsehen',
-      isSystem: true,
-    },
-  });
-
-  const accountantRole = await prisma.role.upsert({
-    where: {
-      tenantId_slug: {
-        tenantId: demoTenant.id,
-        slug: 'accountant',
-      },
-    },
-    update: {},
-    create: {
-      tenantId: demoTenant.id,
-      name: 'Buchhaltung',
-      slug: 'accountant',
-      description: 'Abrechnung und Gehälter',
-      isSystem: true,
-    },
-  });
-
-  console.log('✅ Rollen erstellt:');
-  console.log('   - Administrator');
-  console.log('   - Disponent');
-  console.log('   - Teamleiter');
-  console.log('   - Mitarbeiter');
-  console.log('   - Buchhaltung\n');
-
-  // 7. Permissions erstellen
-  const permissions = [
-    // Employee-Permissions
-    { name: 'Employees: Create', slug: 'employees:create', module: 'employees', description: 'Mitarbeiter erstellen' },
-    { name: 'Employees: Read', slug: 'employees:view', module: 'employees', description: 'Mitarbeiter anzeigen' },
-    { name: 'Employees: Update', slug: 'employees:edit', module: 'employees', description: 'Mitarbeiter bearbeiten' },
-    { name: 'Employees: Delete', slug: 'employees:delete', module: 'employees', description: 'Mitarbeiter löschen' },
-    { name: 'Employee: Manage', slug: 'employee.manage', module: 'employees', description: 'Mitarbeiter verwalten' },
-    
-    // Customer-Permissions
-    { name: 'Customers: Create', slug: 'customers:create', module: 'customers', description: 'Kunden erstellen' },
-    { name: 'Customers: Read', slug: 'customers:view', module: 'customers', description: 'Kunden anzeigen' },
-    { name: 'Customers: Update', slug: 'customers:edit', module: 'customers', description: 'Kunden bearbeiten' },
-    { name: 'Customers: Delete', slug: 'customers:delete', module: 'customers', description: 'Kunden löschen' },
-    
-    // Object-Permissions
-    { name: 'Objects: Create', slug: 'objects:create', module: 'objects', description: 'Objekte erstellen' },
-    { name: 'Objects: Read', slug: 'objects:view', module: 'objects', description: 'Objekte anzeigen' },
-    { name: 'Objects: Update', slug: 'objects:edit', module: 'objects', description: 'Objekte bearbeiten' },
-    
-    // Scheduling-Permissions
-    { name: 'Scheduling: View', slug: 'scheduling:view', module: 'scheduling', description: 'Dienstpläne anzeigen' },
-    { name: 'Scheduling: Create', slug: 'scheduling:create', module: 'scheduling', description: 'Dienstpläne erstellen' },
-    { name: 'Scheduling: Edit', slug: 'scheduling:edit', module: 'scheduling', description: 'Dienstpläne bearbeiten' },
-    { name: 'Scheduling: Delete', slug: 'scheduling:delete', module: 'scheduling', description: 'Dienstpläne löschen' },
-    { name: 'Scheduling: Auto Plan', slug: 'scheduling:auto_plan', module: 'scheduling', description: 'Automatische Planung' },
-    
-    // Attendance-Permissions
-    { name: 'Attendance: View', slug: 'attendance:view', module: 'attendance', description: 'Zeiterfassung anzeigen' },
-    { name: 'Attendance: Create', slug: 'attendance:create', module: 'attendance', description: 'Zeiterfassung erstellen' },
-    { name: 'Attendance: Edit', slug: 'attendance:edit', module: 'attendance', description: 'Zeiterfassung bearbeiten' },
-    { name: 'Attendance: Approve', slug: 'attendance:approve', module: 'attendance', description: 'Zeiterfassung genehmigen' },
-    
-    // Billing-Permissions
-    { name: 'Billing: Create', slug: 'billing.create', module: 'billing', description: 'Abrechnung erstellen' },
-    { name: 'Billing: Read', slug: 'billing.read', module: 'billing', description: 'Abrechnung anzeigen' },
-    { name: 'Billing: Invoices', slug: 'billing:invoices', module: 'billing', description: 'Rechnungen verwalten' },
-    { name: 'Billing: Payroll', slug: 'billing:payroll', module: 'billing', description: 'Gehälter verwalten' },
-    
-    // Report-Permissions
-    { name: 'Reports: View', slug: 'reports:view', module: 'reports', description: 'Berichte anzeigen' },
-    
-    // Settings-Permissions
-    { name: 'Settings: View', slug: 'settings:view', module: 'settings', description: 'Einstellungen anzeigen' },
-    { name: 'Settings: Update', slug: 'settings:edit', module: 'settings', description: 'Einstellungen bearbeiten' },
-    
-    // Admin-Permissions
-    { name: 'Admin: Roles', slug: 'admin:roles', module: 'admin', description: 'Rollen verwalten' },
-    { name: 'Admin: Users', slug: 'admin:users', module: 'admin', description: 'Benutzer verwalten' },
-    { name: 'Admin: Tenants', slug: 'admin:tenants', module: 'admin', description: 'Tenants verwalten' },
-    { name: 'Admin: Settings', slug: 'admin:settings', module: 'admin', description: 'Systemeinstellungen' },
-    { name: 'Admin: Audit Log', slug: 'admin:audit_log', module: 'admin', description: 'Audit-Log anzeigen' },
-  ];
-
-  // Alte Permissions und RolePermissions löschen um Kollisionen zu vermeiden
-  await prisma.rolePermission.deleteMany({});
-  await prisma.permission.deleteMany({});
-  console.log('🗑️  Alte Permissions gelöscht\n');
-
-  const createdPermissions = [];
-  for (const perm of permissions) {
-    const permission = await prisma.permission.create({
-      data: perm,
-    });
-    createdPermissions.push(permission);
-  }
-
-  console.log(`✅ ${createdPermissions.length} Permissions erstellt\n`);
-
-  // 8. RolePermissions für Admin erstellen (alle Berechtigungen)
-  const adminRolePermissions = [];
-  for (const permission of createdPermissions) {
-    const rolePermission = await prisma.rolePermission.create({
-      data: {
-        roleId: adminRole.id,
-        permissionId: permission.id,
-        granted: true,
-      },
-    });
-    adminRolePermissions.push(rolePermission);
-  }
-
-  console.log(`✅ ${adminRolePermissions.length} RolePermissions für Admin erstellt\n`);
-
-  // 9. Demo User für Tenant erstellen
   const demoUserPassword = await bcrypt.hash('Demo123!', 12);
   
   const demoUser = await prisma.user.upsert({
@@ -350,8 +182,7 @@ async function main() {
   console.log('✅ Demo User erstellt:');
   console.log(`   Username: demo`);
   console.log(`   Password: Demo123!`);
-  console.log(`   Rolle: Administrator`);
-  console.log(`   Berechtigungen: ${adminRolePermissions.length} Permissions über Admin-Rolle\n`);
+  console.log(`   Rolle: Administrator (alle Berechtigungen)\n`);
 
   // 6. Demo Mitarbeiter erstellen
   const demoEmployees = [
