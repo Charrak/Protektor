@@ -26,25 +26,23 @@ import customerPortalRoutes from './customerPortal.routes';
 import helpRoutes from './help.routes';
 import notificationRoutes from './notification.routes';
 import supportRoutes from './support.routes';
-import { tenantContext } from '../middleware/tenantContext';
 
 const router = Router();
 
-// ─── Help & Support (öffentlich) ───
+// ─── Help & Support (öffentlich, vor Auth) ───
 router.use('/help', helpRoutes);
 
-// ─── Plattform-Verwaltung (SaaS Admin) ───
+// ─── Plattform-Verwaltung (SaaS Admin, eigene Auth) ───
 router.use('/platform', platformRoutes);
 
-// ─── Tenant-Context Middleware (für alle Mandanten-APIs) ───
-router.use(tenantContext);
+// ─── Auth-Routen (öffentlich, kein tenantContext nötig) ───
+router.use('/auth', authRoutes);
 
-// ─── Usage Tracking Middleware ───
+// ─── Usage Tracking Middleware (für alle folgenden Routen) ───
 import { trackApiUsage } from '../middleware/usageTracker';
 router.use(trackApiUsage);
 
-// ─── Phase 1: Auth, Benutzer, Rollen, Sperren ───
-router.use('/auth', authRoutes);
+// ─── Phase 1: Benutzer, Rollen, Sperren ───
 router.use('/users', userRoutes);
 router.use('/roles', roleRoutes);
 router.use('/locks', lockingRoutes);
