@@ -245,6 +245,7 @@ async function main() {
     { name: 'Employees: Read', slug: 'employees:view', module: 'employees', description: 'Mitarbeiter anzeigen' },
     { name: 'Employees: Update', slug: 'employees:edit', module: 'employees', description: 'Mitarbeiter bearbeiten' },
     { name: 'Employees: Delete', slug: 'employees:delete', module: 'employees', description: 'Mitarbeiter löschen' },
+    { name: 'Employee: Manage', slug: 'employee.manage', module: 'employees', description: 'Mitarbeiter verwalten' },
     
     // Customer-Permissions
     { name: 'Customers: Create', slug: 'customers:create', module: 'customers', description: 'Kunden erstellen' },
@@ -256,19 +257,25 @@ async function main() {
     { name: 'Objects: Create', slug: 'objects:create', module: 'objects', description: 'Objekte erstellen' },
     { name: 'Objects: Read', slug: 'objects:view', module: 'objects', description: 'Objekte anzeigen' },
     { name: 'Objects: Update', slug: 'objects:edit', module: 'objects', description: 'Objekte bearbeiten' },
-    { name: 'Objects: Delete', slug: 'objects:delete', module: 'objects', description: 'Objekte löschen' },
     
-    // Deployment-Permissions
-    { name: 'Deployments: Create', slug: 'deployments:create', module: 'deployments', description: 'Einsätze erstellen' },
-    { name: 'Deployments: Read', slug: 'deployments:view', module: 'deployments', description: 'Einsätze anzeigen' },
-    { name: 'Deployments: Update', slug: 'deployments:edit', module: 'deployments', description: 'Einsätze bearbeiten' },
-    { name: 'Deployments: Delete', slug: 'deployments:delete', module: 'deployments', description: 'Einsätze löschen' },
+    // Scheduling-Permissions
+    { name: 'Scheduling: View', slug: 'scheduling:view', module: 'scheduling', description: 'Dienstpläne anzeigen' },
+    { name: 'Scheduling: Create', slug: 'scheduling:create', module: 'scheduling', description: 'Dienstpläne erstellen' },
+    { name: 'Scheduling: Edit', slug: 'scheduling:edit', module: 'scheduling', description: 'Dienstpläne bearbeiten' },
+    { name: 'Scheduling: Delete', slug: 'scheduling:delete', module: 'scheduling', description: 'Dienstpläne löschen' },
+    { name: 'Scheduling: Auto Plan', slug: 'scheduling:auto_plan', module: 'scheduling', description: 'Automatische Planung' },
     
-    // Invoice-Permissions
-    { name: 'Invoices: Create', slug: 'invoices:create', module: 'invoices', description: 'Rechnungen erstellen' },
-    { name: 'Invoices: Read', slug: 'invoices:view', module: 'invoices', description: 'Rechnungen anzeigen' },
-    { name: 'Invoices: Update', slug: 'invoices:edit', module: 'invoices', description: 'Rechnungen bearbeiten' },
-    { name: 'Invoices: Delete', slug: 'invoices:delete', module: 'invoices', description: 'Rechnungen löschen' },
+    // Attendance-Permissions
+    { name: 'Attendance: View', slug: 'attendance:view', module: 'attendance', description: 'Zeiterfassung anzeigen' },
+    { name: 'Attendance: Create', slug: 'attendance:create', module: 'attendance', description: 'Zeiterfassung erstellen' },
+    { name: 'Attendance: Edit', slug: 'attendance:edit', module: 'attendance', description: 'Zeiterfassung bearbeiten' },
+    { name: 'Attendance: Approve', slug: 'attendance:approve', module: 'attendance', description: 'Zeiterfassung genehmigen' },
+    
+    // Billing-Permissions
+    { name: 'Billing: Create', slug: 'billing.create', module: 'billing', description: 'Abrechnung erstellen' },
+    { name: 'Billing: Read', slug: 'billing.read', module: 'billing', description: 'Abrechnung anzeigen' },
+    { name: 'Billing: Invoices', slug: 'billing:invoices', module: 'billing', description: 'Rechnungen verwalten' },
+    { name: 'Billing: Payroll', slug: 'billing:payroll', module: 'billing', description: 'Gehälter verwalten' },
     
     // Report-Permissions
     { name: 'Reports: View', slug: 'reports:view', module: 'reports', description: 'Berichte anzeigen' },
@@ -276,6 +283,13 @@ async function main() {
     // Settings-Permissions
     { name: 'Settings: View', slug: 'settings:view', module: 'settings', description: 'Einstellungen anzeigen' },
     { name: 'Settings: Update', slug: 'settings:edit', module: 'settings', description: 'Einstellungen bearbeiten' },
+    
+    // Admin-Permissions
+    { name: 'Admin: Roles', slug: 'admin:roles', module: 'admin', description: 'Rollen verwalten' },
+    { name: 'Admin: Users', slug: 'admin:users', module: 'admin', description: 'Benutzer verwalten' },
+    { name: 'Admin: Tenants', slug: 'admin:tenants', module: 'admin', description: 'Tenants verwalten' },
+    { name: 'Admin: Settings', slug: 'admin:settings', module: 'admin', description: 'Systemeinstellungen' },
+    { name: 'Admin: Audit Log', slug: 'admin:audit_log', module: 'admin', description: 'Audit-Log anzeigen' },
   ];
 
   // Alte Permissions und RolePermissions löschen um Kollisionen zu vermeiden
