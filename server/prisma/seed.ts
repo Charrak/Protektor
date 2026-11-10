@@ -278,12 +278,15 @@ async function main() {
     { name: 'Settings: Update', slug: 'settings:edit', module: 'settings', description: 'Einstellungen bearbeiten' },
   ];
 
+  // Alte Permissions und RolePermissions löschen um Kollisionen zu vermeiden
+  await prisma.rolePermission.deleteMany({});
+  await prisma.permission.deleteMany({});
+  console.log('🗑️  Alte Permissions gelöscht\n');
+
   const createdPermissions = [];
   for (const perm of permissions) {
-    const permission = await prisma.permission.upsert({
-      where: { name: perm.name },
-      update: { slug: perm.slug, module: perm.module, description: perm.description },
-      create: perm,
+    const permission = await prisma.permission.create({
+      data: perm,
     });
     createdPermissions.push(permission);
   }
@@ -293,15 +296,8 @@ async function main() {
   // 8. RolePermissions für Admin erstellen (alle Berechtigungen)
   const adminRolePermissions = [];
   for (const permission of createdPermissions) {
-    const rolePermission = await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: adminRole.id,
-          permissionId: permission.id,
-        },
-      },
-      update: {},
-      create: {
+    const rolePermission = await prisma.rolePermission.create({
+      data: {
         roleId: adminRole.id,
         permissionId: permission.id,
         granted: true,
