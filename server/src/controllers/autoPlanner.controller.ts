@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { autoPlannerService } from '../services/autoPlanner.service';
+import { planningGroupService } from '../services/planningGroup.service';
 import { prisma } from '../config/database';
 import { startOfWeek, endOfWeek, eachDayOfInterval, format, parseISO } from 'date-fns';
 
@@ -152,8 +153,15 @@ export class AutoPlannerController {
       }
 
       const tenantId = req.user!.tenantId || req.user!.id;
+      const userId = req.user!.id;
+      const userRoleSlug = req.user!.role?.slug;
       const start = parseISO(startDate);
       const end = parseISO(endDate);
+
+      // Berechtigungsprüfung: Wenn planningGroupId angegeben, prüfe ob User berechtigt ist
+      if (planningGroupId) {
+        await planningGroupService.checkEditPermission(tenantId, planningGroupId, userId, userRoleSlug);
+      }
 
       const result = await autoPlannerService.planFromObjectPatterns(
         tenantId,
@@ -179,9 +187,14 @@ export class AutoPlannerController {
       }
 
       const tenantId = req.user!.tenantId || req.user!.id;
+      const userId = req.user!.id;
+      const userRoleSlug = req.user!.role?.slug;
       const start = parseISO(startDate);
       const end = parseISO(endDate);
       const dates = eachDayOfInterval({ start, end });
+
+      // Berechtigungsprüfung: Nur Teamleiter/Vertreter dürfen ihre Gruppen planen
+      await planningGroupService.checkEditPermission(tenantId, planningGroupId, userId, userRoleSlug);
 
       const result = await autoPlannerService.planPlanningGroup(
         tenantId,

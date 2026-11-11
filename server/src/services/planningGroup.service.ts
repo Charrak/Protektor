@@ -1,8 +1,35 @@
 import { prisma } from '../config/database';
 import { logger } from '../config/logger';
-import { NotFoundError, ConflictError, ValidationError } from '../middleware/errorHandler';
+import { NotFoundError, ConflictError, ValidationError, ForbiddenError } from '../middleware/errorHandler';
 
 export class PlanningGroupService {
+  /**
+   * Prüft, ob ein User eine Planungsgruppe bearbeiten darf
+   * Admins dürfen alles, Teamleiter/Vertreter nur ihre eigenen Gruppen
+   */
+  async checkEditPermission(tenantId: string, groupId: string, userId: string, userRoleSlug?: string): Promise<void> {
+    // Admins dürfen alles
+    if (userRoleSlug === 'admin' || userRoleSlug === 'planning-admin') {
+      return;
+    }
+
+    const group = await prisma.planningGroup.findFirst({
+      where: { id: groupId, tenantId }
+    });
+
+    if (!group) {
+      throw new NotFoundError('Planungsgruppe');
+    }
+
+    // Prüfe ob User Teamleiter oder Vertreter ist
+    const isLead = group.leadUserId === userId;
+    const isDeputy = group.leadDeputies.includes(userId);
+
+    if (!isLead && !isDeputy) {
+      throw new ForbiddenError('Du bist nicht berechtigt, diese Planungsgruppe zu bearbeiten. Nur der Teamleiter oder Vertreter können Änderungen vornehmen.');
+    }
+  }
+
   /**
    * Erstellt eine neue Planungsgruppe
    */
