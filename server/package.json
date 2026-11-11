@@ -16,6 +16,7 @@
     "seed": "tsx prisma/seed.ts",
     "seed:demo": "tsx prisma/seed-demo.ts",
     "seed:data": "tsx prisma/seed-demo-data.ts",
+    "seed:new-features": "tsx prisma/seed-new-features.ts",
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest",
