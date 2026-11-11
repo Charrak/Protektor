@@ -97,7 +97,7 @@ export function AttendancePage() {
                 {records.map(record => (
                   <tr key={record.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
-                      <p className="font-medium text-sm text-gray-900">{record.employee.name}</p>
+                      <p className="font-medium text-sm text-gray-900">{`${record.employee.firstName} ${record.employee.lastName}`}</p>
                       <p className="text-xs text-gray-500">{record.employee.personnelNumber}</p>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700">

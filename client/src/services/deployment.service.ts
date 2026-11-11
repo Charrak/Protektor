@@ -5,7 +5,7 @@ export interface Deployment {
   objectId: string;
   object: { id: string; name: string; customerName: string };
   employeeId: string;
-  employee: { id: string; name: string; personnelNumber: string };
+  employee: { id: string; firstName: string; lastName: string; personnelNumber: string };
   date: string;
   startTime: string;
   endTime: string;

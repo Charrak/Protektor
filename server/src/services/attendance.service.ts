@@ -42,7 +42,8 @@ export class AttendanceService {
         employeeId: r.employeeId,
         employee: {
           id: r.employee.id,
-          name: `${r.employee.firstName} ${r.employee.lastName}`,
+          firstName: r.employee.firstName,
+          lastName: r.employee.lastName,
           personnelNumber: r.employee.personnelNumber,
         },
         date: r.date,
