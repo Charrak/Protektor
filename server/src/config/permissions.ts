@@ -51,21 +51,24 @@ export const PERMISSIONS: PermissionDef[] = [
   { slug: 'scheduling:edit', name: 'Dienstplanung bearbeiten', module: 'scheduling', description: 'Einsätze ändern' },
   { slug: 'scheduling:delete', name: 'Dienstplanung löschen', module: 'scheduling', description: 'Einsätze löschen' },
   { slug: 'scheduling:auto_plan', name: 'Auto-Planung', module: 'scheduling', description: 'Automatische Dienstplanung' },
+  { slug: 'scheduling:view_all', name: 'Alle Dienstpläne anzeigen', module: 'scheduling', description: 'Dienstpläne aller Mitarbeiter einsehen' },
 
   // Zeiterfassung
   { slug: 'attendance:view', name: 'Zeiterfassung anzeigen', module: 'attendance', description: 'Zeiten einsehen' },
   { slug: 'attendance:create', name: 'Zeiterfassung erstellen', module: 'attendance', description: 'Zeiten erfassen' },
   { slug: 'attendance:edit', name: 'Zeiterfassung bearbeiten', module: 'attendance', description: 'Zeiten ändern' },
   { slug: 'attendance:approve', name: 'Zeiterfassung genehmigen', module: 'attendance', description: 'Zeiten genehmigen' },
+  { slug: 'attendance:view_all', name: 'Alle Zeiterfassungen anzeigen', module: 'attendance', description: 'Zeiten aller Mitarbeiter einsehen' },
 
   // Abrechnung
   { slug: 'billing.create', name: 'Abrechnung erstellen', module: 'billing', description: 'Rechnungen/Gehälter erstellen' },
-  { slug: 'billing.read', name: 'Abrechnung anzeigen', module: 'billing', description: 'Rechnungen/Gehälter einsehen' },
+  { slug: 'billing.read', name: 'Abrechnung anzeigen (DATEV)', module: 'billing', description: 'Rechnungen/Gehälter einsehen' },
   { slug: 'billing:invoices', name: 'Rechnungen verwalten', module: 'billing', description: 'Kundenrechnungen' },
   { slug: 'billing:payroll', name: 'Gehälter verwalten', module: 'billing', description: 'Lohnabrechnung' },
 
   // Berichte
   { slug: 'reports:view', name: 'Berichte anzeigen', module: 'reports', description: 'Berichte und Auswertungen' },
+  { slug: 'reports:export', name: 'Berichte exportieren', module: 'reports', description: 'Berichte als Datei exportieren' },
 
   // Einstellungen
   { slug: 'settings:view', name: 'Einstellungen anzeigen', module: 'settings', description: 'Einstellungen einsehen' },
