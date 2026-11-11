@@ -264,7 +264,7 @@ function SchedulingPageContent() {
 
   const handleConfirm = async (deployment: Deployment) => {
     try {
-      await deploymentService.confirm(deployment.id, deployment.employeeId);
+      await deploymentService.confirm(deployment.id);
       setSelectedDeployment(null);
       loadDeployments();
     } catch (err: any) {

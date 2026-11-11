@@ -226,7 +226,15 @@ export class DeploymentService {
   }
 
   async confirm(id: string, employeeId: string) {
-    const deployment = await prisma.deployment.update({
+    const deployment = await prisma.deployment.findUnique({ where: { id } });
+    if (!deployment) throw new NotFoundError('Einsatz');
+
+    // Nur der zugewiesene Mitarbeiter darf bestätigen
+    if (deployment.employeeId !== employeeId) {
+      throw new ConflictError('Sie können nur Ihre eigenen Einsätze bestätigen');
+    }
+
+    const confirmed = await prisma.deployment.update({
       where: { id },
       data: {
         status: 'confirmed',
@@ -236,7 +244,30 @@ export class DeploymentService {
     });
 
     logger.info(`Einsatz bestätigt: ID ${id} von Mitarbeiter ${employeeId}`);
-    return deployment;
+    return confirmed;
+  }
+
+  async decline(id: string, employeeId: string, reason?: string) {
+    const deployment = await prisma.deployment.findUnique({ where: { id } });
+    if (!deployment) throw new NotFoundError('Einsatz');
+
+    // Nur der zugewiesene Mitarbeiter darf ablehnen
+    if (deployment.employeeId !== employeeId) {
+      throw new ConflictError('Sie können nur Ihre eigenen Einsätze ablehnen');
+    }
+
+    const declined = await prisma.deployment.update({
+      where: { id },
+      data: {
+        status: 'declined',
+        confirmedById: employeeId,
+        confirmedAt: new Date(),
+        cancellationReason: reason,
+      },
+    });
+
+    logger.info(`Einsatz abgelehnt: ID ${id} von Mitarbeiter ${employeeId}`);
+    return declined;
   }
 
   async getForDateRange(startDate: string, endDate: string) {
