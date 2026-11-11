@@ -5,6 +5,30 @@ import { requirePermission } from '../middleware/authorization';
 
 const router = Router();
 
+// Liste aller Zeitnachweise (für Tenant)
+router.get('/', authenticate, requirePermission('attendance:view'), async (req, res, next) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Nicht angemeldet' });
+      return;
+    }
+    const { employeeId, date, startDate, endDate, status, page, limit } = req.query;
+    const filters = {
+      employeeId: employeeId as string,
+      date: date ? new Date(date as string) : undefined,
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+      status: status as string,
+      page: page ? parseInt(page as string) : undefined,
+      limit: limit ? parseInt(limit as string) : undefined,
+    };
+    const result = await timeRecordService.listAll(req.user.tenantId, filters);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Liste für Mitarbeiter
 router.get('/employee/:employeeId', authenticate, requirePermission('attendance:view'), async (req, res, next) => {
   try {

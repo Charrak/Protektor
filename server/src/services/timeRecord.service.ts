@@ -52,6 +52,61 @@ interface CorrectInput {
 
 export class TimeRecordService {
   /**
+   * Liste aller Zeitnachweise für einen Tenant (mit Filtern)
+   */
+  async listAll(tenantId: string, filters?: {
+    employeeId?: string;
+    date?: Date;
+    startDate?: Date;
+    endDate?: Date;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const where: any = { tenantId };
+    
+    if (filters?.employeeId) where.employeeId = filters.employeeId;
+    
+    if (filters?.date) {
+      where.date = filters.date;
+    } else if (filters?.startDate || filters?.endDate) {
+      where.date = {};
+      if (filters.startDate) where.date.gte = filters.startDate;
+      if (filters.endDate) where.date.lte = filters.endDate;
+    }
+    
+    if (filters?.status) where.status = filters.status;
+
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 50;
+    const skip = (page - 1) * limit;
+
+    const [records, total] = await Promise.all([
+      prisma.timeRecord.findMany({
+        where,
+        orderBy: [{ date: 'desc' }, { clockIn: 'asc' }],
+        include: {
+          employee: { select: { id: true, firstName: true, lastName: true, personnelNumber: true } },
+          deployment: { select: { startTime: true, endTime: true, notes: true } },
+          object: { select: { name: true, objectNumber: true } },
+          approvedBy: { select: { firstName: true, lastName: true } },
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.timeRecord.count({ where }),
+    ]);
+
+    return {
+      records,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
    * Liste aller Zeitnachweise für einen Mitarbeiter
    */
   async listByEmployee(tenantId: string, employeeId: string, filters?: {
