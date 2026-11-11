@@ -12,8 +12,9 @@ export class DeploymentService {
     status?: string;
     page?: number;
     limit?: number;
+    releasedOnly?: boolean;
   }) {
-    const { date, startDate, endDate, employeeId, objectId, status, page = 1, limit = 50 } = query;
+    const { date, startDate, endDate, employeeId, objectId, status, page = 1, limit = 50, releasedOnly = false } = query;
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -27,6 +28,11 @@ export class DeploymentService {
     if (employeeId) where.employeeId = employeeId;
     if (objectId) where.objectId = objectId;
     if (status) where.status = status;
+    
+    // Wenn releasedOnly=true, zeige nur freigegebene Einsätze
+    if (releasedOnly) {
+      where.status = 'released';
+    }
 
     const [deployments, total] = await Promise.all([
       prisma.deployment.findMany({
@@ -268,6 +274,25 @@ export class DeploymentService {
 
     logger.info(`Einsatz abgelehnt: ID ${id} von Mitarbeiter ${employeeId}`);
     return declined;
+  }
+
+  async release(ids: string[], releasedById: string) {
+    if (!ids || ids.length === 0) {
+      throw new ConflictError('Keine Einsatz-IDs übergeben');
+    }
+
+    const released = await prisma.deployment.updateMany({
+      where: {
+        id: { in: ids },
+        status: 'planned',
+      },
+      data: {
+        status: 'released',
+      },
+    });
+
+    logger.info(`${released.count} Einsätze freigegeben von User ${releasedById}`);
+    return { count: released.count };
   }
 
   async getForDateRange(startDate: string, endDate: string) {

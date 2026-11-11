@@ -1318,7 +1318,9 @@ model Deployment {
 
 enum DeploymentStatus {
   planned
+  released
   confirmed
+  declined
   cancelled
   completed
   no_show

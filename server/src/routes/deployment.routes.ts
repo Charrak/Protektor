@@ -13,5 +13,6 @@ router.put('/:id', authenticate, requirePermission('scheduling:edit'), (req, res
 router.post('/:id/cancel', authenticate, requirePermission('scheduling:edit'), (req, res, next) => deploymentController.cancel(req, res, next));
 router.post('/:id/confirm', authenticate, (req, res, next) => deploymentController.confirm(req, res, next));
 router.post('/:id/decline', authenticate, (req, res, next) => deploymentController.decline(req, res, next));
+router.post('/release', authenticate, requirePermission('scheduling:edit'), (req, res, next) => deploymentController.release(req, res, next));
 
 export default router;
