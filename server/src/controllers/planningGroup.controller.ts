@@ -113,6 +113,14 @@ export class PlanningGroupController {
       const { id } = req.params;
       const { name, description, color, leadUserId, leadDeputies, isActive, objectIds, employeeIds } = req.body;
 
+      // Berechtigungsprüfung
+      await planningGroupService.checkEditPermission(
+        req.user.tenantId || req.user.id,
+        id,
+        req.user.id,
+        req.user.role?.slug
+      );
+
       const group = await planningGroupService.update(
         req.user.tenantId || req.user.id,
         id,
@@ -149,6 +157,15 @@ export class PlanningGroupController {
       }
 
       const { id } = req.params;
+      
+      // Berechtigungsprüfung
+      await planningGroupService.checkEditPermission(
+        req.user.tenantId || req.user.id,
+        id,
+        req.user.id,
+        req.user.role?.slug
+      );
+      
       await planningGroupService.delete(
         req.user.tenantId || req.user.id,
         id
@@ -181,6 +198,14 @@ export class PlanningGroupController {
         res.status(400).json({ error: 'objectIds Array ist erforderlich' });
         return;
       }
+
+      // Berechtigungsprüfung
+      await planningGroupService.checkEditPermission(
+        req.user.tenantId || req.user.id,
+        id,
+        req.user.id,
+        req.user.role?.slug
+      );
 
       const group = await planningGroupService.addObjects(
         req.user.tenantId || req.user.id,
@@ -216,6 +241,14 @@ export class PlanningGroupController {
         return;
       }
 
+      // Berechtigungsprüfung
+      await planningGroupService.checkEditPermission(
+        req.user.tenantId || req.user.id,
+        id,
+        req.user.id,
+        req.user.role?.slug
+      );
+
       const group = await planningGroupService.addEmployees(
         req.user.tenantId || req.user.id,
         id,
@@ -250,6 +283,14 @@ export class PlanningGroupController {
         return;
       }
 
+      // Berechtigungsprüfung
+      await planningGroupService.checkEditPermission(
+        req.user.tenantId || req.user.id,
+        id,
+        req.user.id,
+        req.user.role?.slug
+      );
+
       const group = await planningGroupService.removeObjects(
         req.user.tenantId || req.user.id,
         id,
@@ -283,6 +324,14 @@ export class PlanningGroupController {
         res.status(400).json({ error: 'employeeIds Array ist erforderlich' });
         return;
       }
+
+      // Berechtigungsprüfung
+      await planningGroupService.checkEditPermission(
+        req.user.tenantId || req.user.id,
+        id,
+        req.user.id,
+        req.user.role?.slug
+      );
 
       const group = await planningGroupService.removeEmployees(
         req.user.tenantId || req.user.id,

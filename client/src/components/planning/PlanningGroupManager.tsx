@@ -3,6 +3,7 @@ import { planningGroupService, type PlanningGroup, type CreatePlanningGroupInput
 import { objectService } from '../../services/object.service';
 import { employeeService } from '../../services/employee.service';
 import { userService, type UserListItem } from '../../services/user.service';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface SMSObject {
   id: string;
@@ -22,6 +23,7 @@ interface Employee {
 }
 
 export function PlanningGroupManager() {
+  const { user } = useAuth();
   const [groups, setGroups] = useState<PlanningGroup[]>([]);
   const [objects, setObjects] = useState<SMSObject[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -39,6 +41,20 @@ export function PlanningGroupManager() {
     objectIds: [],
     employeeIds: []
   });
+
+  // Helper: Prüft ob User eine Planungsgruppe bearbeiten darf
+  const canEditGroup = (group: PlanningGroup): boolean => {
+    if (!user) return false;
+    
+    // Admins dürfen alles
+    if (user.role?.slug === 'admin' || user.role?.slug === 'planning-admin') {
+      return true;
+    }
+    
+    // Teamleiter oder Vertreter
+    return group.leadUser?.id === user.id || 
+           (group.leadDeputies && group.leadDeputies.includes(user.id));
+  };
 
   useEffect(() => {
     loadData();
@@ -213,18 +229,26 @@ export function PlanningGroupManager() {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEdit(group)}
-                    className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                  >
-                    Bearbeiten
-                  </button>
-                  <button
-                    onClick={() => handleDelete(group.id)}
-                    className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
-                  >
-                    Löschen
-                  </button>
+                  {canEditGroup(group) ? (
+                    <>
+                      <button
+                        onClick={() => handleEdit(group)}
+                        className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                      >
+                        Bearbeiten
+                      </button>
+                      <button
+                        onClick={() => handleDelete(group.id)}
+                        className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                      >
+                        Löschen
+                      </button>
+                    </>
+                  ) : (
+                    <span className="px-3 py-1 text-xs text-gray-500">
+                      Nur Teamleiter/Vertreter können bearbeiten
+                    </span>
+                  )}
                 </div>
               </div>
 
