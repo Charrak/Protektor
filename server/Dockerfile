@@ -17,21 +17,22 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # npm ci installiert exakt wie in package-lock.json
-# Production-Image: Dev-Dependencies weglassen (vitest, eslint, etc.)
-RUN npm ci --omit=dev
+RUN npm ci
 
 # Step 2: Source Code kopieren
-# Kopiert ALLE Dateien aus dem context-Verzeichnis
 COPY . .
 
 # Step 3: Prisma Client generieren
 RUN npm run prisma:generate
 
+# Step 4: Production Build erstellen
+RUN npm run build
+
+# Dev-Dependencies entfernen (nach dem Build nicht mehr nötig)
+RUN rm -rf node_modules && npm ci --omit=dev
+
 # Port 5000 freigeben
 EXPOSE 5000
 
-# Build für Production erstellen
-RUN npm run build
-
-# Production Start: Migrations ausführen, dann Server starten
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+# Production Start
+CMD ["node", "dist/index.js"]

@@ -35,8 +35,10 @@ export const config = {
   jwtExpiresIn: '15m',
   jwtRefreshExpiresIn: '7d',
 
-  // CORS
-  corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  // CORS (kommaseparierte Liste für mehrere Origins)
+  corsOrigin: process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
+    : ['http://localhost:3000', 'http://localhost:80'],
 
   // App URL (für Password-Reset-Links)
   appUrl: process.env.APP_URL || 'http://localhost:3000',
