@@ -13,6 +13,7 @@ import { EmployeeDetailPage } from './pages/employees/EmployeeDetailPage';
 import { CustomersPage } from './pages/customers/CustomersPage';
 import { ObjectsPage } from './pages/objects/ObjectsPage';
 import { SchedulingPage } from './pages/scheduling/SchedulingPage';
+import { PlanningGroupManager } from './components/planning/PlanningGroupManager';
 import { AttendancePage } from './pages/attendance/AttendancePage';
 import { BillingPage } from './pages/billing/BillingPage';
 import { ReportsPage } from './pages/reports/ReportsPage';
@@ -89,6 +90,7 @@ function AppRoutes() {
                   <Route path="/objects" element={<ObjectsPage />} />
                   <Route path="/objects/:id" element={<div>Objekt-Detail</div>} />
                   <Route path="/scheduling" element={<SchedulingPage />} />
+                  <Route path="/planning-groups" element={<PlanningGroupManager />} />
                   <Route path="/attendance" element={<AttendancePage />} />
                   <Route path="/billing" element={<BillingPage />} />
                   <Route path="/reports" element={<ReportsPage />} />

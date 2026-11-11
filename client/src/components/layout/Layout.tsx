@@ -9,6 +9,7 @@ const navigation = [
   { name: 'Kunden', href: '/customers', icon: '🏢' },
   { name: 'Objekte', href: '/objects', icon: '🏗️' },
   { name: 'Dienstplan', href: '/scheduling', icon: '📅' },
+  { name: 'Planungsgruppen', href: '/planning-groups', icon: '👥' },
   { name: 'Zeiterfassung', href: '/attendance', icon: '⏱️' },
   { name: 'Abrechnung', href: '/billing', icon: '💰' },
   { name: 'Berichte', href: '/reports', icon: '📈' },
