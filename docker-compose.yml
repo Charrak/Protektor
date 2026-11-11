@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: sms_password
       POSTGRES_DB: sms_db
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -28,7 +28,7 @@ services:
     container_name: sms-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -53,7 +53,7 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-your-refresh-secret-change-in-production}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://92.5.64.224,http://92.5.64.224:3000,http://localhost:3000}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://92.5.64.224,http://92.5.64.224:3000,http://92.5.64.224:5000,http://localhost:3000}
       APP_URL: ${APP_URL:-http://92.5.64.224}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
@@ -95,6 +95,7 @@ services:
     ports:
       - "80:80"
       - "3000:3000"
+      - "5000:5000"
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
