@@ -53,6 +53,12 @@ export const PERMISSIONS: PermissionDef[] = [
   { slug: 'scheduling:auto_plan', name: 'Auto-Planung', module: 'scheduling', description: 'Automatische Dienstplanung' },
   { slug: 'scheduling:view_all', name: 'Alle Dienstpläne anzeigen', module: 'scheduling', description: 'Dienstpläne aller Mitarbeiter einsehen' },
 
+  // Planungsgruppen
+  { slug: 'planning_groups:read', name: 'Planungsgruppen anzeigen', module: 'planning_groups', description: 'Planungsgruppen einsehen' },
+  { slug: 'planning_groups:create', name: 'Planungsgruppen erstellen', module: 'planning_groups', description: 'Neue Planungsgruppen anlegen' },
+  { slug: 'planning_groups:update', name: 'Planungsgruppen bearbeiten', module: 'planning_groups', description: 'Planungsgruppen ändern' },
+  { slug: 'planning_groups:delete', name: 'Planungsgruppen löschen', module: 'planning_groups', description: 'Planungsgruppen deaktivieren' },
+
   // Zeiterfassung
   { slug: 'attendance:view', name: 'Zeiterfassung anzeigen', module: 'attendance', description: 'Zeiten einsehen' },
   { slug: 'attendance:create', name: 'Zeiterfassung erstellen', module: 'attendance', description: 'Zeiten erfassen' },
@@ -103,6 +109,7 @@ export const DEFAULT_ROLES: RoleDef[] = [
       'customers:view',
       'objects:view',
       'scheduling:view', 'scheduling:create', 'scheduling:edit', 'scheduling:delete', 'scheduling:auto_plan',
+      'planning_groups:read', 'planning_groups:create', 'planning_groups:update',
       'attendance:view', 'attendance:edit', 'attendance:approve',
     ],
   },

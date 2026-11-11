@@ -165,6 +165,9 @@ model Tenant {
   supportTickets     SupportTicket[]
   contactRequests    ContactRequest[]
 
+  // Planungsgruppen
+  planningGroups     PlanningGroup[]
+
   @@map("tenants")
 }
 
@@ -550,6 +553,9 @@ model Employee {
   
   // Allowances (Zuschläge)
   allowances           Allowance[]
+
+  // Planungsgruppen
+  planningGroups       PlanningGroupEmployee[]
 
   @@unique([tenantId, personnelNumber])
   @@map("employees")
@@ -1011,6 +1017,9 @@ model SMSObject {
   emergencyProtocols EmergencyProtocol[]
   accessPermissions  AccessPermission[]
 
+  // Planungsgruppen
+  planningGroups     PlanningGroupObject[]
+
   @@unique([tenantId, objectNumber])
   @@map("objects")
 }
@@ -1056,6 +1065,58 @@ model CustomerRate {
   object   SMSObject? @relation(fields: [objectId], references: [id])
 
   @@map("customer_rates")
+}
+
+// ═══════════════════════════════════════════════════
+// PLANUNGSGRUPPEN (Flexible Objekt-/Mitarbeiter-Zuordnung)
+// ═══════════════════════════════════════════════════
+
+model PlanningGroup {
+  id          String   @id @default(uuid())
+  tenantId    String   @db.VarChar(36)
+  name        String   @db.VarChar(200)
+  description String?  @db.Text
+  color       String?  @db.VarChar(7)         // Farbe für UI-Darstellung
+  isActive    Boolean  @default(true)
+  createdBy   String   @db.VarChar(36)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant              @relation(fields: [tenantId], references: [id])
+  objects     PlanningGroupObject[]
+  employees   PlanningGroupEmployee[]
+
+  @@unique([tenantId, name])
+  @@map("planning_groups")
+}
+
+model PlanningGroupObject {
+  id              String   @id @default(uuid())
+  planningGroupId String   @db.VarChar(36)
+  objectId        String   @db.VarChar(36)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  planningGroup   PlanningGroup @relation(fields: [planningGroupId], references: [id], onDelete: Cascade)
+  object          SMSObject     @relation(fields: [objectId], references: [id], onDelete: Cascade)
+
+  @@unique([planningGroupId, objectId])
+  @@map("planning_group_objects")
+}
+
+model PlanningGroupEmployee {
+  id              String   @id @default(uuid())
+  planningGroupId String   @db.VarChar(36)
+  employeeId      String   @db.VarChar(36)
+  isPrimary       Boolean  @default(false)    // Hauptzuordnung (für Standard-Planung)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  planningGroup   PlanningGroup @relation(fields: [planningGroupId], references: [id], onDelete: Cascade)
+  employee        Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([planningGroupId, employeeId])
+  @@map("planning_group_employees")
 }
 
 // ═══════════════════════════════════════════════════
