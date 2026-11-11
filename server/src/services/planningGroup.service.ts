@@ -23,23 +23,31 @@ export class PlanningGroupService {
       throw new ConflictError(`Planungsgruppe "${input.name}" existiert bereits`);
     }
 
-    // Validiere Teamleiter
-    if (input.leadUserId) {
+    // Validiere Teamleiter (leere Strings ignorieren)
+    if (input.leadUserId && input.leadUserId.trim() !== '') {
       const leadUser = await prisma.user.findFirst({
         where: { id: input.leadUserId, tenantId }
       });
       if (!leadUser) {
         throw new ValidationError('Teamleiter existiert nicht oder gehört nicht zu diesem Mandanten');
       }
+    } else {
+      input.leadUserId = undefined;
     }
 
-    // Validiere Vertreter
+    // Validiere Vertreter (leere Strings filtern)
     if (input.leadDeputies && input.leadDeputies.length > 0) {
-      const deputies = await prisma.user.findMany({
-        where: { id: { in: input.leadDeputies }, tenantId }
-      });
-      if (deputies.length !== input.leadDeputies.length) {
-        throw new ValidationError('Ein oder mehrere Vertreter existieren nicht oder gehören nicht zu diesem Mandanten');
+      const validDeputies = input.leadDeputies.filter(id => id && id.trim() !== '');
+      if (validDeputies.length > 0) {
+        const deputies = await prisma.user.findMany({
+          where: { id: { in: validDeputies }, tenantId }
+        });
+        if (deputies.length !== validDeputies.length) {
+          throw new ValidationError('Ein oder mehrere Vertreter existieren nicht oder gehören nicht zu diesem Mandanten');
+        }
+        input.leadDeputies = validDeputies;
+      } else {
+        input.leadDeputies = [];
       }
     }
 
@@ -239,23 +247,31 @@ export class PlanningGroupService {
       }
     }
 
-    // Validiere Teamleiter
-    if (input.leadUserId) {
+    // Validiere Teamleiter (leere Strings ignorieren)
+    if (input.leadUserId && input.leadUserId.trim() !== '') {
       const leadUser = await prisma.user.findFirst({
         where: { id: input.leadUserId, tenantId }
       });
       if (!leadUser) {
         throw new ValidationError('Teamleiter existiert nicht oder gehört nicht zu diesem Mandanten');
       }
+    } else {
+      input.leadUserId = undefined;
     }
 
-    // Validiere Vertreter
+    // Validiere Vertreter (leere Strings filtern)
     if (input.leadDeputies && input.leadDeputies.length > 0) {
-      const deputies = await prisma.user.findMany({
-        where: { id: { in: input.leadDeputies }, tenantId }
-      });
-      if (deputies.length !== input.leadDeputies.length) {
-        throw new ValidationError('Ein oder mehrere Vertreter existieren nicht oder gehören nicht zu diesem Mandanten');
+      const validDeputies = input.leadDeputies.filter(id => id && id.trim() !== '');
+      if (validDeputies.length > 0) {
+        const deputies = await prisma.user.findMany({
+          where: { id: { in: validDeputies }, tenantId }
+        });
+        if (deputies.length !== validDeputies.length) {
+          throw new ValidationError('Ein oder mehrere Vertreter existieren nicht oder gehören nicht zu diesem Mandanten');
+        }
+        input.leadDeputies = validDeputies;
+      } else {
+        input.leadDeputies = [];
       }
     }
 
