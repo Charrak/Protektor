@@ -6,6 +6,14 @@ export interface PlanningGroup {
   name: string;
   description?: string;
   color?: string;
+  leadUserId?: string;
+  leadDeputies: string[];
+  leadUser?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    username: string;
+  };
   isActive: boolean;
   createdBy: string;
   createdAt: string;
@@ -49,6 +57,8 @@ export interface CreatePlanningGroupInput {
   name: string;
   description?: string;
   color?: string;
+  leadUserId?: string;
+  leadDeputies?: string[];
   objectIds: string[];
   employeeIds: string[];
 }
@@ -57,6 +67,8 @@ export interface UpdatePlanningGroupInput {
   name?: string;
   description?: string;
   color?: string;
+  leadUserId?: string | null;
+  leadDeputies?: string[];
   isActive?: boolean;
   objectIds?: string[];
   employeeIds?: string[];

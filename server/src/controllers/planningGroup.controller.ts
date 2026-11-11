@@ -13,7 +13,7 @@ export class PlanningGroupController {
         return;
       }
 
-      const { name, description, color, objectIds, employeeIds } = req.body;
+      const { name, description, color, leadUserId, leadDeputies, objectIds, employeeIds } = req.body;
 
       if (!name) {
         res.status(400).json({ error: 'Name ist erforderlich' });
@@ -26,6 +26,8 @@ export class PlanningGroupController {
           name,
           description,
           color,
+          leadUserId,
+          leadDeputies: leadDeputies || [],
           objectIds: objectIds || [],
           employeeIds: employeeIds || []
         },
@@ -103,7 +105,7 @@ export class PlanningGroupController {
       }
 
       const { id } = req.params;
-      const { name, description, color, isActive, objectIds, employeeIds } = req.body;
+      const { name, description, color, leadUserId, leadDeputies, isActive, objectIds, employeeIds } = req.body;
 
       const group = await planningGroupService.update(
         req.user.tenantId || req.user.id,
@@ -112,6 +114,8 @@ export class PlanningGroupController {
           name,
           description,
           color,
+          leadUserId,
+          leadDeputies: leadDeputies || [],
           isActive,
           objectIds,
           employeeIds
