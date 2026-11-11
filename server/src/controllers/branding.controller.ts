@@ -8,7 +8,7 @@ import { prisma } from '../config/database';
 import { uploadBrandingFile, deleteUploadFile } from '../services/upload.service';
 
 /**
- * Get tenant branding settings
+ * Get tenant branding settings (authenticated)
  */
 export async function getBranding(req: Request, res: Response): Promise<void> {
   try {
@@ -35,6 +35,85 @@ export async function getBranding(req: Request, res: Response): Promise<void> {
   } catch (error: any) {
     console.error('Get branding error:', error);
     res.status(500).json({ error: error.message || 'Interner Serverfehler' });
+  }
+}
+
+/**
+ * Get public branding settings (no auth required)
+ * Used by login page to display logo and colors
+ */
+export async function getPublicBranding(req: Request, res: Response): Promise<void> {
+  try {
+    // Tenant-ID aus Header, Query-Parameter oder Subdomain
+    let tenantId = req.headers['x-tenant-id'] as string;
+    if (!tenantId) {
+      tenantId = req.query.tenantId as string;
+    }
+
+    // Standard-Branding-Werte
+    const defaultBranding = {
+      tenantId: null,
+      companyName: 'Security Management System',
+      logoUrl: null,
+      faviconUrl: null,
+      brandColor: '#1e40af',
+      loginMessage: 'Willkommen beim Security Management System'
+    };
+
+    // Wenn keine Tenant-ID angegeben, Standardwerte zurückgeben
+    if (!tenantId) {
+      res.json({ branding: defaultBranding });
+      return;
+    }
+
+    // Tenant mit Branding-Daten abrufen
+    const tenant = await prisma.tenant.findUnique({
+      where: { tenantId },
+      select: {
+        tenantId: true,
+        companyName: true,
+        logoUrl: true,
+        faviconUrl: true,
+        brandColor: true,
+        loginMessage: true
+      }
+    });
+
+    // Wenn Tenant nicht gefunden, Standardwerte zurückgeben
+    if (!tenant) {
+      res.json({ branding: defaultBranding });
+      return;
+    }
+
+    // Fehlende Felder mit Standardwerten füllen
+    const branding = {
+      tenantId: tenant.tenantId,
+      companyName: tenant.companyName || defaultBranding.companyName,
+      logoUrl: tenant.logoUrl || null,
+      faviconUrl: tenant.faviconUrl || null,
+      brandColor: tenant.brandColor || defaultBranding.brandColor,
+      loginMessage: tenant.loginMessage || defaultBranding.loginMessage
+    };
+
+    res.json({ branding });
+  } catch (error: any) {
+    // Fehler loggen (ohne sensible Daten)
+    console.error('Get public branding error:', {
+      message: error.message,
+      code: error.code
+    });
+
+    // Bei Fehlern Standardwerte zurückgeben (nie 500)
+    res.json({
+      branding: {
+        tenantId: null,
+        companyName: 'Security Management System',
+        logoUrl: null,
+        faviconUrl: null,
+        brandColor: '#1e40af',
+        loginMessage: 'Willkommen beim Security Management System'
+      }
+    });
   }
 }
 
