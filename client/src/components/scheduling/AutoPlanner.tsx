@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from 'date-fns';
+import { de } from 'date-fns/locale';
 
 interface Candidate {
   employeeId: string;
@@ -17,15 +19,56 @@ interface PlanningResult {
   unselectedReasons: { employeeId: string; name: string; reason: string }[];
 }
 
+interface Object {
+  id: string;
+  name: string;
+  objectNumber?: string;
+  customer: { id: string; companyName: string };
+}
+
+interface DayPlan {
+  date: string;
+  dayName: string;
+  candidates: number;
+  deployments: any[];
+}
+
+interface WeekPlanResult {
+  success: boolean;
+  object: { id: string; name: string; customer: string };
+  period: { startDate: string; endDate: string };
+  schedule: string;
+  days: DayPlan[];
+}
+
 export function AutoPlanner() {
+  const [mode, setMode] = useState<'single' | 'week'>('single');
   const [objectId, setObjectId] = useState('');
   const [date, setDate] = useState('');
-  const [startTime, setStartTime] = useState('');
+  const [startDate, setStartDate] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [startTime, setStartTime] = useState('');
   const [requiredCount, setRequiredCount] = useState(1);
+  const [employeesPerDay, setEmployeesPerDay] = useState(1);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<PlanningResult | null>(null);
+  const [weekResult, setWeekResult] = useState<WeekPlanResult | null>(null);
   const [error, setError] = useState('');
+  const [objects, setObjects] = useState<Object[]>([]);
+  const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
+
+  // Objekte laden
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      fetch('/api/v1/objects?limit=100', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+        .then(r => r.json())
+        .then(data => setObjects(data.objects || []))
+        .catch(err => console.error('Fehler beim Laden der Objekte:', err));
+    }
+  }, []);
 
   const handleSearch = async () => {
     if (!objectId || !date || !startTime || !endTime) {
@@ -36,6 +79,7 @@ export function AutoPlanner() {
     setLoading(true);
     setError('');
     setResult(null);
+    setWeekResult(null);
 
     try {
       const response = await fetch('/api/v1/auto-planning/suggest', {
@@ -55,10 +99,11 @@ export function AutoPlanner() {
 
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.message || 'Fehler bei der Planung');
+        throw new Error(err.message || err.error || 'Fehler bei der Planung');
       }
 
-      const candidates = await response.json();
+      const data = await response.json();
+      const candidates = data.candidates;
       setResult({
         candidates,
         unselectedReasons: candidates.filter((c: any) => c.disqualified).map((c: any) => ({
@@ -74,36 +119,142 @@ export function AutoPlanner() {
     }
   };
 
+  const handleWeekPlan = async () => {
+    if (!objectId || !startDate || !endTime || !employeesPerDay) {
+      setError('Bitte alle Felder ausfüllen');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setResult(null);
+    setWeekResult(null);
+
+    const weekStart = startOfWeek(new Date(startDate), { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+
+    try {
+      const response = await fetch('/api/v1/auto-planning/week', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify({
+          objectId,
+          startDate: format(weekStart, 'yyyy-MM-dd'),
+          endDate: format(weekEnd, 'yyyy-MM-dd'),
+          startTime,
+          endTime,
+          employeesPerDay,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || err.error || 'Fehler bei der Wochenplanung');
+      }
+
+      const data = await response.json();
+      setWeekResult(data);
+    } catch (err: any) {
+      setError(err.message || 'Fehler bei der Wochenplanung');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const qualifiedCandidates = result?.candidates.filter((c: any) => !c.disqualified) || [];
   const disqualifiedCandidates = result?.candidates.filter((c: any) => c.disqualified) || [];
 
+  // Standard-Datum auf nächste Woche setzen
+  useEffect(() => {
+    const nextMonday = format(startOfWeek(addWeeks(new Date(), 1), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    setStartDate(nextMonday);
+  }, []);
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Auto-Planung</h1>
+    <div className="p-4">
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setMode('single')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            mode === 'single' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          Einzelner Tag
+        </button>
+        <button
+          onClick={() => setMode('week')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            mode === 'week' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          Wochenplanung
+        </button>
+      </div>
 
       {/* Eingabeformular */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Einsatz-Parameter</h2>
+        <h2 className="text-lg font-semibold mb-4">
+          {mode === 'single' ? 'Einsatz-Parameter' : 'Wochenplanung-Parameter'}
+        </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Objekt</label>
-            <input
-              type="text"
+            <select
               value={objectId}
               onChange={(e) => setObjectId(e.target.value)}
-              placeholder="Objekt-ID eingeben"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
+            >
+              <option value="">Objekt auswählen...</option>
+              {objects.map(obj => (
+                <option key={obj.id} value={obj.id}>
+                  {obj.name} ({obj.objectNumber}) - {obj.customer.companyName}
+                </option>
+              ))}
+            </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Datum</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+
+          {mode === 'single' ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Datum</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Woche</label>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  ←
+                </button>
+                <input
+                  type="date"
+                  value={format(currentWeekStart, 'yyyy-MM-dd')}
+                  onChange={(e) => setCurrentWeekStart(startOfWeek(new Date(e.target.value), { weekStartsOn: 1 }))}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  →
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {format(currentWeekStart, 'dd.MM.', { locale: de })} - {format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'dd.MM.yyyy', { locale: de })}
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Startzeit</label>
             <input
@@ -122,23 +273,37 @@ export function AutoPlanner() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Benötigte Mitarbeiter</label>
-            <input
-              type="number"
-              min="1"
-              value={requiredCount}
-              onChange={(e) => setRequiredCount(parseInt(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+
+          {mode === 'single' ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Benötigte Mitarbeiter</label>
+              <input
+                type="number"
+                min="1"
+                value={requiredCount}
+                onChange={(e) => setRequiredCount(parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Mitarbeiter pro Tag</label>
+              <input
+                type="number"
+                min="1"
+                value={employeesPerDay}
+                onChange={(e) => setEmployeesPerDay(parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
         </div>
         <button
-          onClick={handleSearch}
+          onClick={mode === 'single' ? handleSearch : handleWeekPlan}
           disabled={loading}
           className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300"
         >
-          {loading ? 'Wird berechnet...' : 'Kandidaten suchen'}
+          {loading ? 'Wird berechnet...' : mode === 'single' ? '🔍 Kandidaten suchen' : '📅 Wochenplan generieren'}
         </button>
       </div>
 
@@ -149,7 +314,70 @@ export function AutoPlanner() {
         </div>
       )}
 
-      {/* Ergebnisse */}
+      {/* Wochenplan-Ergebnisse */}
+      {weekResult && (
+        <div className="space-y-6">
+          {/* Zusammenfassung */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+            <h2 className="text-xl font-bold text-green-800 mb-2">
+              ✅ Wochenplan erfolgreich erstellt!
+            </h2>
+            <p className="text-green-700">
+              <strong>Objekt:</strong> {weekResult.object.name} ({weekResult.object.customer})
+            </p>
+            <p className="text-green-700">
+              <strong>Zeitraum:</strong> {weekResult.period.startDate} - {weekResult.period.endDate}
+            </p>
+            <p className="text-green-700">
+              <strong>Schicht:</strong> {weekResult.schedule}
+            </p>
+            <p className="text-green-700">
+              <strong>Einsätze erstellt:</strong> {weekResult.days.reduce((sum, d) => sum + d.deployments.length, 0)}
+            </p>
+          </div>
+
+          {/* Tag-für-Tag Übersicht */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4">Tagesübersicht</h3>
+            <div className="space-y-3">
+              {weekResult.days.map((day) => (
+                <div
+                  key={day.date}
+                  className={`border rounded-lg p-4 ${
+                    day.deployments.length > 0 ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-gray-900">{day.dayName}, {day.date}</h4>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      day.deployments.length > 0 ? 'bg-green-600 text-white' : 'bg-yellow-600 text-white'
+                    }`}>
+                      {day.deployments.length} Einsatz{day.deployments.length !== 1 ? 'e' : ''}
+                    </span>
+                  </div>
+                  {day.deployments.length > 0 ? (
+                    <div className="space-y-1">
+                      {day.deployments.map((dep: any) => (
+                        <div key={dep.id} className="text-sm text-gray-700 flex items-center gap-2">
+                          <span>✓</span>
+                          <span className="font-medium">{dep.employee.firstName} {dep.employee.lastName}</span>
+                          <span className="text-gray-500">({dep.employee.personnelNumber})</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-yellow-700">
+                      Keine qualifizierten Mitarbeiter gefunden
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Einzel-Tag Ergebnisse */}
       {result && (
         <>
           {/* Geeignete Kandidaten */}
@@ -207,18 +435,6 @@ export function AutoPlanner() {
                             </li>
                           ))}
                         </ul>
-                      </div>
-                    )}
-
-                    {/* Empfehlung */}
-                    {idx < requiredCount && (
-                      <div className="mt-3 flex gap-2">
-                        <button className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700">
-                          ✓ Einplanen
-                        </button>
-                        <button className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50">
-                          Details
-                        </button>
                       </div>
                     )}
                   </div>
