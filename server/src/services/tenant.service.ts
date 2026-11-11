@@ -126,7 +126,7 @@ export class TenantService {
   }
 
   async create(input: CreateTenantInput, platformAdminId: string) {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // 1. Mandant erstellen
       const tenantId = `TNT-${uuidv4().substring(0, 8).toUpperCase()}`;
       const tenant = await tx.tenant.create({

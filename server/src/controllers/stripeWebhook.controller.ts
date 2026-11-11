@@ -9,12 +9,18 @@ export class StripeWebhookController {
    */
   async handleWebhook(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const signature = req.headers['stripe-signature'] as string | undefined;
+      const signature = req.headers['stripe-signature'];
       const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
       if (!webhookSecret) {
         logger.error('STRIPE_WEBHOOK_SECRET nicht konfiguriert');
         res.status(500).json({ error: 'Webhook-Secret nicht konfiguriert' });
+        return;
+      }
+
+      if (!signature) {
+        logger.error('Stripe-Signatur fehlt');
+        res.status(400).json({ error: 'Fehlende Signatur' });
         return;
       }
 

@@ -1,6 +1,8 @@
 import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import { logger } from './logger';
+import { config } from './env';
+import { prisma } from './database';
 
 let io: Server;
 

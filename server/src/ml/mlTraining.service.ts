@@ -140,7 +140,7 @@ export class MLTrainingService {
       perf.totalShifts++;
 
       // Erfolgreiche Schicht?
-      const report = shiftReports.find(r =>
+      const report = shiftReports.find((r: any) =>
         r.objectId === deployment.objectId &&
         r.employeeId === deployment.employeeId &&
         r.reportDate.toDateString() === deployment.date.toDateString()
@@ -202,9 +202,9 @@ export class MLTrainingService {
       if (deployments.length === 0) continue;
 
       // Durchschnittliches Personal
-      const personnelCounts = reports.map(r => r.personnelCount);
+      const personnelCounts = reports.map((r: any) => r.personnelCount);
       const avgPersonnel = personnelCounts.length > 0
-        ? personnelCounts.reduce((a, b) => a + b, 0) / personnelCounts.length
+        ? personnelCounts.reduce((a: any, b: any) => a + b, 0) / personnelCounts.length
         : 2; // Default
 
       // Peak Hours (häufigste Schichtzeiten)
@@ -214,12 +214,12 @@ export class MLTrainingService {
         hourCounts.set(hour, (hourCounts.get(hour) || 0) + 1);
       }
 
-      const sortedHours = Array.from(hourCounts.entries()).sort((a, b) => b[1] - a[1]);
+      const sortedHours = Array.from(hourCounts.entries()).sort((a: any, b: any) => b[1] - a[1]);
       const peakStart = sortedHours[0]?.[0] || 8;
       const peakEnd = (peakStart + 8) % 24; // Default 8h Schicht
 
       // Incident Rate
-      const totalIncidents = reports.reduce((sum, r) => {
+      const totalIncidents = reports.reduce((sum: any, r: any) => {
         const incidents = r.incidents ? JSON.parse(r.incidents as string).length : 0;
         return sum + incidents;
       }, 0);
@@ -272,7 +272,7 @@ export class MLTrainingService {
       let riskScore = 0;
 
       // Faktor 1: Häufige Krankheitstage
-      const sickDays = emp.availabilities.filter(a => a.type === 'sick').length;
+      const sickDays = emp.availabilities.filter((a: any) => a.type === 'sick').length;
       if (sickDays >= 5) {
         riskFactors.push('Häufige Krankheitstage (≥5 in 90 Tagen)');
         riskScore += 30;
@@ -283,21 +283,21 @@ export class MLTrainingService {
 
       // Faktor 2: Überstunden (Burnout-Risiko)
       const recentRecords = emp.timeRecords.slice(-30); // Letzte 30 Einträge
-      const avgHours = recentRecords.reduce((sum, r) => sum + (r.totalHours || 0), 0) / Math.max(recentRecords.length, 1);
+      const avgHours = recentRecords.reduce((sum: any, r: any) => sum + (r.totalHours || 0), 0) / Math.max(recentRecords.length, 1);
       if (avgHours > 10) {
         riskFactors.push('Hohe durchschnittliche Arbeitszeit (>10h/Schicht)');
         riskScore += 20;
       }
 
       // Faktor 3: Keine Pausen in letzter Zeit
-      const recentVacation = emp.availabilities.filter(a => a.type === 'vacation').length;
+      const recentVacation = emp.availabilities.filter((a: any) => a.type === 'vacation').length;
       if (recentVacation === 0) {
         riskFactors.push('Kein Urlaub in den letzten 90 Tagen');
         riskScore += 10;
       }
 
       // Faktor 4: Nachtschichten
-      const nightShifts = emp.timeRecords.filter(r => {
+      const nightShifts = emp.timeRecords.filter((r: any) => {
         const hour = r.clockIn?.getHours() || 0;
         return hour >= 22 || hour < 6;
       }).length;
@@ -307,7 +307,7 @@ export class MLTrainingService {
       }
 
       // Faktor 5: Wochenendarbeit
-      const weekendShifts = emp.timeRecords.filter(r => {
+      const weekendShifts = emp.timeRecords.filter((r: any) => {
         const day = r.date.getDay();
         return day === 0 || day === 6;
       }).length;
@@ -384,7 +384,7 @@ export class MLTrainingService {
       }
 
       // Durchschnitt berechnen
-      const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+      const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((a: any, b: any) => a + b, 0) / arr.length : 0;
 
       shiftSizes.push({
         objectId: object.id,
@@ -427,8 +427,8 @@ export class MLTrainingService {
         dayCounts.set(day, (dayCounts.get(day) || 0) + 1);
       }
 
-      const sortedDays = Array.from(dayCounts.entries()).sort((a, b) => b[1] - a[1]);
-      const preferredDays = sortedDays.slice(0, 5).map(d => d[0]);
+      const sortedDays = Array.from(dayCounts.entries()).sort((a: any, b: any) => b[1] - a[1]);
+      const preferredDays = sortedDays.slice(0, 5).map((d: any) => d[0]);
 
       // Zeit-Präferenzen
       const hourCounts = new Map<number, number>();
@@ -437,16 +437,16 @@ export class MLTrainingService {
         hourCounts.set(hour, (hourCounts.get(hour) || 0) + 1);
       }
 
-      const sortedHours = Array.from(hourCounts.entries()).sort((a, b) => b[1] - a[1]);
+      const sortedHours = Array.from(hourCounts.entries()).sort((a: any, b: any) => b[1] - a[1]);
       const preferredHour = sortedHours[0]?.[0] || 8;
 
       // Shift-Länge Präferenz
-      const shiftLengths = emp.deployments.map(d => {
+      const shiftLengths = emp.deployments.map((d: any) => {
         const start = d.startTime.getTime();
         const end = d.endTime.getTime();
         return (end - start) / (1000 * 60 * 60);
       });
-      const avgShiftLength = shiftLengths.reduce((a, b) => a + b, 0) / shiftLengths.length;
+      const avgShiftLength = shiftLengths.reduce((a: any, b: any) => a + b, 0) / shiftLengths.length;
 
       preferences.push({
         employeeId: emp.id,

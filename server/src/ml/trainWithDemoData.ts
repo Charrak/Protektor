@@ -177,7 +177,7 @@ async function showDetailedAnalysis(tenantId: string) {
     for (const pref of timePrefs.slice(0, 5)) {
       const emp = await prisma.employee.findUnique({ where: { id: pref.employeeId } });
       if (emp) {
-        const days = pref.preferredDays.map(d => dayNames[d]).join(', ');
+        const days = pref.preferredDays.map((d: any) => dayNames[d]).join(', ');
         console.log(`   🧑‍💼 ${emp.firstName} ${emp.lastName}`);
         console.log(`      Bevorzugte Tage: ${days}`);
         console.log(`      Bevorzugte Zeit: ${pref.preferredHour}:00`);
