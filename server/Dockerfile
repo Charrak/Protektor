@@ -29,5 +29,8 @@ RUN npm run prisma:generate
 # Port 5000 freigeben
 EXPOSE 5000
 
-# Dev Server starten (mit Live-Reload)
-CMD ["npm", "run", "dev"]
+# Build für Production erstellen
+RUN npm run build
+
+# Production Start: Migrations ausführen, dann Server starten
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
