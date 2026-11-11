@@ -8,6 +8,7 @@ import { EmptyState } from '../../components/common/EmptyState';
 import { deploymentService, type Deployment } from '../../services/deployment.service';
 import { employeeService } from '../../services/employee.service';
 import { objectService } from '../../services/object.service';
+import { AutoPlanner } from '../../components/scheduling/AutoPlanner';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -81,6 +82,7 @@ function SchedulingPageContent() {
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAutoPlannerModal, setShowAutoPlannerModal] = useState(false);
   const [selectedDeployment, setSelectedDeployment] = useState<Deployment | null>(null);
 
   const loadDeployments = useCallback(async () => {
@@ -275,7 +277,7 @@ function SchedulingPageContent() {
         description={`${deployments.length} Einsätze im aktuellen Zeitraum`}
         actions={
           <div className="flex items-center gap-2">
-            <button onClick={() => {}} className="btn-secondary">
+            <button onClick={() => setShowAutoPlannerModal(true)} className="btn-secondary">
               🤖 Auto-Planung
             </button>
             <button onClick={() => setShowCreateModal(true)} className="btn-primary">
@@ -341,6 +343,13 @@ function SchedulingPageContent() {
           onClose={() => setShowCreateModal(false)}
           onSuccess={() => { setShowCreateModal(false); loadDeployments(); }}
         />
+      )}
+
+      {/* Auto-Planer Modal */}
+      {showAutoPlannerModal && (
+        <Modal isOpen={true} onClose={() => setShowAutoPlannerModal(false)} title="Auto-Planung" size="lg">
+          <AutoPlanner />
+        </Modal>
       )}
 
       {/* Detail Modal */}
