@@ -8,6 +8,7 @@ import customerRoutes from './customer.routes';
 import objectRoutes from './object.routes';
 import deploymentRoutes from './deployment.routes';
 import autoPlannerRoutes from './autoPlanner.routes';
+import planningGroupRoutes from './planningGroup.routes';
 import attendanceRoutes from './attendance.routes';
 import billingRoutes from './billing.routes';
 import lockingRoutes from './locking.routes';
@@ -69,6 +70,7 @@ router.use('/deployments', deploymentRoutes);
 
 // ─── Phase 5-8: Auto-Planung, Zeiterfassung, Abrechnung ───
 router.use('/auto-planning', autoPlannerRoutes);
+router.use('/planning-groups', planningGroupRoutes);
 router.use('/time-records', timeRecordRoutes);
 router.use('/billing', billingRoutes);
 
