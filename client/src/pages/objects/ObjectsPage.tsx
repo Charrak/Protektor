@@ -5,6 +5,7 @@ import { Modal } from '../../components/common/Modal';
 import { EmptyState } from '../../components/common/EmptyState';
 import { objectService, type ObjectListItem } from '../../services/object.service';
 import { customerService } from '../../services/customer.service';
+import { ShiftPatternEditor } from '../../components/planning/ShiftPatternEditor';
 
 export function ObjectsPage() {
   const [objects, setObjects] = useState<ObjectListItem[]>([]);
@@ -13,6 +14,7 @@ export function ObjectsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedObject, setSelectedObject] = useState<ObjectListItem | null>(null);
 
   const loadObjects = useCallback(async () => {
     setLoading(true);
@@ -97,8 +99,12 @@ export function ObjectsPage() {
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50" title="Details">
-                        👁️
+                      <button 
+                        onClick={() => setSelectedObject(obj)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50" 
+                        title="Schichtmuster verwalten"
+                      >
+                        🕐
                       </button>
                     </td>
                   </tr>
@@ -124,6 +130,12 @@ export function ObjectsPage() {
           onClose={() => setShowCreateModal(false)}
           onSuccess={() => { setShowCreateModal(false); loadObjects(); }}
         />
+      )}
+
+      {selectedObject && (
+        <Modal isOpen={true} onClose={() => setSelectedObject(null)} title={`Schichtmuster: ${selectedObject.name}`}>
+          <ShiftPatternEditor objectId={selectedObject.id} />
+        </Modal>
       )}
     </div>
   );

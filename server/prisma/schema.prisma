@@ -1005,6 +1005,7 @@ model SMSObject {
   customer        Customer          @relation(fields: [customerId], references: [id])
   contactPerson   ContactPerson?    @relation(fields: [contactPersonId], references: [id])
   requirements    ObjectRequirement[]
+  shiftPatterns   ObjectShiftPattern[]
   deployments     Deployment[]
   rates           CustomerRate[]
   restrictions    EmployeeRestriction[]
@@ -1045,6 +1046,34 @@ model ObjectRequirement {
 
   @@unique([objectId, qualificationId])
   @@map("object_requirements")
+}
+
+model ObjectShiftPattern {
+  id                  String   @id @default(uuid())
+  objectId            String   @db.VarChar(36)
+  name                String   @db.VarChar(100)  // z.B. "Tagschicht", "Nachtschicht", "Wochenende"
+  
+  // Wochentage als Array (1=Mo, 7=So) - welche Tage dieses Muster gilt
+  weekdays            Int[]                      // z.B. [1,2,3,4,5] für Mo-Fr
+  
+  // Arbeitszeiten
+  startTime           DateTime @db.Time
+  endTime             DateTime @db.Time
+  breakMinutes        Int      @default(0)
+  
+  // Personalanforderung
+  requiredPersonnel   Int      @default(1)       // MA-Anzahl pro Schicht
+  
+  // Optional: Spezifische Qualifikationen für diese Schicht
+  notes               String?  @db.Text
+  
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  object              SMSObject @relation(fields: [objectId], references: [id], onDelete: Cascade)
+
+  @@map("object_shift_patterns")
 }
 
 model CustomerRate {

@@ -142,6 +142,33 @@ export class AutoPlannerController {
     }
   }
 
+  async planFromObjectPatterns(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { objectIds, startDate, endDate, planningGroupId } = req.body;
+
+      if (!objectIds || !startDate || !endDate) {
+        res.status(400).json({ error: 'objectIds, startDate und endDate sind erforderlich' });
+        return;
+      }
+
+      const tenantId = req.user!.tenantId || req.user!.id;
+      const start = parseISO(startDate);
+      const end = parseISO(endDate);
+
+      const result = await autoPlannerService.planFromObjectPatterns(
+        tenantId,
+        objectIds,
+        start,
+        end,
+        planningGroupId
+      );
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async planPlanningGroup(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { planningGroupId, startDate, endDate, startTime, endTime, employeesPerObjectPerDay, mode } = req.body;

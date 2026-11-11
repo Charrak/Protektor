@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, parseISO, eachDayOfInterval } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 interface Candidate {
@@ -24,6 +24,30 @@ interface Object {
   name: string;
   objectNumber?: string;
   customer: { id: string; companyName: string };
+}
+
+interface SmartPlanResult {
+  success: boolean;
+  period: { startDate: string; endDate: string };
+  objects: {
+    object: { id: string; name: string; objectNumber?: string; customer: string };
+    days: {
+      date: string;
+      patterns: {
+        pattern: string;
+        startTime: string;
+        endTime: string;
+        requiredPersonnel: number;
+        candidates: number;
+        deployments: any[];
+      }[];
+    }[];
+  }[];
+  summary: {
+    totalObjects: number;
+    totalDays: number;
+    totalDeployments: number;
+  };
 }
 
 interface DayPlan {
@@ -76,7 +100,7 @@ interface PlanningGroupResult {
 }
 
 export function AutoPlanner() {
-  const [mode, setMode] = useState<'single' | 'week' | 'group'>('single');
+  const [mode, setMode] = useState<'single' | 'week' | 'group' | 'smart'>('single');
   const [objectId, setObjectId] = useState('');
   const [objectIds, setObjectIds] = useState<string[]>([]);
   const [date, setDate] = useState('');
@@ -93,6 +117,7 @@ export function AutoPlanner() {
   const [result, setResult] = useState<PlanningResult | null>(null);
   const [weekResult, setWeekResult] = useState<WeekPlanResult | null>(null);
   const [groupResult, setGroupResult] = useState<PlanningGroupResult | null>(null);
+  const [smartResult, setSmartResult] = useState<SmartPlanResult | null>(null);
   const [error, setError] = useState('');
   const [objects, setObjects] = useState<Object[]>([]);
   const [planningGroups, setPlanningGroups] = useState<PlanningGroup[]>([]);
@@ -258,6 +283,48 @@ export function AutoPlanner() {
     }
   };
 
+  const handleSmartPlan = async () => {
+    if (objectIds.length === 0 || !startDate || !endDate) {
+      setError('Bitte Objekte auswählen und Zeitraum festlegen');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setResult(null);
+    setWeekResult(null);
+    setGroupResult(null);
+    setSmartResult(null);
+
+    try {
+      const response = await fetch('/api/v1/auto-planning/from-object-patterns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify({
+          objectIds,
+          startDate,
+          endDate,
+          planningGroupId: planningGroupId || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || err.error || 'Fehler bei der Smart-Planung');
+      }
+
+      const data = await response.json();
+      setSmartResult(data);
+    } catch (err: any) {
+      setError(err.message || 'Fehler bei der Smart-Planung');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const qualifiedCandidates = result?.candidates.filter((c: any) => !c.disqualified) || [];
   const disqualifiedCandidates = result?.candidates.filter((c: any) => c.disqualified) || [];
 
@@ -297,13 +364,27 @@ export function AutoPlanner() {
         >
           Planungsgruppe
         </button>
+        <button
+          onClick={() => setMode('smart')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            mode === 'smart' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          🤖 Smart (aus Objekt-Einstellungen)
+        </button>
       </div>
 
       {/* Eingabeformular */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">
-          {mode === 'single' ? 'Einsatz-Parameter' : mode === 'week' ? 'Wochenplanung-Parameter' : 'Planungsgruppen-Parameter'}
+          {mode === 'single' ? 'Einsatz-Parameter' : mode === 'week' ? 'Wochenplanung-Parameter' : mode === 'group' ? 'Planungsgruppen-Parameter' : 'Smart-Planung aus Objekt-Einstellungen'}
         </h2>
+        {mode === 'smart' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-800">
+            💡 <strong>Smart-Planung:</strong> Arbeitszeiten und Personalanforderungen werden aus den Objekt-Schichtmustern gelesen.
+            Die Objekte müssen vorher unter "Objekte" → Schichtmuster konfiguriert werden.
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Objektauswahl */}
           {mode === 'single' && (
@@ -324,7 +405,7 @@ export function AutoPlanner() {
             </div>
           )}
 
-          {mode === 'week' && (
+          {(mode === 'week' || mode === 'smart') && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Objekte</label>
               <div className="w-full px-3 py-2 border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 max-h-48 overflow-y-auto">
@@ -406,25 +487,29 @@ export function AutoPlanner() {
             </>
           )}
 
-          {/* Zeiten */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Startzeit</label>
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Endzeit</label>
-            <input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          {/* Zeiten - nicht im Smart-Modus (kommt aus Objekt-Einstellungen) */}
+          {mode !== 'smart' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Startzeit</label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Endzeit</label>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </>
+          )}
 
           {/* Mitarbeiter-Anzahl */}
           {mode === 'single' && (
@@ -485,11 +570,16 @@ export function AutoPlanner() {
           )}
         </div>
         <button
-          onClick={mode === 'single' ? handleSearch : mode === 'week' ? handleWeekPlan : handlePlanGroup}
-          disabled={loading || (mode === 'week' && objectIds.length === 0) || (mode === 'group' && !planningGroupId)}
+          onClick={
+            mode === 'single' ? handleSearch :
+            mode === 'week' ? handleWeekPlan :
+            mode === 'group' ? handlePlanGroup :
+            handleSmartPlan
+          }
+          disabled={loading || ((mode === 'week' || mode === 'smart') && objectIds.length === 0) || (mode === 'group' && !planningGroupId)}
           className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300"
         >
-          {loading ? 'Wird berechnet...' : mode === 'single' ? '🔍 Kandidaten suchen' : '📅 Plan generieren'}
+          {loading ? 'Wird berechnet...' : mode === 'single' ? '🔍 Kandidaten suchen' : mode === 'smart' ? '🤖 Automatisch planen' : '📅 Plan generieren'}
         </button>
       </div>
 
@@ -652,6 +742,98 @@ export function AutoPlanner() {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Smart-Planung Ergebnisse */}
+      {smartResult && (
+        <div className="space-y-6">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+            <h2 className="text-xl font-bold text-green-800 mb-2">
+              ✅ Smart-Planung erfolgreich!
+            </h2>
+            <div className="grid grid-cols-3 gap-4 mt-4">
+              <div>
+                <p className="text-sm text-gray-600">Objekte</p>
+                <p className="text-2xl font-bold text-green-700">{smartResult.summary.totalObjects}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Tage</p>
+                <p className="text-2xl font-bold text-green-700">{smartResult.summary.totalDays}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Einsätze erstellt</p>
+                <p className="text-2xl font-bold text-green-700">{smartResult.summary.totalDeployments}</p>
+              </div>
+            </div>
+            <p className="text-green-700 mt-4">
+              <strong>Zeitraum:</strong> {smartResult.period.startDate} - {smartResult.period.endDate}
+            </p>
+          </div>
+
+          {smartResult.objects.map((objResult) => (
+            <div key={objResult.object.id} className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-4 border-b pb-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {objResult.object.name}
+                    {objResult.object.objectNumber && (
+                      <span className="text-sm text-gray-500 ml-2">({objResult.object.objectNumber})</span>
+                    )}
+                  </h3>
+                  <p className="text-sm text-gray-600">{objResult.object.customer}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">Einsätze</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {objResult.days.reduce((sum, d) => sum + d.patterns.reduce((s, p) => s + p.deployments.length, 0), 0)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {objResult.days.map((day) => (
+                  <div key={day.date} className="border rounded-lg p-3 bg-gray-50">
+                    <h4 className="font-semibold text-sm mb-2">{day.date}</h4>
+                    {day.patterns.map((pattern, idx) => (
+                      <div key={idx} className={`ml-4 border-l-2 pl-3 py-1 mb-2 ${
+                        pattern.deployments.length >= pattern.requiredPersonnel
+                          ? 'border-green-500'
+                          : pattern.deployments.length > 0
+                          ? 'border-yellow-500'
+                          : 'border-red-500'
+                      }`}>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium">{pattern.pattern}</span>
+                          <span className="text-gray-600">{pattern.startTime} - {pattern.endTime}</span>
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          {pattern.deployments.length} / {pattern.requiredPersonnel} MA besetzt
+                        </div>
+                        {pattern.deployments.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {pattern.deployments.map((dep: any) => (
+                              <span key={dep.id} className="text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded">
+                                {dep.employee.firstName} {dep.employee.lastName}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {pattern.deployments.length < pattern.requiredPersonnel && (
+                          <div className="text-xs text-red-600 mt-1">
+                            ⚠ {pattern.requiredPersonnel - pattern.deployments.length} MA fehlen
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {day.patterns.length === 0 && (
+                      <p className="text-xs text-gray-500 ml-4">Keine Schichtmuster für diesen Tag</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
