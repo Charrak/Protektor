@@ -42,20 +42,3 @@ router.post('/favicon', upload.single('favicon'), uploadFavicon);
 router.delete('/favicon', deleteFavicon);
 
 export default router;
-
-// Update branding settings (color, message)
-router.put('/branding', updateBranding);
-
-// Upload logo
-router.post('/branding/logo', upload.single('logo'), uploadLogo);
-
-// Delete logo
-router.delete('/branding/logo', deleteLogo);
-
-// Upload favicon
-router.post('/branding/favicon', upload.single('favicon'), uploadFavicon);
-
-// Delete favicon
-router.delete('/branding/favicon', deleteFavicon);
-
-export default router;
