@@ -5,8 +5,10 @@ import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { employeeService, qualificationService, type EmployeeDetail, type Qualification } from '../../services/employee.service';
+import { employeeTimePreferenceService, type TimePreference, type TimeRequest } from '../../services/employeeTimePreference.service';
+import { TimePreferencesTab } from '../../components/employees/TimePreferencesTab';
 
-type TabId = 'overview' | 'security' | 'qualifications' | 'availability' | 'documents' | 'contract';
+type TabId = 'overview' | 'security' | 'qualifications' | 'availability' | 'timepreferences' | 'documents' | 'contract';
 
 export function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,11 +21,33 @@ export function EmployeeDetailPage() {
   const [showAddQualModal, setShowAddQualModal] = useState(false);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [timePreferences, setTimePreferences] = useState<TimePreference[]>([]);
+  const [timeRequests, setTimeRequests] = useState<TimeRequest[]>([]);
 
   useEffect(() => {
     loadEmployee();
     qualificationService.list().then(setAllQualifications).catch(console.error);
   }, [id]);
+
+  useEffect(() => {
+    if (activeTab === 'timepreferences' && id) {
+      loadTimeData();
+    }
+  }, [activeTab, id]);
+
+  const loadTimeData = async () => {
+    if (!id) return;
+    try {
+      const [prefs, reqs] = await Promise.all([
+        employeeTimePreferenceService.listByEmployee(id),
+        employeeTimePreferenceService.listTimeRequestsByEmployee(id)
+      ]);
+      setTimePreferences(prefs);
+      setTimeRequests(reqs);
+    } catch (err) {
+      console.error('Fehler beim Laden der Zeitdaten:', err);
+    }
+  };
 
   const loadEmployee = async () => {
     if (!id) return;
@@ -60,7 +84,8 @@ export function EmployeeDetailPage() {
     { id: 'overview', label: 'Übersicht', icon: '📋' },
     { id: 'security', label: 'Sicherheit & Lizenzen', icon: '🛡️' },
     { id: 'qualifications', label: 'Qualifikationen', icon: '🎓' },
-    { id: 'availability', label: 'Verfügbarkeit', icon: '📅' },
+    { id: 'availability', label: 'Abwesenheiten', icon: '📅' },
+    { id: 'timepreferences', label: 'Zeitwünsche', icon: '⏰' },
     { id: 'documents', label: 'Dokumente', icon: '📎' },
     { id: 'contract', label: 'Vertrag & Vergütung', icon: '💰' },
   ];
@@ -135,6 +160,14 @@ export function EmployeeDetailPage() {
           showModal={showAvailabilityModal}
           setShowModal={setShowAvailabilityModal}
           onReload={loadEmployee}
+        />
+      )}
+      {activeTab === 'timepreferences' && id && (
+        <TimePreferencesTab
+          employeeId={id}
+          preferences={timePreferences}
+          requests={timeRequests}
+          onReload={loadTimeData}
         />
       )}
       {activeTab === 'documents' && <DocumentsTab employee={employee} />}
