@@ -208,7 +208,7 @@ async function main() {
       data: {
         tenantId: tenant1.id,
         planId: professionalPlan.id,
-        status: 'active',
+        status: 'ACTIVE',
         billingInterval: 'MONTHLY',
         currentPeriodStart: new Date(),
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -291,7 +291,7 @@ async function main() {
       data: {
         tenantId: tenant2.id,
         planId: enterprisePlan.id,
-        status: 'active',
+        status: 'ACTIVE',
         billingInterval: 'MONTHLY',
         currentPeriodStart: new Date(),
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -496,7 +496,7 @@ async function main() {
         emergencyContactName: `${firstName} ${lastName} (Familie)`,
         emergencyContactPhone: `+49 40 ${2000000 + i * 4321}`,
         emergencyContactRelation: ['Ehepartner', 'Elternteil', 'Geschwister'][i % 3],
-        status: 'active',
+        status: 'ACTIVE',
       },
     });
     employees1.push(employee);
@@ -574,7 +574,7 @@ async function main() {
         emergencyContactName: `${firstName} ${lastName} (Familie)`,
         emergencyContactPhone: `+49 89 ${3000000 + i * 5432}`,
         emergencyContactRelation: ['Ehepartner', 'Elternteil', 'Kind'][i % 3],
-        status: 'active',
+        status: 'ACTIVE',
       },
     });
     employees2.push(employee);
@@ -648,7 +648,7 @@ async function main() {
         emergencyContactName: `${firstName} ${lastName} (Familie)`,
         emergencyContactPhone: `+49 30 ${4000000 + i * 6543}`,
         emergencyContactRelation: ['Elternteil', 'Geschwister', 'Partner'][i % 3],
-        status: 'active',
+        status: 'ACTIVE',
       },
     });
     employees3.push(employee);
@@ -755,7 +755,7 @@ async function main() {
         zipCode: '20359',
         city: 'Hamburg',
         country: 'DE',
-        status: 'active',
+        status: 'ACTIVE',
         vatId: `DE${String(100000000 + Math.floor(Math.random() * 900000000))}`,
       },
     });
@@ -906,7 +906,7 @@ async function main() {
         zipCode: '80539',
         city: 'München',
         country: 'DE',
-        status: 'active',
+        status: 'ACTIVE',
         vatId: `DE${String(200000000 + Math.floor(Math.random() * 900000000))}`,
       },
     });
@@ -1012,7 +1012,7 @@ async function main() {
         zipCode: '10117',
         city: 'Berlin',
         country: 'DE',
-        status: 'active',
+        status: 'ACTIVE',
         vatId: `DE${String(300000000 + Math.floor(Math.random() * 900000000))}`,
       },
     });
