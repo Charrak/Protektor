@@ -17,7 +17,8 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # npm ci installiert exakt wie in package-lock.json
-RUN npm ci
+# Production-Image: Dev-Dependencies weglassen (vitest, eslint, etc.)
+RUN npm ci --omit=dev
 
 # Step 2: Source Code kopieren
 # Kopiert ALLE Dateien aus dem context-Verzeichnis
