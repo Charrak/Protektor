@@ -4,7 +4,12 @@ import { deploymentService } from '../services/deployment.service';
 export class DeploymentController {
   async list(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { date, startDate, endDate, employeeId, objectId, status, page, limit } = req.query;
+      const { date, startDate, endDate, employeeId, objectId, status, page, limit, releasedOnly } = req.query;
+      
+      // Wenn der User ein Mitarbeiter ist (nicht Admin), zeige nur freigegebene Einsätze
+      const isEmployee = req.user?.role?.slug === 'employee';
+      const shouldFilterReleased = releasedOnly === 'true' || (isEmployee && employeeId);
+      
       const result = await deploymentService.list({
         date: date as string,
         startDate: startDate as string,
@@ -14,6 +19,7 @@ export class DeploymentController {
         status: status as string,
         page: page ? parseInt(page as string, 10) : undefined,
         limit: limit ? parseInt(limit as string, 10) : undefined,
+        releasedOnly: shouldFilterReleased,
       });
       res.json(result);
     } catch (error) {
@@ -109,6 +115,27 @@ export class DeploymentController {
 
       const deployment = await deploymentService.decline(id, req.user.id, reason);
       res.json(deployment);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async release(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: 'Nicht angemeldet' });
+        return;
+      }
+
+      const { ids } = req.body;
+
+      if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        res.status(400).json({ error: 'Keine Einsatz-IDs übergeben' });
+        return;
+      }
+
+      const result = await deploymentService.release(ids, req.user.id);
+      res.json({ success: true, ...result });
     } catch (error) {
       next(error);
     }

@@ -49,7 +49,8 @@ export function EmployeeDeployments({ employeeId }: EmployeeDeploymentsProps) {
       const result = await deploymentService.list({
         employeeId,
         startDate,
-        endDate
+        endDate,
+        releasedOnly: true, // Nur freigegebene Einsätze anzeigen
       });
       
       setDeployments(result.deployments as Deployment[]);
@@ -88,6 +89,7 @@ export function EmployeeDeployments({ employeeId }: EmployeeDeploymentsProps) {
   const getStatusBadge = (status: string) => {
     const statusMap = {
       planned: { label: 'Geplant', variant: 'warning' as const },
+      released: { label: 'Freigegeben', variant: 'success' as const },
       confirmed: { label: 'Bestätigt', variant: 'success' as const },
       declined: { label: 'Abgelehnt', variant: 'danger' as const },
       cancelled: { label: 'Storniert', variant: 'gray' as const }

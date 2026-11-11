@@ -183,7 +183,7 @@ function SchedulingPageContent() {
               onClick={() => setSelectedDeployment(dep)}
               className={`p-2 rounded-lg text-xs cursor-pointer transition-all hover:shadow-md ${
                 dep.status === 'cancelled' ? 'bg-red-50 border border-red-200' :
-                dep.status === 'confirmed' ? 'bg-green-50 border border-green-200' :
+                dep.status === 'confirmed' || dep.status === 'released' ? 'bg-green-50 border border-green-200' :
                 'bg-blue-50 border border-blue-200'
               }`}
             >
@@ -272,6 +272,26 @@ function SchedulingPageContent() {
     }
   };
 
+  const handleReleaseAll = async () => {
+    const plannedDeployments = deployments.filter(d => d.status === 'planned');
+    if (plannedDeployments.length === 0) {
+      alert('Keine geplanten Einsätze zum Freigeben vorhanden');
+      return;
+    }
+
+    if (!confirm(`${plannedDeployments.length} geplante Einsätze freigeben?`)) {
+      return;
+    }
+
+    try {
+      const result = await deploymentService.release(plannedDeployments.map(d => d.id));
+      alert(`${result.count} Einsätze erfolgreich freigegeben`);
+      loadDeployments();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Fehler beim Freigeben');
+    }
+  };
+
   return (
     <div>
       <PageHeader
@@ -281,6 +301,9 @@ function SchedulingPageContent() {
           <div className="flex items-center gap-2">
             <button onClick={() => setShowAutoPlannerModal(true)} className="btn-secondary">
               🤖 Auto-Planung
+            </button>
+            <button onClick={handleReleaseAll} className="btn-secondary">
+              ✓ Alle freigeben
             </button>
             <button onClick={() => setShowCreateModal(true)} className="btn-primary">
               + Neuer Einsatz
@@ -527,7 +550,9 @@ function DeploymentDetailModal({ deployment, onClose, onCancel, onConfirm, onFin
             <span className="text-gray-500">Status:</span>
             <div className="mt-1">
               {deployment.status === 'planned' && <Badge variant="info">Geplant</Badge>}
+              {deployment.status === 'released' && <Badge variant="success">Freigegeben</Badge>}
               {deployment.status === 'confirmed' && <Badge variant="success">Bestätigt</Badge>}
+              {deployment.status === 'declined' && <Badge variant="danger">Abgelehnt</Badge>}
               {deployment.status === 'cancelled' && <Badge variant="danger">Storniert</Badge>}
               {deployment.status === 'completed' && <Badge variant="success">Abgeschlossen</Badge>}
               {deployment.status === 'no_show' && <Badge variant="warning">Nicht erschienen</Badge>}
