@@ -113,10 +113,24 @@ export class PlanningGroupService {
   /**
    * Listet alle Planungsgruppen eines Mandanten
    */
-  async list(tenantId: string) {
+  async list(tenantId: string, userId?: string) {
+    const where: any = { tenantId, isActive: true };
+    
+    // Wenn userId übergeben wird, filtere nach Planungsgruppen, bei denen der User
+    // Teamleiter oder Vertreter ist
+    if (userId) {
+      where.OR = [
+        { leadUserId: userId },
+        { leadDeputies: { has: userId } }
+      ];
+    }
+    
     return prisma.planningGroup.findMany({
-      where: { tenantId, isActive: true },
+      where,
       include: {
+        leadUser: {
+          select: { id: true, firstName: true, lastName: true, username: true }
+        },
         objects: {
           include: {
             object: {

@@ -54,8 +54,14 @@ export class PlanningGroupController {
         return;
       }
 
+      // Prüfe, ob User Admin ist oder alle Planungsgruppen sehen darf
+      // Wenn nicht, filtere nach Teamleiter/Vertreter
+      const isAdmin = req.user.role?.slug === 'admin' || req.user.role?.slug === 'planning-admin';
+      const userId = isAdmin ? undefined : req.user.id;
+
       const groups = await planningGroupService.list(
-        req.user.tenantId || req.user.id
+        req.user.tenantId || req.user.id,
+        userId
       );
 
       res.json({
