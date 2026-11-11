@@ -74,11 +74,26 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
           message: 'Datensatz nicht gefunden oder wurde bereits geändert',
         });
         return;
+      case 'P2021':
+      case 'P2022':
+        logger.error('DB-Schema passt nicht zum Code', {
+          code: prismaError.code,
+          meta: prismaError.meta,
+        });
+        res.status(500).json({
+          error: 'DB_SCHEMA_MISMATCH',
+          message: 'Datenbankschema veraltet. Administrator muss "prisma db push" ausführen.',
+        });
+        return;
     }
   }
 
   // Unbekannter Fehler
-  logger.error('Unbehandelter Fehler:', { error: err.message, stack: err.stack });
+  logger.error('Unbehandelter Fehler:', { 
+    error: err.message, 
+    code: (err as any).code,
+    stack: err.stack 
+  });
 
   res.status(500).json({
     error: 'INTERNAL_ERROR',
