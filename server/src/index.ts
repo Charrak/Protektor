@@ -17,6 +17,8 @@ import { errorHandler } from './middleware/errorHandler';
 import { tenantMiddleware } from './middleware/tenantMiddleware';
 import { authenticate } from './middleware/auth';
 import { startLockCleanupJob } from './services/locking.service';
+import { prisma } from './config/database';
+import { ensureDefaultRolesForAllTenants } from './services/defaultRoles.service';
 import stripeWebhookRoutes from './routes/stripeWebhook.routes';
 import { apiLimiter, authLimiter, platformLimiter, webhookLimiter } from './middleware/rateLimiter';
 import { customSecurityHeaders } from './middleware/security';
@@ -115,6 +117,11 @@ const PORT = config.port;
 server.listen(PORT, '0.0.0.0', () => {
   logger.info(`SMS Backend gestartet auf Port ${PORT}`);
   logger.info(`Umgebung: ${config.nodeEnv}`);
+
+  // Rollen/Berechtigungen aller Mandanten auf aktuellen Stand bringen (nicht-destruktiv)
+  ensureDefaultRolesForAllTenants(prisma).catch((err) => {
+    logger.error('Standardrollen konnten nicht sichergestellt werden', err);
+  });
 });
 
 export { app, server };
