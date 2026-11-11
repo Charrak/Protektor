@@ -105,13 +105,13 @@ export class RoleService {
       where: { id: { in: permissionIds } },
       select: { id: true },
     });
-    const validIds = validPerms.map(p => p.id);
+    const validIds = validPerms.map((p: any) => p.id);
 
     // In Transaktion: löschen und neu erstellen
     await prisma.$transaction([
       prisma.rolePermission.deleteMany({ where: { roleId } }),
       prisma.rolePermission.createMany({
-        data: validIds.map(permissionId => ({ roleId, permissionId, granted: true })),
+        data: validIds.map((permissionId: any) => ({ roleId, permissionId, granted: true })),
       }),
     ]);
 
