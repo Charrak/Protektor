@@ -38,6 +38,7 @@ export async function tenantMiddleware(req: Request, res: Response, next: NextFu
     const license = await licenseService.checkLicense(tenant.id);
 
     // Tenant-Info an Request anhängen
+    (req as any).tenantId = tenant.id;
     (req as any).tenant = tenant;
     (req as any).license = license;
 
