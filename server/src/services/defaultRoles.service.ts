@@ -6,55 +6,93 @@ type TxClient = Prisma.TransactionClient | PrismaClient;
 
 /**
  * Stellt sicher, dass alle Berechtigungen und Standardrollen
- * für einen Mandanten existieren. Idempotent.
+ * für einen Mandanten existieren. Idempotent und NICHT-destruktiv:
+ *  - Berechtigungen werden systemweit angelegt/aktualisiert (ohne Namenskonflikte).
+ *  - Neue Rollen erhalten ihre Standardrechte.
+ *  - Die Admin-Rolle bekommt immer alle Rechte (auch neu hinzugekommene).
+ *  - Rollen ohne jede Berechtigung (z. B. von alten Seeds) werden mit den Standardrechten gefüllt.
+ *  - Von Administratoren angepasste Rollen werden NICHT überschrieben.
  */
 export async function ensureDefaultRoles(db: TxClient, tenantId: string): Promise<void> {
-  // 1. Alle Permissions upserten (systemweit, einmalig)
-  const perms = await Promise.all(
-    PERMISSIONS.map((p) =>
-      db.permission.upsert({
-        where: { slug: p.slug },
-        update: { name: p.name, module: p.module, description: p.description },
-        create: p,
-      })
-    )
-  );
-  const permBySlug = new Map(perms.map((p) => [p.slug, p.id]));
+  // 1. Permissions sequentiell anlegen (Permission.name ist UNIQUE -> Namenskonflikte abfangen)
+  const permBySlug = new Map<string, string>();
+  for (const p of PERMISSIONS) {
+    const bySlug = await db.permission.findUnique({ where: { slug: p.slug } });
+    const nameOwner = await db.permission.findFirst({ where: { name: p.name } });
+    const nameFree = !nameOwner || (bySlug && nameOwner.id === bySlug.id);
 
-  // 2. Für jede Standardrolle: upserten + Permissions zuweisen
+    if (bySlug) {
+      await db.permission.update({
+        where: { id: bySlug.id },
+        data: {
+          module: p.module,
+          description: p.description,
+          ...(nameFree ? { name: p.name } : {}),
+        },
+      });
+      permBySlug.set(p.slug, bySlug.id);
+    } else {
+      const created = await db.permission.create({
+        data: { ...p, name: nameFree ? p.name : `${p.name} (${p.slug})` },
+      });
+      permBySlug.set(p.slug, created.id);
+    }
+  }
+
+  // 2. Standardrollen sicherstellen
   for (const def of DEFAULT_ROLES) {
-    const role = await db.role.upsert({
+    const existing = await db.role.findUnique({
       where: { tenantId_slug: { tenantId, slug: def.slug } },
-      update: { name: def.name, description: def.description, isSystem: true },
-      create: {
-        tenantId,
-        slug: def.slug,
-        name: def.name,
-        description: def.description,
-        isSystem: true,
-      },
     });
 
-    // Berechtigungen ermitteln
-    const permIds =
-      def.perms === '*' ? [...permBySlug.values()] : def.perms.map((s) => permBySlug.get(s)!).filter(Boolean);
+    const role = existing
+      ? await db.role.update({ where: { id: existing.id }, data: { isSystem: true } })
+      : await db.role.create({
+          data: {
+            tenantId,
+            slug: def.slug,
+            name: def.name,
+            description: def.description,
+            isSystem: true,
+          },
+        });
 
-    // Vorhandene löschen und neu anlegen (in Transaktion)
-    await db.rolePermission.deleteMany({ where: { roleId: role.id } });
+    const defaultIds: string[] =
+      def.perms === '*'
+        ? [...permBySlug.values()]
+        : def.perms.map((s) => permBySlug.get(s)).filter((id): id is string => !!id);
 
-    if (permIds.length > 0) {
-      await db.rolePermission.createMany({
-        data: permIds.map((permissionId) => ({ roleId: role.id, permissionId, granted: true })),
+    const current = await db.rolePermission.findMany({
+      where: { roleId: role.id },
+      select: { permissionId: true },
+    });
+    const currentIds = new Set(current.map((c) => c.permissionId));
+
+    const shouldFill = !existing || def.perms === '*' || currentIds.size === 0;
+    if (shouldFill) {
+      const missing = defaultIds.filter((id) => !currentIds.has(id));
+      if (missing.length > 0) {
+        await db.rolePermission.createMany({
+          data: missing.map((permissionId) => ({ roleId: role.id, permissionId, granted: true })),
+          skipDuplicates: true,
+        });
+      }
+    }
+
+    if (def.perms === '*') {
+      await db.rolePermission.updateMany({
+        where: { roleId: role.id, granted: false },
+        data: { granted: true },
       });
     }
   }
 
-  logger.info(`Standardrollen für Mandant ${tenantId} sichergestellt (${perms.length} Permissions)`);
+  logger.info(`Standardrollen für Mandant ${tenantId} sichergestellt (${permBySlug.size} Permissions)`);
 }
 
 /**
  * Stellt Standardrollen für ALLE Mandanten sicher.
- * Wird beim Seed verwendet.
+ * Wird beim Seed und beim Serverstart verwendet.
  */
 export async function ensureDefaultRolesForAllTenants(db: PrismaClient): Promise<void> {
   const tenants = await db.tenant.findMany({ select: { id: true, companyName: true } });
@@ -64,5 +102,5 @@ export async function ensureDefaultRolesForAllTenants(db: PrismaClient): Promise
     await ensureDefaultRoles(db, tenant.id);
   }
 
-  logger.info(`Standardrollen für alle Mandanten sichergestellt`);
+  logger.info('Standardrollen für alle Mandanten sichergestellt');
 }
