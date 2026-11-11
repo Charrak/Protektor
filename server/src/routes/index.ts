@@ -28,6 +28,7 @@ import helpRoutes from './help.routes';
 import notificationRoutes from './notification.routes';
 import supportRoutes from './support.routes';
 import replacementRoutes from './replacement.routes';
+import objectShiftPatternRoutes from './objectShiftPattern.routes';
 
 const router = Router();
 
@@ -90,6 +91,9 @@ router.use('/support', supportRoutes);
 
 // ─── Phase 6: Ersatzpersonalsuche ───
 router.use('/replacement', replacementRoutes);
+
+// ─── Objekt-Schichtmuster ───
+router.use('/', objectShiftPatternRoutes);
 
 // router.use('/reports', reportRoutes);
 // router.use('/admin', adminRoutes);

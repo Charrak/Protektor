@@ -708,6 +708,125 @@ export class AutoPlannerService {
       violations,
     };
   }
+
+  /**
+   * Plant automatisch basierend auf Objekt-Schichtmustern
+   * Liest Start/End-Zeiten und Mitarbeiter-Anzahl aus den Objekt-Einstellungen
+   */
+  async planFromObjectPatterns(
+    tenantId: string,
+    objectIds: string[],
+    startDate: Date,
+    endDate: Date,
+    planningGroupId?: string
+  ) {
+    const { objectShiftPatternService } = await import('./objectShiftPattern.service');
+    const { eachDayOfInterval } = await import('date-fns');
+    
+    const dates = eachDayOfInterval({ start: startDate, end: endDate });
+    const results: any[] = [];
+    const createdDeployments: any[] = [];
+
+    for (const objectId of objectIds) {
+      // Objekt laden
+      const object = await prisma.sMSObject.findFirst({
+        where: { id: objectId, tenantId },
+        include: { customer: true }
+      });
+
+      if (!object) continue;
+
+      const objectResults: any[] = [];
+
+      for (const date of dates) {
+        // Schichtmuster für diesen Tag laden
+        const patterns = await objectShiftPatternService.getPatternsForDate(objectId, date);
+
+        const dayResults: any[] = [];
+
+        for (const pattern of patterns) {
+          // Kandidaten finden
+          const candidates = await this.findCandidates({
+            tenantId,
+            objectId,
+            date,
+            startTime: pattern.startTime,
+            endTime: pattern.endTime,
+            requiredCount: pattern.requiredPersonnel,
+            planningGroupId
+          });
+
+          const selected = candidates
+            .filter(c => !c.disqualified)
+            .slice(0, pattern.requiredPersonnel);
+
+          // Deployments erstellen
+          const deployments = [];
+          for (const candidate of selected) {
+            try {
+              const deployment = await prisma.deployment.create({
+                data: {
+                  tenantId,
+                  objectId,
+                  employeeId: candidate.employeeId,
+                  date,
+                  startTime: new Date(`1970-01-01T${pattern.startTime}:00Z`),
+                  endTime: new Date(`1970-01-01T${pattern.endTime}:00Z`),
+                  breakMinutes: pattern.breakMinutes,
+                  status: 'planned',
+                  isNightShift: parseInt(pattern.startTime) >= 22 || parseInt(pattern.endTime) <= 6,
+                  isSunday: date.getDay() === 0,
+                  isHoliday: false,
+                  plannedById: 'system',
+                  version: 1,
+                  notes: `Schicht: ${pattern.name}`
+                },
+                include: {
+                  employee: { select: { id: true, firstName: true, lastName: true, personnelNumber: true } },
+                  object: { select: { id: true, name: true, objectNumber: true } }
+                }
+              });
+              deployments.push(deployment);
+              createdDeployments.push(deployment);
+            } catch (error) {
+              logger.error(`Fehler beim Erstellen des Einsatzes: ${error}`);
+            }
+          }
+
+          dayResults.push({
+            pattern: pattern.name,
+            startTime: pattern.startTime,
+            endTime: pattern.endTime,
+            requiredPersonnel: pattern.requiredPersonnel,
+            candidates: selected.length,
+            deployments
+          });
+        }
+
+        objectResults.push({
+          date: date.toISOString().split('T')[0],
+          patterns: dayResults
+        });
+      }
+
+      results.push({
+        object: { id: object.id, name: object.name, objectNumber: object.objectNumber, customer: object.customer.companyName },
+        days: objectResults
+      });
+    }
+
+    return {
+      success: true,
+      period: { startDate: startDate.toISOString().split('T')[0], endDate: endDate.toISOString().split('T')[0] },
+      objects: results,
+      summary: {
+        totalObjects: objectIds.length,
+        totalDays: dates.length,
+        totalDeployments: createdDeployments.length
+      },
+      createdDeployments
+    };
+  }
 }
 
 export const autoPlannerService = new AutoPlannerService();
