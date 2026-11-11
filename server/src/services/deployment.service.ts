@@ -57,7 +57,8 @@ export class DeploymentService {
         employeeId: d.employeeId,
         employee: {
           id: d.employee.id,
-          name: `${d.employee.firstName} ${d.employee.lastName}`,
+          firstName: d.employee.firstName,
+          lastName: d.employee.lastName,
           personnelNumber: d.employee.personnelNumber,
         },
         date: d.date,

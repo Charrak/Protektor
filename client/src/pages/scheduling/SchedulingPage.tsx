@@ -101,7 +101,7 @@ export function SchedulingPage() {
                 'bg-blue-50 border border-blue-200'
               }`}
             >
-              <div className="font-medium truncate">{dep.employee.name}</div>
+              <div className="font-medium truncate">{`${dep.employee.firstName} ${dep.employee.lastName}`}</div>
               <div className="text-gray-500 truncate">{dep.object.name}</div>
               <div className="flex items-center gap-1 mt-1">
                 <span className="text-gray-600">{format(new Date(`1970-01-01T${dep.startTime}`), 'HH:mm')} - {format(new Date(`1970-01-01T${dep.endTime}`), 'HH:mm')}</span>
@@ -151,8 +151,8 @@ export function SchedulingPage() {
                   {format(day, 'd')}
                 </div>
                 {dayDeps.slice(0, 3).map(dep => (
-                  <div key={dep.id} className="truncate text-[10px] text-gray-600 px-0.5" title={`${dep.employee.name} - ${dep.object.name}`}>
-                    {dep.employee.name.split(' ')[0]}
+                  <div key={dep.id} className="truncate text-[10px] text-gray-600 px-0.5" title={`${`${dep.employee.firstName} ${dep.employee.lastName}`} - ${dep.object.name}`}>
+                    {`${dep.employee.firstName} ${dep.employee.lastName}`.split(' ')[0]}
                   </div>
                 ))}
                 {dayDeps.length > 3 && <div className="text-[10px] text-gray-400">+{dayDeps.length - 3}</div>}
@@ -382,7 +382,7 @@ function DeploymentDetailModal({ deployment, onClose, onCancel, onConfirm }: {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-gray-500">Mitarbeiter:</span>
-            <p className="font-medium">{deployment.employee.name}</p>
+            <p className="font-medium">{`${deployment.employee.firstName} ${deployment.employee.lastName}`}</p>
           </div>
           <div>
             <span className="text-gray-500">Objekt:</span>
