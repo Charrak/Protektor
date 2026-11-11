@@ -50,8 +50,33 @@ interface WeekPlanResult {
   };
 }
 
+interface PlanningGroup {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  objects: { objectId: string; object: { id: string; name: string } }[];
+  employees: { employeeId: string; employee: { id: string; firstName: string; lastName: string } }[];
+}
+
+interface PlanningGroupResult {
+  success: boolean;
+  planningGroup: { id: string; name: string };
+  mode: 'gemeinsam' | 'getrennt';
+  totalObjects: number;
+  totalDays: number;
+  totalDeployments: number;
+  results: {
+    date: string;
+    object: { id: string; name: string };
+    candidates: number;
+    deployments: string[];
+  }[];
+  createdDeployments: any[];
+}
+
 export function AutoPlanner() {
-  const [mode, setMode] = useState<'single' | 'week'>('single');
+  const [mode, setMode] = useState<'single' | 'week' | 'group'>('single');
   const [objectId, setObjectId] = useState('');
   const [objectIds, setObjectIds] = useState<string[]>([]);
   const [date, setDate] = useState('');
@@ -61,13 +86,18 @@ export function AutoPlanner() {
   const [startTime, setStartTime] = useState('');
   const [requiredCount, setRequiredCount] = useState(1);
   const [employeesPerDay, setEmployeesPerDay] = useState(1);
+  const [employeesPerObjectPerDay, setEmployeesPerObjectPerDay] = useState(1);
+  const [planningGroupId, setPlanningGroupId] = useState('');
+  const [planningMode, setPlanningMode] = useState<'gemeinsam' | 'getrennt'>('getrennt');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<PlanningResult | null>(null);
   const [weekResult, setWeekResult] = useState<WeekPlanResult | null>(null);
+  const [groupResult, setGroupResult] = useState<PlanningGroupResult | null>(null);
   const [error, setError] = useState('');
   const [objects, setObjects] = useState<Object[]>([]);
+  const [planningGroups, setPlanningGroups] = useState<PlanningGroup[]>([]);
 
-  // Objekte laden
+  // Objekte und Planungsgruppen laden
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
     if (token) {
@@ -77,6 +107,13 @@ export function AutoPlanner() {
         .then(r => r.json())
         .then(data => setObjects(data.objects || []))
         .catch(err => console.error('Fehler beim Laden der Objekte:', err));
+
+      fetch('/api/v1/planning-groups', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+        .then(r => r.json())
+        .then(data => setPlanningGroups(data.data || []))
+        .catch(err => console.error('Fehler beim Laden der Planungsgruppen:', err));
     }
   }, []);
 
@@ -139,6 +176,7 @@ export function AutoPlanner() {
     setError('');
     setResult(null);
     setWeekResult(null);
+    setGroupResult(null);
 
     try {
       const response = await fetch('/api/v1/auto-planning/week', {
@@ -166,6 +204,55 @@ export function AutoPlanner() {
       setWeekResult(data);
     } catch (err: any) {
       setError(err.message || 'Fehler bei der Wochenplanung');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePlanGroup = async () => {
+    if (!planningGroupId || !startDate || !endDate || !startTime || !endTime || !employeesPerObjectPerDay) {
+      setError('Bitte alle Felder ausfüllen');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setResult(null);
+    setWeekResult(null);
+    setGroupResult(null);
+
+    try {
+      const response = await fetch('/api/v1/auto-planning/planning-group', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify({
+          planningGroupId,
+          startDate,
+          endDate,
+          startTime,
+          endTime,
+          employeesPerObjectPerDay,
+          mode: planningMode,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || err.error || 'Fehler bei der Planungsgruppen-Planung');
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Planungsgruppe enthält keine Objekte oder Mitarbeiter');
+      }
+
+      setGroupResult(data);
+    } catch (err: any) {
+      setError(err.message || 'Fehler bei der Planungsgruppen-Planung');
     } finally {
       setLoading(false);
     }
@@ -202,17 +289,26 @@ export function AutoPlanner() {
         >
           Wochenplanung
         </button>
+        <button
+          onClick={() => setMode('group')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            mode === 'group' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          Planungsgruppe
+        </button>
       </div>
 
       {/* Eingabeformular */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">
-          {mode === 'single' ? 'Einsatz-Parameter' : 'Wochenplanung-Parameter'}
+          {mode === 'single' ? 'Einsatz-Parameter' : mode === 'week' ? 'Wochenplanung-Parameter' : 'Planungsgruppen-Parameter'}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Objekt{mode === 'week' ? 'e' : ''}</label>
-            {mode === 'single' ? (
+          {/* Objektauswahl */}
+          {mode === 'single' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Objekt</label>
               <select
                 value={objectId}
                 onChange={(e) => setObjectId(e.target.value)}
@@ -225,7 +321,12 @@ export function AutoPlanner() {
                   </option>
                 ))}
               </select>
-            ) : (
+            </div>
+          )}
+
+          {mode === 'week' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Objekte</label>
               <div className="w-full px-3 py-2 border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 max-h-48 overflow-y-auto">
                 {objects.map(obj => (
                   <label key={obj.id} className="flex items-center py-1 cursor-pointer hover:bg-gray-50">
@@ -250,9 +351,28 @@ export function AutoPlanner() {
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
+          {mode === 'group' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Planungsgruppe</label>
+              <select
+                value={planningGroupId}
+                onChange={(e) => setPlanningGroupId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Planungsgruppe auswählen...</option>
+                {planningGroups.map(group => (
+                  <option key={group.id} value={group.id}>
+                    {group.name} ({group.objects.length} Objekte, {group.employees.length} MA)
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Datum */}
           {mode === 'single' ? (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Datum</label>
@@ -286,6 +406,7 @@ export function AutoPlanner() {
             </>
           )}
 
+          {/* Zeiten */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Startzeit</label>
             <input
@@ -305,7 +426,8 @@ export function AutoPlanner() {
             />
           </div>
 
-          {mode === 'single' ? (
+          {/* Mitarbeiter-Anzahl */}
+          {mode === 'single' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Benötigte Mitarbeiter</label>
               <input
@@ -316,7 +438,9 @@ export function AutoPlanner() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
-          ) : (
+          )}
+
+          {mode === 'week' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Mitarbeiter pro Tag</label>
               <input
@@ -328,10 +452,41 @@ export function AutoPlanner() {
               />
             </div>
           )}
+
+          {mode === 'group' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mitarbeiter pro Objekt/Tag</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={employeesPerObjectPerDay}
+                  onChange={(e) => setEmployeesPerObjectPerDay(parseInt(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Planungsmodus</label>
+                <select
+                  value={planningMode}
+                  onChange={(e) => setPlanningMode(e.target.value as 'gemeinsam' | 'getrennt')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="getrennt">Getrennt (jedes Objekt einzeln)</option>
+                  <option value="gemeinsam">Gemeinsam (Mitarbeiter können zwischen Objekten wechseln)</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {planningMode === 'getrennt' 
+                    ? 'Jedes Objekt wird unabhängig geplant. Kein Mitarbeiter-Wechsel zwischen Objekten.'
+                    : 'Alle Objekte werden gemeinsam optimiert. Mitarbeiter können zwischen Objekten wechseln.'}
+                </p>
+              </div>
+            </>
+          )}
         </div>
         <button
-          onClick={mode === 'single' ? handleSearch : handleWeekPlan}
-          disabled={loading || (mode === 'week' && objectIds.length === 0)}
+          onClick={mode === 'single' ? handleSearch : mode === 'week' ? handleWeekPlan : handlePlanGroup}
+          disabled={loading || (mode === 'week' && objectIds.length === 0) || (mode === 'group' && !planningGroupId)}
           className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300"
         >
           {loading ? 'Wird berechnet...' : mode === 'single' ? '🔍 Kandidaten suchen' : '📅 Plan generieren'}
@@ -435,6 +590,68 @@ export function AutoPlanner() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Planungsgruppen-Ergebnisse */}
+      {groupResult && (
+        <div className="space-y-6">
+          {/* Zusammenfassung */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+            <h2 className="text-xl font-bold text-green-800 mb-2">
+              ✅ Planungsgruppe erfolgreich geplant!
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+              <div>
+                <p className="text-sm text-gray-600">Planungsgruppe</p>
+                <p className="text-lg font-bold text-green-700">{groupResult.planningGroup.name}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Planungsmodus</p>
+                <p className="text-lg font-bold text-green-700 capitalize">{groupResult.mode}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Einsätze erstellt</p>
+                <p className="text-2xl font-bold text-green-700">{groupResult.totalDeployments}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Zeitraum</p>
+                <p className="text-sm font-medium text-green-700">{groupResult.totalDays} Tage</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Objekt-für-Objekt Übersicht */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4">Planungsübersicht</h3>
+            <div className="space-y-3">
+              {groupResult.results.map((item, idx) => (
+                <div
+                  key={`${item.date}-${item.object.id}`}
+                  className={`border rounded-lg p-4 ${
+                    item.deployments.length > 0 ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <h4 className="font-semibold text-gray-900">{item.object.name}</h4>
+                      <p className="text-sm text-gray-600">{item.date}</p>
+                    </div>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      item.deployments.length > 0 ? 'bg-green-600 text-white' : 'bg-yellow-600 text-white'
+                    }`}>
+                      {item.deployments.length} Einsatz{item.deployments.length !== 1 ? 'e' : ''}
+                    </span>
+                  </div>
+                  {item.deployments.length > 0 && (
+                    <div className="mt-2 text-sm text-gray-700">
+                      <span className="text-gray-600">Kandidaten: {item.candidates}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

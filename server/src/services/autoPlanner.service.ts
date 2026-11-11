@@ -24,6 +24,7 @@ export interface PlanningRequest {
   requiredCount: number;
   requiredQualificationIds?: string[];
   notes?: string;
+  planningGroupId?: string; // Optional: Beschränke auf Mitarbeiter aus dieser Gruppe
 }
 
 export interface PlanningResult {
@@ -61,16 +62,40 @@ export class AutoPlannerService {
     const requiredQualIds = request.requiredQualificationIds ||
       object.requirements.filter((r: any) => r.isMandatory).map((r: any) => r.qualificationId);
 
-    // Alle aktiven Mitarbeiter
-    const employees = await prisma.employee.findMany({
-      where: { tenantId, status: 'active', deletedAt: null },
-      include: {
-        qualifications: {
-          include: { qualification: true },
-          where: { OR: [{ expiryDate: null }, { expiryDate: { gte: new Date() } }] },
+    // Alle aktiven Mitarbeiter ODER nur Mitarbeiter aus Planungsgruppe
+    let employees;
+    if (request.planningGroupId) {
+      const planningGroup = await prisma.planningGroup.findFirst({
+        where: { id: request.planningGroupId, tenantId },
+        include: {
+          employees: {
+            include: {
+              employee: {
+                include: {
+                  qualifications: {
+                    include: { qualification: true },
+                    where: { OR: [{ expiryDate: null }, { expiryDate: { gte: new Date() } }] },
+                  },
+                },
+              },
+            },
+          },
         },
-      },
-    });
+      });
+      
+      if (!planningGroup) return [];
+      employees = planningGroup.employees.map(pgEmp => pgEmp.employee);
+    } else {
+      employees = await prisma.employee.findMany({
+        where: { tenantId, status: 'active', deletedAt: null },
+        include: {
+          qualifications: {
+            include: { qualification: true },
+            where: { OR: [{ expiryDate: null }, { expiryDate: { gte: new Date() } }] },
+          },
+        },
+      });
+    }
 
     // Bestehende Einsätze am selben Tag
     const existingDeployments = await prisma.deployment.findMany({
@@ -390,6 +415,217 @@ export class AutoPlannerService {
     }
 
     return results;
+  }
+
+  /**
+   * Plant eine gesamte Planungsgruppe
+   * @param mode 'gemeinsam' = Alle Objekte werden gemeinsam optimiert, 'getrennt' = Jedes Objekt einzeln
+   */
+  async planPlanningGroup(
+    tenantId: string,
+    planningGroupId: string,
+    dates: Date[],
+    startTime: string,
+    endTime: string,
+    employeesPerObjectPerDay: number,
+    mode: 'gemeinsam' | 'getrennt' = 'getrennt'
+  ) {
+    // Lade Planungsgruppe mit allen Objekten und Mitarbeitern
+    const planningGroup = await prisma.planningGroup.findFirst({
+      where: { id: planningGroupId, tenantId },
+      include: {
+        objects: {
+          include: {
+            object: {
+              include: {
+                customer: true,
+                requirements: {
+                  include: { qualification: true }
+                }
+              }
+            }
+          },
+          orderBy: { sortOrder: 'asc' }
+        },
+        employees: {
+          include: {
+            employee: {
+              include: {
+                qualifications: {
+                  include: { qualification: true }
+                }
+              }
+            }
+          },
+          orderBy: { sortOrder: 'asc' }
+        }
+      }
+    });
+
+    if (!planningGroup) {
+      throw new Error('Planungsgruppe nicht gefunden');
+    }
+
+    const objects = planningGroup.objects.map(po => po.object);
+    const allEmployees = planningGroup.employees.map(pe => pe.employee);
+
+    if (objects.length === 0) {
+      return { success: false, error: 'Planungsgruppe enthält keine Objekte' };
+    }
+
+    if (allEmployees.length === 0) {
+      return { success: false, error: 'Planungsgruppe enthält keine Mitarbeiter' };
+    }
+
+    const results: any[] = [];
+    const createdDeployments: any[] = [];
+
+    if (mode === 'getrennt') {
+      // GETRENNT: Jedes Objekt wird einzeln geplant
+      for (const object of objects) {
+        for (const date of dates) {
+          const candidates = await this.findCandidates({
+            tenantId,
+            objectId: object.id,
+            date,
+            startTime,
+            endTime,
+            requiredCount: employeesPerObjectPerDay,
+            planningGroupId
+          });
+
+          const selected = candidates
+            .filter(c => !c.disqualified)
+            .slice(0, employeesPerObjectPerDay);
+
+          // Erstelle Deployments
+          for (const candidate of selected) {
+            try {
+              const deployment = await prisma.deployment.create({
+                data: {
+                  tenantId,
+                  objectId: object.id,
+                  employeeId: candidate.employeeId,
+                  date,
+                  startTime: new Date(`1970-01-01T${startTime}:00Z`),
+                  endTime: new Date(`1970-01-01T${endTime}:00Z`),
+                  breakMinutes: 0,
+                  status: 'planned',
+                  isNightShift: parseInt(startTime) >= 22 || parseInt(endTime) <= 6,
+                  isSunday: date.getDay() === 0,
+                  isHoliday: false,
+                  plannedById: 'system',
+                  version: 1
+                },
+                include: {
+                  employee: { select: { id: true, firstName: true, lastName: true } },
+                  object: { select: { id: true, name: true } }
+                }
+              });
+              createdDeployments.push(deployment);
+            } catch (error) {
+              logger.error(`Fehler beim Erstellen des Einsatzes: ${error}`);
+            }
+          }
+
+          results.push({
+            date,
+            object: { id: object.id, name: object.name },
+            candidates: selected.length,
+            deployments: selected.map(c => c.employeeId)
+          });
+        }
+      }
+    } else {
+      // GEMEINSAM: Alle Objekte werden gemeinsam optimiert
+      // Mitarbeiter können zwischen Objekten wechseln
+      for (const date of dates) {
+        const dateAssignments: any[] = [];
+
+        // Für jedes Objekt Kandidaten finden
+        for (const object of objects) {
+          const candidates = await this.findCandidates({
+            tenantId,
+            objectId: object.id,
+            date,
+            startTime,
+            endTime,
+            requiredCount: employeesPerObjectPerDay,
+            planningGroupId
+          });
+
+          const qualified = candidates.filter(c => !c.disqualified);
+          dateAssignments.push({
+            object,
+            candidates: qualified,
+            selected: [] as string[]
+          });
+        }
+
+        // Optimierte Zuweisung: Verhindere doppelte Zuweisungen
+        const usedEmployees = new Set<string>();
+
+        for (const assignment of dateAssignments) {
+          let count = 0;
+          for (const candidate of assignment.candidates) {
+            if (count >= employeesPerObjectPerDay) break;
+            if (!usedEmployees.has(candidate.employeeId)) {
+              assignment.selected.push(candidate.employeeId);
+              usedEmployees.add(candidate.employeeId);
+              count++;
+            }
+          }
+
+          // Erstelle Deployments für dieses Objekt
+          for (const employeeId of assignment.selected) {
+            try {
+              const deployment = await prisma.deployment.create({
+                data: {
+                  tenantId,
+                  objectId: assignment.object.id,
+                  employeeId,
+                  date,
+                  startTime: new Date(`1970-01-01T${startTime}:00Z`),
+                  endTime: new Date(`1970-01-01T${endTime}:00Z`),
+                  breakMinutes: 0,
+                  status: 'planned',
+                  isNightShift: parseInt(startTime) >= 22 || parseInt(endTime) <= 6,
+                  isSunday: date.getDay() === 0,
+                  isHoliday: false,
+                  plannedById: 'system',
+                  version: 1
+                },
+                include: {
+                  employee: { select: { id: true, firstName: true, lastName: true } },
+                  object: { select: { id: true, name: true } }
+                }
+              });
+              createdDeployments.push(deployment);
+            } catch (error) {
+              logger.error(`Fehler beim Erstellen des Einsatzes: ${error}`);
+            }
+          }
+
+          results.push({
+            date,
+            object: { id: assignment.object.id, name: assignment.object.name },
+            candidates: assignment.candidates.length,
+            deployments: assignment.selected
+          });
+        }
+      }
+    }
+
+    return {
+      success: true,
+      planningGroup: { id: planningGroup.id, name: planningGroup.name },
+      mode,
+      totalObjects: objects.length,
+      totalDays: dates.length,
+      totalDeployments: createdDeployments.length,
+      results,
+      createdDeployments
+    };
   }
 
   /**

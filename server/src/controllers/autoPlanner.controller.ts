@@ -141,6 +141,36 @@ export class AutoPlannerController {
       next(error);
     }
   }
+
+  async planPlanningGroup(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { planningGroupId, startDate, endDate, startTime, endTime, employeesPerObjectPerDay, mode } = req.body;
+
+      if (!planningGroupId || !startDate || !endDate || !startTime || !endTime || !employeesPerObjectPerDay) {
+        res.status(400).json({ error: 'Alle Felder erforderlich: planningGroupId, startDate, endDate, startTime, endTime, employeesPerObjectPerDay' });
+        return;
+      }
+
+      const tenantId = req.user!.tenantId || req.user!.id;
+      const start = parseISO(startDate);
+      const end = parseISO(endDate);
+      const dates = eachDayOfInterval({ start, end });
+
+      const result = await autoPlannerService.planPlanningGroup(
+        tenantId,
+        planningGroupId,
+        dates,
+        startTime,
+        endTime,
+        employeesPerObjectPerDay,
+        mode || 'getrennt'
+      );
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const autoPlannerController = new AutoPlannerController();
