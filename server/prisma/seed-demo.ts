@@ -407,20 +407,22 @@ async function main() {
 
   const createdQualifications = [];
   for (const qual of qualificationNames) {
-    const qualification = await prisma.qualification.upsert({
-      where: {
-        name: qual.name,
-      },
-      update: {},
-      create: {
-        name: qual.name,
-        description: qual.description,
-        category: 'security',
-        validityDays: qual.validityDays,
-        requiresRenewal: true,
-        color: '#3B82F6',
-      },
+    // Erst suchen, dann erstellen (kein @unique auf name)
+    let qualification = await prisma.qualification.findFirst({
+      where: { name: qual.name },
     });
+    if (!qualification) {
+      qualification = await prisma.qualification.create({
+        data: {
+          name: qual.name,
+          description: qual.description,
+          category: 'security',
+          validityDays: qual.validityDays,
+          requiresRenewal: true,
+          color: '#3B82F6',
+        },
+      });
+    }
     createdQualifications.push(qualification);
   }
 
