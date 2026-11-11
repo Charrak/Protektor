@@ -6,5 +6,6 @@ import { requirePermission } from '../middleware/authorization';
 const router = Router();
 
 router.post('/suggest', authenticate, requirePermission('scheduling:auto_plan'), (req, res, next) => autoPlannerController.findCandidates(req, res, next));
+router.post('/week', authenticate, requirePermission('scheduling:auto_plan'), (req, res, next) => autoPlannerController.generateWeekPlan(req, res, next));
 
 export default router;
