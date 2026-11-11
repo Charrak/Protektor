@@ -30,10 +30,10 @@ export class AutoPlannerController {
 
   async generateWeekPlan(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { startDate, endDate, objectId, startTime, endTime, employeesPerDay } = req.body;
+      const { startDate, endDate, objectIds, startTime, endTime, employeesPerDay } = req.body;
 
-      if (!startDate || !endDate || !objectId || !startTime || !endTime || !employeesPerDay) {
-        res.status(400).json({ error: 'Alle Felder erforderlich: startDate, endDate, objectId, startTime, endTime, employeesPerDay' });
+      if (!startDate || !endDate || !objectIds || !startTime || !endTime || !employeesPerDay) {
+        res.status(400).json({ error: 'Alle Felder erforderlich: startDate, endDate, objectIds, startTime, endTime, employeesPerDay' });
         return;
       }
 
@@ -45,82 +45,97 @@ export class AutoPlannerController {
       // Hole Benutzer-ID für plannedById
       const userId = req.user!.id;
 
-      // Hole Objekt-Info
-      const object = await prisma.sMSObject.findFirst({
-        where: { id: objectId, tenantId },
+      // Hole Objekt-Infos für alle ausgewählten Objekte
+      const objects = await prisma.sMSObject.findMany({
+        where: { id: { in: objectIds }, tenantId },
         include: { customer: true }
       });
 
-      if (!object) {
-        res.status(404).json({ error: 'Objekt nicht gefunden' });
+      if (objects.length === 0) {
+        res.status(404).json({ error: 'Keine Objekte gefunden' });
         return;
       }
 
       const results = [];
+      let totalDeployments = 0;
 
-      for (const day of days) {
-        const date = format(day, 'yyyy-MM-dd');
-        const candidates = await autoPlannerService.findCandidates({
-          tenantId,
-          objectId,
-          date: day,
-          startTime,
-          endTime,
-          requiredCount: employeesPerDay,
-        });
+      for (const object of objects) {
+        const objectResults = [];
 
-        // Filter qualifizierte Kandidaten
-        const qualified = candidates.filter(c => !c.disqualified).slice(0, employeesPerDay);
+        for (const day of days) {
+          const date = format(day, 'yyyy-MM-dd');
+          const candidates = await autoPlannerService.findCandidates({
+            tenantId,
+            objectId: object.id,
+            date: day,
+            startTime,
+            endTime,
+            requiredCount: employeesPerDay,
+          });
 
-        // Erstelle Einsätze für qualifizierte Kandidaten
-        const deployments = [];
-        for (const candidate of qualified) {
-          try {
-            const deployment = await prisma.deployment.create({
-              data: {
-                tenantId,
-                objectId,
-                employeeId: candidate.employeeId,
-                date: parseISO(date),
-                startTime: new Date(`1970-01-01T${startTime}:00Z`),
-                endTime: new Date(`1970-01-01T${endTime}:00Z`),
-                breakMinutes: 0,
-                status: 'planned',
-                isNightShift: parseInt(startTime) >= 22 || parseInt(endTime) <= 6,
-                isSunday: day.getDay() === 0,
-                isHoliday: false,
-                plannedById: userId,
-                version: 1,
-              },
-              include: {
-                employee: {
-                  select: { id: true, firstName: true, lastName: true, personnelNumber: true }
+          // Filter qualifizierte Kandidaten
+          const qualified = candidates.filter(c => !c.disqualified).slice(0, employeesPerDay);
+
+          // Erstelle Einsätze für qualifizierte Kandidaten
+          const deployments = [];
+          for (const candidate of qualified) {
+            try {
+              const deployment = await prisma.deployment.create({
+                data: {
+                  tenantId,
+                  objectId: object.id,
+                  employeeId: candidate.employeeId,
+                  date: parseISO(date),
+                  startTime: new Date(`1970-01-01T${startTime}:00Z`),
+                  endTime: new Date(`1970-01-01T${endTime}:00Z`),
+                  breakMinutes: 0,
+                  status: 'planned',
+                  isNightShift: parseInt(startTime) >= 22 || parseInt(endTime) <= 6,
+                  isSunday: day.getDay() === 0,
+                  isHoliday: false,
+                  plannedById: userId,
+                  version: 1,
                 },
-                object: {
-                  select: { id: true, name: true, objectNumber: true }
+                include: {
+                  employee: {
+                    select: { id: true, firstName: true, lastName: true, personnelNumber: true }
+                  },
+                  object: {
+                    select: { id: true, name: true, objectNumber: true }
+                  }
                 }
-              }
-            });
-            deployments.push(deployment);
-          } catch (error) {
-            console.error(`Fehler beim Erstellen des Einsatzes für ${candidate.employeeName}:`, error);
+              });
+              deployments.push(deployment);
+              totalDeployments++;
+            } catch (error) {
+              console.error(`Fehler beim Erstellen des Einsatzes für ${candidate.employeeName}:`, error);
+            }
           }
+
+          objectResults.push({
+            date,
+            dayName: format(day, 'EEEE', { locale: require('date-fns/locale/de') }),
+            candidates: qualified.length,
+            deployments,
+          });
         }
 
         results.push({
-          date,
-          dayName: format(day, 'EEEE', { locale: require('date-fns/locale/de') }),
-          candidates: qualified.length,
-          deployments,
+          object: { id: object.id, name: object.name, objectNumber: object.objectNumber, customer: object.customer.companyName },
+          days: objectResults,
         });
       }
 
       res.json({ 
         success: true,
-        object: { id: object.id, name: object.name, customer: object.customer.companyName },
+        objects: results,
         period: { startDate, endDate },
         schedule: startTime + ' - ' + endTime,
-        days: results
+        summary: {
+          totalObjects: objects.length,
+          totalDays: days.length,
+          totalDeployments,
+        }
       });
     } catch (error) {
       next(error);

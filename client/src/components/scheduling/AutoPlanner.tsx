@@ -33,19 +33,30 @@ interface DayPlan {
   deployments: any[];
 }
 
+interface ObjectPlanResult {
+  object: { id: string; name: string; objectNumber?: string; customer: string };
+  days: DayPlan[];
+}
+
 interface WeekPlanResult {
   success: boolean;
-  object: { id: string; name: string; customer: string };
+  objects: ObjectPlanResult[];
   period: { startDate: string; endDate: string };
   schedule: string;
-  days: DayPlan[];
+  summary: {
+    totalObjects: number;
+    totalDays: number;
+    totalDeployments: number;
+  };
 }
 
 export function AutoPlanner() {
   const [mode, setMode] = useState<'single' | 'week'>('single');
   const [objectId, setObjectId] = useState('');
+  const [objectIds, setObjectIds] = useState<string[]>([]);
   const [date, setDate] = useState('');
   const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [endTime, setEndTime] = useState('');
   const [startTime, setStartTime] = useState('');
   const [requiredCount, setRequiredCount] = useState(1);
@@ -55,7 +66,6 @@ export function AutoPlanner() {
   const [weekResult, setWeekResult] = useState<WeekPlanResult | null>(null);
   const [error, setError] = useState('');
   const [objects, setObjects] = useState<Object[]>([]);
-  const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
 
   // Objekte laden
   useEffect(() => {
@@ -120,7 +130,7 @@ export function AutoPlanner() {
   };
 
   const handleWeekPlan = async () => {
-    if (!objectId || !startDate || !endTime || !employeesPerDay) {
+    if (objectIds.length === 0 || !startDate || !endDate || !startTime || !endTime || !employeesPerDay) {
       setError('Bitte alle Felder ausfüllen');
       return;
     }
@@ -130,9 +140,6 @@ export function AutoPlanner() {
     setResult(null);
     setWeekResult(null);
 
-    const weekStart = startOfWeek(new Date(startDate), { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-
     try {
       const response = await fetch('/api/v1/auto-planning/week', {
         method: 'POST',
@@ -141,9 +148,9 @@ export function AutoPlanner() {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify({
-          objectId,
-          startDate: format(weekStart, 'yyyy-MM-dd'),
-          endDate: format(weekEnd, 'yyyy-MM-dd'),
+          objectIds,
+          startDate,
+          endDate,
           startTime,
           endTime,
           employeesPerDay,
@@ -167,10 +174,13 @@ export function AutoPlanner() {
   const qualifiedCandidates = result?.candidates.filter((c: any) => !c.disqualified) || [];
   const disqualifiedCandidates = result?.candidates.filter((c: any) => c.disqualified) || [];
 
-  // Standard-Datum auf nächste Woche setzen
+  // Standard-Datum auf nächste 2 Wochen setzen
   useEffect(() => {
-    const nextMonday = format(startOfWeek(addWeeks(new Date(), 1), { weekStartsOn: 1 }), 'yyyy-MM-dd');
-    setStartDate(nextMonday);
+    const today = new Date();
+    const nextMonday = startOfWeek(addWeeks(today, 1), { weekStartsOn: 1 });
+    const twoWeeksLater = addWeeks(nextMonday, 2);
+    setStartDate(format(nextMonday, 'yyyy-MM-dd'));
+    setEndDate(format(twoWeeksLater, 'yyyy-MM-dd'));
   }, []);
 
   return (
@@ -201,19 +211,46 @@ export function AutoPlanner() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Objekt</label>
-            <select
-              value={objectId}
-              onChange={(e) => setObjectId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Objekt auswählen...</option>
-              {objects.map(obj => (
-                <option key={obj.id} value={obj.id}>
-                  {obj.name} ({obj.objectNumber}) - {obj.customer.companyName}
-                </option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Objekt{mode === 'week' ? 'e' : ''}</label>
+            {mode === 'single' ? (
+              <select
+                value={objectId}
+                onChange={(e) => setObjectId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Objekt auswählen...</option>
+                {objects.map(obj => (
+                  <option key={obj.id} value={obj.id}>
+                    {obj.name} ({obj.objectNumber}) - {obj.customer.companyName}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="w-full px-3 py-2 border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 max-h-48 overflow-y-auto">
+                {objects.map(obj => (
+                  <label key={obj.id} className="flex items-center py-1 cursor-pointer hover:bg-gray-50">
+                    <input
+                      type="checkbox"
+                      checked={objectIds.includes(obj.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setObjectIds([...objectIds, obj.id]);
+                        } else {
+                          setObjectIds(objectIds.filter(id => id !== obj.id));
+                        }
+                      }}
+                      className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm">{obj.name} ({obj.objectNumber}) - {obj.customer.companyName}</span>
+                  </label>
+                ))}
+                {objectIds.length > 0 && (
+                  <div className="mt-2 pt-2 border-t text-xs text-gray-600">
+                    {objectIds.length} Objekt{objectIds.length !== 1 ? 'e' : ''} ausgewählt
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {mode === 'single' ? (
@@ -227,32 +264,26 @@ export function AutoPlanner() {
               />
             </div>
           ) : (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Woche</label>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))}
-                  className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  ←
-                </button>
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Von</label>
                 <input
                   type="date"
-                  value={format(currentWeekStart, 'yyyy-MM-dd')}
-                  onChange={(e) => setCurrentWeekStart(startOfWeek(new Date(e.target.value), { weekStartsOn: 1 }))}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
-                <button
-                  onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}
-                  className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  →
-                </button>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {format(currentWeekStart, 'dd.MM.', { locale: de })} - {format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'dd.MM.yyyy', { locale: de })}
-              </p>
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bis</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </>
           )}
 
           <div>
@@ -300,10 +331,10 @@ export function AutoPlanner() {
         </div>
         <button
           onClick={mode === 'single' ? handleSearch : handleWeekPlan}
-          disabled={loading}
+          disabled={loading || (mode === 'week' && objectIds.length === 0)}
           className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300"
         >
-          {loading ? 'Wird berechnet...' : mode === 'single' ? '🔍 Kandidaten suchen' : '📅 Wochenplan generieren'}
+          {loading ? 'Wird berechnet...' : mode === 'single' ? '🔍 Kandidaten suchen' : '📅 Plan generieren'}
         </button>
       </div>
 
@@ -320,60 +351,90 @@ export function AutoPlanner() {
           {/* Zusammenfassung */}
           <div className="bg-green-50 border border-green-200 rounded-lg p-6">
             <h2 className="text-xl font-bold text-green-800 mb-2">
-              ✅ Wochenplan erfolgreich erstellt!
+              ✅ Plan erfolgreich erstellt!
             </h2>
-            <p className="text-green-700">
-              <strong>Objekt:</strong> {weekResult.object.name} ({weekResult.object.customer})
-            </p>
-            <p className="text-green-700">
-              <strong>Zeitraum:</strong> {weekResult.period.startDate} - {weekResult.period.endDate}
-            </p>
-            <p className="text-green-700">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+              <div>
+                <p className="text-sm text-gray-600">Objekte</p>
+                <p className="text-2xl font-bold text-green-700">{weekResult.summary.totalObjects}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Tage</p>
+                <p className="text-2xl font-bold text-green-700">{weekResult.summary.totalDays}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Einsätze erstellt</p>
+                <p className="text-2xl font-bold text-green-700">{weekResult.summary.totalDeployments}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Zeitraum</p>
+                <p className="text-sm font-medium text-green-700">{weekResult.period.startDate}</p>
+                <p className="text-sm font-medium text-green-700">bis {weekResult.period.endDate}</p>
+              </div>
+            </div>
+            <p className="text-green-700 mt-4">
               <strong>Schicht:</strong> {weekResult.schedule}
-            </p>
-            <p className="text-green-700">
-              <strong>Einsätze erstellt:</strong> {weekResult.days.reduce((sum, d) => sum + d.deployments.length, 0)}
             </p>
           </div>
 
-          {/* Tag-für-Tag Übersicht */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Tagesübersicht</h3>
-            <div className="space-y-3">
-              {weekResult.days.map((day) => (
-                <div
-                  key={day.date}
-                  className={`border rounded-lg p-4 ${
-                    day.deployments.length > 0 ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold text-gray-900">{day.dayName}, {day.date}</h4>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      day.deployments.length > 0 ? 'bg-green-600 text-white' : 'bg-yellow-600 text-white'
-                    }`}>
-                      {day.deployments.length} Einsatz{day.deployments.length !== 1 ? 'e' : ''}
-                    </span>
-                  </div>
-                  {day.deployments.length > 0 ? (
-                    <div className="space-y-1">
-                      {day.deployments.map((dep: any) => (
-                        <div key={dep.id} className="text-sm text-gray-700 flex items-center gap-2">
-                          <span>✓</span>
-                          <span className="font-medium">{dep.employee.firstName} {dep.employee.lastName}</span>
-                          <span className="text-gray-500">({dep.employee.personnelNumber})</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-yellow-700">
-                      Keine qualifizierten Mitarbeiter gefunden
-                    </p>
-                  )}
+          {/* Objekt-für-Objekt Übersicht */}
+          {weekResult.objects.map((objectPlan) => (
+            <div key={objectPlan.object.id} className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-4 border-b pb-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {objectPlan.object.name}
+                    {objectPlan.object.objectNumber && (
+                      <span className="text-sm text-gray-500 ml-2">({objectPlan.object.objectNumber})</span>
+                    )}
+                  </h3>
+                  <p className="text-sm text-gray-600">{objectPlan.object.customer}</p>
                 </div>
-              ))}
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">Einsätze</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {objectPlan.days.reduce((sum, d) => sum + d.deployments.length, 0)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Tag-für-Tag Übersicht für dieses Objekt */}
+              <div className="space-y-3">
+                {objectPlan.days.map((day) => (
+                  <div
+                    key={day.date}
+                    className={`border rounded-lg p-4 ${
+                      day.deployments.length > 0 ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-gray-900">{day.dayName}, {day.date}</h4>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        day.deployments.length > 0 ? 'bg-green-600 text-white' : 'bg-yellow-600 text-white'
+                      }`}>
+                        {day.deployments.length} Einsatz{day.deployments.length !== 1 ? 'e' : ''}
+                      </span>
+                    </div>
+                    {day.deployments.length > 0 ? (
+                      <div className="space-y-1">
+                        {day.deployments.map((dep: any) => (
+                          <div key={dep.id} className="text-sm text-gray-700 flex items-center gap-2">
+                            <span>✓</span>
+                            <span className="font-medium">{dep.employee.firstName} {dep.employee.lastName}</span>
+                            <span className="text-gray-500">({dep.employee.personnelNumber})</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-yellow-700">
+                        Keine qualifizierten Mitarbeiter gefunden
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          ))}
         </div>
       )}
 
