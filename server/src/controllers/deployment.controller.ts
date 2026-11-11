@@ -84,15 +84,30 @@ export class DeploymentController {
 
   async confirm(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const id = req.params.id as string;
-      const employeeId = req.body.employeeId;
-
-      if (!employeeId) {
-        res.status(400).json({ error: 'Mitarbeiter-ID erforderlich' });
+      if (!req.user) {
+        res.status(401).json({ error: 'Nicht angemeldet' });
         return;
       }
 
-      const deployment = await deploymentService.confirm(id, employeeId);
+      const id = req.params.id as string;
+      const deployment = await deploymentService.confirm(id, req.user.id);
+      res.json(deployment);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async decline(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: 'Nicht angemeldet' });
+        return;
+      }
+
+      const id = req.params.id as string;
+      const { reason } = req.body;
+
+      const deployment = await deploymentService.decline(id, req.user.id, reason);
       res.json(deployment);
     } catch (error) {
       next(error);

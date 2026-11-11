@@ -13,7 +13,7 @@ export interface Deployment {
   isNightShift: boolean;
   isSunday: boolean;
   isHoliday: boolean;
-  status: 'planned' | 'confirmed' | 'cancelled' | 'completed' | 'no_show';
+  status: 'planned' | 'confirmed' | 'declined' | 'cancelled' | 'completed' | 'no_show';
   version: number;
   shift?: { id: string; name: string } | null;
   notes?: string;
@@ -72,8 +72,13 @@ export const deploymentService = {
     return data;
   },
 
-  async confirm(id: string, employeeId: string): Promise<Deployment> {
-    const { data } = await api.post<Deployment>(`/deployments/${id}/confirm`, { employeeId });
+  async confirm(id: string): Promise<Deployment> {
+    const { data } = await api.post<Deployment>(`/deployments/${id}/confirm`);
+    return data;
+  },
+
+  async decline(id: string, reason?: string): Promise<Deployment> {
+    const { data } = await api.post<Deployment>(`/deployments/${id}/decline`, { reason });
     return data;
   },
 

@@ -7,8 +7,9 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { employeeService, qualificationService, type EmployeeDetail, type Qualification } from '../../services/employee.service';
 import { employeeTimePreferenceService, type TimePreference, type TimeRequest } from '../../services/employeeTimePreference.service';
 import { TimePreferencesTab } from '../../components/employees/TimePreferencesTab';
+import { EmployeeDeployments } from '../../components/deployments/EmployeeDeployments';
 
-type TabId = 'overview' | 'security' | 'qualifications' | 'availability' | 'timepreferences' | 'documents' | 'contract';
+type TabId = 'overview' | 'security' | 'qualifications' | 'availability' | 'timepreferences' | 'deployments' | 'documents' | 'contract';
 
 export function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -86,6 +87,7 @@ export function EmployeeDetailPage() {
     { id: 'qualifications', label: 'Qualifikationen', icon: '🎓' },
     { id: 'availability', label: 'Abwesenheiten', icon: '📅' },
     { id: 'timepreferences', label: 'Zeitwünsche', icon: '⏰' },
+    { id: 'deployments', label: 'Einsätze', icon: '🚀' },
     { id: 'documents', label: 'Dokumente', icon: '📎' },
     { id: 'contract', label: 'Vertrag & Vergütung', icon: '💰' },
   ];
@@ -169,6 +171,9 @@ export function EmployeeDetailPage() {
           requests={timeRequests}
           onReload={loadTimeData}
         />
+      )}
+      {activeTab === 'deployments' && id && (
+        <EmployeeDeployments employeeId={id} />
       )}
       {activeTab === 'documents' && <DocumentsTab employee={employee} />}
       {activeTab === 'contract' && <ContractTab employee={employee} />}
