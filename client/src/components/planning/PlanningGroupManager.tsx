@@ -84,10 +84,18 @@ export function PlanningGroupManager() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const payload = {
+        name: formData.name,
+        description: formData.description,
+        color: formData.color,
+        objectIds: formData.objectIds || [],
+        employeeIds: formData.employeeIds || []
+      };
+
       if (editingGroup) {
-        await planningGroupService.update(editingGroup.id, formData);
+        await planningGroupService.update(editingGroup.id, payload);
       } else {
-        await planningGroupService.create(formData);
+        await planningGroupService.create(payload);
       }
       setShowCreateModal(false);
       await loadData();
