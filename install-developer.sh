@@ -140,7 +140,7 @@ echo ""
 
 # Database Migration
 echo -e "${BLUE}[6/6]${NC} Initialisiere Datenbank..."
-docker-compose exec -T backend npx prisma migrate deploy
+docker-compose exec -T backend npx prisma db push --skip-generate
 if [ $? -ne 0 ]; then
     echo ""
     echo -e "${YELLOW}⚠️  WARNUNG: Database Migration fehlgeschlagen${NC}"

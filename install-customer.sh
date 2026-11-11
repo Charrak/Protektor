@@ -125,7 +125,7 @@ sleep 30
 # Initialize database
 echo ""
 echo "Initialisiere Datenbank..."
-docker-compose exec -T backend npx prisma migrate deploy > /dev/null 2>&1
+docker-compose exec -T backend npx prisma db push --skip-generate > /dev/null 2>&1
 
 # Show success message
 echo ""
