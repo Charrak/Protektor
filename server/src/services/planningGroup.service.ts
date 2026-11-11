@@ -21,28 +21,24 @@ export class PlanningGroupService {
       throw new ConflictError(`Planungsgruppe "${input.name}" existiert bereits`);
     }
 
-    // Validiere Objekte
-    if (input.objectIds.length === 0) {
-      throw new ValidationError('Mindestens ein Objekt muss ausgewählt werden');
+    // Validiere Objekte (nur wenn welche vorhanden)
+    if (input.objectIds.length > 0) {
+      const objects = await prisma.sMSObject.findMany({
+        where: { id: { in: input.objectIds }, tenantId }
+      });
+      if (objects.length !== input.objectIds.length) {
+        throw new ValidationError('Ein oder mehrere Objekte existieren nicht oder gehören nicht zu diesem Mandanten');
+      }
     }
 
-    const objects = await prisma.sMSObject.findMany({
-      where: { id: { in: input.objectIds }, tenantId }
-    });
-    if (objects.length !== input.objectIds.length) {
-      throw new ValidationError('Ein oder mehrere Objekte existieren nicht oder gehören nicht zu diesem Mandanten');
-    }
-
-    // Validiere Mitarbeiter
-    if (input.employeeIds.length === 0) {
-      throw new ValidationError('Mindestens ein Mitarbeiter muss ausgewählt werden');
-    }
-
-    const employees = await prisma.employee.findMany({
-      where: { id: { in: input.employeeIds }, tenantId, deletedAt: null }
-    });
-    if (employees.length !== input.employeeIds.length) {
-      throw new ValidationError('Ein oder mehrere Mitarbeiter existieren nicht oder gehören nicht zu diesem Mandanten');
+    // Validiere Mitarbeiter (nur wenn welche vorhanden)
+    if (input.employeeIds.length > 0) {
+      const employees = await prisma.employee.findMany({
+        where: { id: { in: input.employeeIds }, tenantId, deletedAt: null }
+      });
+      if (employees.length !== input.employeeIds.length) {
+        throw new ValidationError('Ein oder mehrere Mitarbeiter existieren nicht oder gehören nicht zu diesem Mandanten');
+      }
     }
 
     const group = await prisma.planningGroup.create({

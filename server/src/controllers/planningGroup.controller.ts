@@ -15,10 +15,8 @@ export class PlanningGroupController {
 
       const { name, description, color, objectIds, employeeIds } = req.body;
 
-      if (!name || !objectIds || !employeeIds) {
-        res.status(400).json({ 
-          error: 'Name, objectIds und employeeIds sind erforderlich' 
-        });
+      if (!name) {
+        res.status(400).json({ error: 'Name ist erforderlich' });
         return;
       }
 
@@ -28,8 +26,8 @@ export class PlanningGroupController {
           name,
           description,
           color,
-          objectIds,
-          employeeIds
+          objectIds: objectIds || [],
+          employeeIds: employeeIds || []
         },
         req.user.id
       );
