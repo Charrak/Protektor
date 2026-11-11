@@ -1091,10 +1091,8 @@ async function main() {
     });
 
     for (let i = 0; i < Math.min(5, tenant1Employees.length); i++) {
-      const startTime = new Date(deploymentDate);
-      startTime.setHours(8, 0, 0, 0);
-      const endTime = new Date(deploymentDate);
-      endTime.setHours(16, 0, 0, 0);
+      const startTime = new Date('1970-01-01T08:00:00.000Z');
+      const endTime = new Date('1970-01-01T16:00:00.000Z');
 
       // Status abhängig vom Datum
       const isFuture = deploymentDate > today;
@@ -1146,10 +1144,8 @@ async function main() {
     });
 
     for (let i = 0; i < Math.min(3, tenant2Employees.length); i++) {
-      const startTime = new Date(deploymentDate);
-      startTime.setHours(7, 0, 0, 0);
-      const endTime = new Date(deploymentDate);
-      endTime.setHours(15, 0, 0, 0);
+      const startTime = new Date('1970-01-01T07:00:00.000Z');
+      const endTime = new Date('1970-01-01T15:00:00.000Z');
 
       // Status abhängig vom Datum
       const isFuture = deploymentDate > today;
@@ -1201,10 +1197,8 @@ async function main() {
     });
 
     for (let i = 0; i < Math.min(2, tenant3Employees.length); i++) {
-      const startTime = new Date(deploymentDate);
-      startTime.setHours(9, 0, 0, 0);
-      const endTime = new Date(deploymentDate);
-      endTime.setHours(17, 0, 0, 0);
+      const startTime = new Date('1970-01-01T09:00:00.000Z');
+      const endTime = new Date('1970-01-01T17:00:00.000Z');
 
       // Status abhängig vom Datum
       const isFuture = deploymentDate > today;
