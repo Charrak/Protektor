@@ -25,7 +25,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
 
     const socket = io('/sms', {
-      auth: { token: authService.getSessionId() },
+      auth: { token: authService.getAccessToken() },
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
