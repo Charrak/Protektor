@@ -51,7 +51,7 @@ export function PlanningGroupManager() {
         planningGroupService.list(),
         objectService.list({ isActive: true }),
         employeeService.list({ status: 'active' }),
-        userService.list({ status: 'active', limit: 100 })
+        userService.list({ isActive: true, limit: 100 })
       ]);
       setGroups(groupsData);
       setObjects(objectsData.objects);
