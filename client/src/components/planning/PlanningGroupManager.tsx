@@ -29,6 +29,7 @@ export function PlanningGroupManager() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState<PlanningGroup | null>(null);
+  const [error, setError] = useState<string>('');
   const [formData, setFormData] = useState<CreatePlanningGroupInput>({
     name: '',
     description: '',
@@ -93,6 +94,7 @@ export function PlanningGroupManager() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     try {
       const payload = {
         name: formData.name,
@@ -110,9 +112,12 @@ export function PlanningGroupManager() {
         await planningGroupService.create(payload);
       }
       setShowCreateModal(false);
+      setError('');
       await loadData();
-    } catch (error) {
-      console.error('Fehler beim Speichern:', error);
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || 'Fehler beim Speichern';
+      setError(errorMsg);
+      console.error('Fehler beim Speichern:', err);
     }
   };
 
@@ -310,6 +315,11 @@ export function PlanningGroupManager() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6">
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  {error}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-6 mb-6">
                 <div>
                   <label className="block text-sm font-medium mb-2">Name *</label>

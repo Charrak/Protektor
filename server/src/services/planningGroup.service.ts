@@ -15,9 +15,9 @@ export class PlanningGroupService {
     objectIds: string[];
     employeeIds: string[];
   }, userId: string) {
-    // Prüfe, ob Name bereits existiert
+    // Prüfe, ob Name bereits existiert (nur aktive Gruppen)
     const existing = await prisma.planningGroup.findFirst({
-      where: { tenantId, name: input.name }
+      where: { tenantId, name: input.name, isActive: true }
     });
     if (existing) {
       throw new ConflictError(`Planungsgruppe "${input.name}" existiert bereits`);
@@ -229,10 +229,10 @@ export class PlanningGroupService {
       throw new NotFoundError('Planungsgruppe');
     }
 
-    // Prüfe Namenskonflikt bei Namensänderung
+    // Prüfe Namenskonflikt bei Namensänderung (nur aktive Gruppen)
     if (input.name && input.name !== group.name) {
       const existing = await prisma.planningGroup.findFirst({
-        where: { tenantId, name: input.name, id: { not: groupId } }
+        where: { tenantId, name: input.name, id: { not: groupId }, isActive: true }
       });
       if (existing) {
         throw new ConflictError(`Planungsgruppe "${input.name}" existiert bereits`);
