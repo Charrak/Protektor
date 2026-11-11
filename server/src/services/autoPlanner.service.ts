@@ -47,6 +47,7 @@ export class AutoPlannerService {
     const startHour = start.getHours();
     const endHour = end.getHours();
     const shiftMinutes = (end.getTime() - start.getTime()) / 1000 / 60;
+    const shiftHours = shiftMinutes / 60;
 
     // ═══════════════════════════════════════════════════
     // 1. LADE ALLE DATEN
@@ -367,6 +368,47 @@ export class AutoPlannerService {
       if (emp.sicherheitsstufe >= 3 && startHour >= 20) {
         score += 5;
         reasons.push('✓ Erfahrene Kraft für Nachtschicht');
+      }
+
+      // HC9: Max Wochenstunden (basierend auf weeklyHours aus Vertrag)
+      if (emp.weeklyHours && emp.weeklyHours > 0) {
+        const weekStart = new Date(date);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Montag
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6); // Sonntag
+
+        const weeklyHours = await prisma.deployment.findMany({
+          where: {
+            employeeId: emp.id,
+            date: { gte: weekStart, lte: weekEnd },
+            status: { not: 'cancelled' },
+          },
+          select: { startTime: true, endTime: true },
+        });
+
+        const totalWeeklyHours = weeklyHours.reduce((sum, d) => {
+          const dStart = new Date(`${date.toISOString().split('T')[0]}T${d.startTime.toISOString().split('T')[1]}`);
+          const dEnd = new Date(`${date.toISOString().split('T')[0]}T${d.endTime.toISOString().split('T')[1]}`);
+          return sum + (dEnd.getTime() - dStart.getTime()) / (1000 * 60 * 60);
+        }, 0);
+
+        const newTotalWeeklyHours = totalWeeklyHours + shiftHours;
+        if (newTotalWeeklyHours > Number(emp.weeklyHours) * 1.1) { // 10% Toleranz
+          disqualified = true;
+          candidates.push({
+            employeeId: emp.id,
+            employeeName: `${emp.firstName} ${emp.lastName}`,
+            personnelNumber: emp.personnelNumber,
+            score: 0,
+            reasons: [],
+            conflicts: [`Wochenstunden würden überschritten (${newTotalWeeklyHours.toFixed(1)}h statt max ${emp.weeklyHours}h)`],
+            warnings: [],
+            disqualified: true,
+            disqualificationReason: `Vertragswochenstunden (${emp.weeklyHours}h) würden überschritten`,
+          });
+          continue;
+        }
+        reasons.push(`✓ Wochenstunden eingehalten (${newTotalWeeklyHours.toFixed(1)}h / ${emp.weeklyHours}h)`);
       }
 
       candidates.push({

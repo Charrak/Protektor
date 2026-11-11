@@ -27,6 +27,7 @@ import customerPortalRoutes from './customerPortal.routes';
 import helpRoutes from './help.routes';
 import notificationRoutes from './notification.routes';
 import supportRoutes from './support.routes';
+import replacementRoutes from './replacement.routes';
 
 const router = Router();
 
@@ -87,9 +88,11 @@ router.use('/addons', addonRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/support', supportRoutes);
 
+// ─── Phase 6: Ersatzpersonalsuche ───
+router.use('/replacement', replacementRoutes);
+
 // router.use('/reports', reportRoutes);
 // router.use('/admin', adminRoutes);
-// router.use('/replacement', replacementRoutes);
 // router.use('/uploads', uploadRoutes);
 
 export { router as routes };
