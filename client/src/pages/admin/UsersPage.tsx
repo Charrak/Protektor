@@ -53,7 +53,7 @@ export function UsersPage() {
       await userService.delete(user.id);
       loadUsers();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Fehler beim Deaktivieren');
+      alert(err.response?.data?.message || err.response?.data?.error || 'Fehler beim Deaktivieren');
     }
   };
 
@@ -232,7 +232,7 @@ function CreateUserModal({ roles, onClose, onSuccess }: { roles: Role[]; onClose
       await userService.create(form);
       onSuccess();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Fehler beim Erstellen');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Fehler beim Erstellen');
     } finally {
       setLoading(false);
     }
@@ -310,7 +310,7 @@ function EditUserModal({ user, roles, onClose, onSuccess }: { user: UserListItem
       await userService.update(user.id, form);
       onSuccess();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Fehler beim Aktualisieren');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Fehler beim Aktualisieren');
     } finally {
       setLoading(false);
     }
@@ -386,7 +386,7 @@ function ResetPasswordModal({ user, onClose, onSuccess }: { user: UserListItem; 
       await userService.resetPassword(user.id, password);
       onSuccess();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Fehler beim Zurücksetzen');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Fehler beim Zurücksetzen');
     } finally {
       setLoading(false);
     }

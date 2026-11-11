@@ -129,7 +129,7 @@ function PermissionsEditModal({ role, allPermissions, onClose, onSuccess }: {
       await roleService.setPermissions(role.id, Array.from(selectedIds));
       onSuccess();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Fehler beim Speichern');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Fehler beim Speichern');
     } finally {
       setLoading(false);
     }
