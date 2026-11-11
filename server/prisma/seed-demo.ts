@@ -208,7 +208,7 @@ async function main() {
       data: {
         tenantId: tenant1.id,
         planId: professionalPlan.id,
-        status: 'active',
+        status: 'ACTIVE',
         billingInterval: 'MONTHLY',
         currentPeriodStart: new Date(),
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -291,7 +291,7 @@ async function main() {
       data: {
         tenantId: tenant2.id,
         planId: enterprisePlan.id,
-        status: 'active',
+        status: 'ACTIVE',
         billingInterval: 'MONTHLY',
         currentPeriodStart: new Date(),
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),

@@ -439,13 +439,13 @@ async function main() {
 
   const availabilities = await Promise.all([
     prisma.availability.create({
-      data: { employeeId: employees[0].id, type: 'available', startDate: weekStart, endDate: new Date(weekStart.getTime() + 4 * 86400000), allDay: true, status: 'approved', approvedById: teamLeaderUser.id },
+      data: { tenantId: tenant.id, employeeId: employees[0].id, type: 'available', startDate: weekStart, endDate: new Date(weekStart.getTime() + 4 * 86400000), allDay: true, status: 'approved', approvedById: teamLeaderUser.id },
     }),
     prisma.availability.create({
-      data: { employeeId: employees[2].id, type: 'available', startDate: weekStart, endDate: new Date(weekStart.getTime() + 4 * 86400000), allDay: true, status: 'approved', approvedById: teamLeaderUser.id },
+      data: { tenantId: tenant.id, employeeId: employees[2].id, type: 'available', startDate: weekStart, endDate: new Date(weekStart.getTime() + 4 * 86400000), allDay: true, status: 'approved', approvedById: teamLeaderUser.id },
     }),
     prisma.availability.create({
-      data: { employeeId: employees[3].id, type: 'vacation', startDate: new Date(today.getFullYear(), today.getMonth() + 1, 1), endDate: new Date(today.getFullYear(), today.getMonth() + 1, 14), allDay: true, reason: 'Urlaub', status: 'pending' },
+      data: { tenantId: tenant.id, employeeId: employees[3].id, type: 'vacation', startDate: new Date(today.getFullYear(), today.getMonth() + 1, 1), endDate: new Date(today.getFullYear(), today.getMonth() + 1, 14), allDay: true, reason: 'Urlaub', status: 'pending' },
     }),
   ]);
   console.log(`✅ ${availabilities.length} Verfügbarkeiten erstellt`);

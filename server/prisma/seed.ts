@@ -131,8 +131,9 @@ async function main() {
 
   // 4. Subscription für Demo Tenant
   const professionalPlan = await prisma.plan.findUnique({ where: { slug: 'professional' } });
-  if (professionalPlan) {
-    const subscription = await prisma.subscription.create({
+  const existingSubscription = await prisma.subscription.findFirst({ where: { tenantId: demoTenant.id } });
+  if (professionalPlan && !existingSubscription) {
+    await prisma.subscription.create({
       data: {
         tenantId: demoTenant.id,
         planId: professionalPlan.id,

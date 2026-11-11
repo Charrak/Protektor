@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { ensureDefaultRoles } from '../src/services/defaultRoles.service';
 
 const prisma = new PrismaClient();
 
@@ -47,20 +48,13 @@ async function main() {
   console.log(`   Company: Demo Security GmbH`);
   console.log(`   Tenant ID: DEMO-001\n`);
 
-  // 3. Role erstellen
-  const adminRole = await prisma.role.upsert({
-    where: { slug: 'admin' },
-    update: {},
-    create: {
-      name: 'Administrator',
-      slug: 'admin',
-      description: 'Voller Zugriff auf alle Funktionen',
-      tenantId: demoTenant.id,
-      isSystemRole: true,
-    },
+  // 3. Standardrollen + Berechtigungen erstellen (zentrale Definition)
+  await ensureDefaultRoles(prisma, demoTenant.id);
+  const adminRole = await prisma.role.findUniqueOrThrow({
+    where: { tenantId_slug: { tenantId: demoTenant.id, slug: 'admin' } },
   });
 
-  console.log('✅ Admin Role erstellt\n');
+  console.log('✅ Standardrollen und Berechtigungen erstellt\n');
 
   // 4. Demo User erstellen
   const userPasswordHash = await bcrypt.hash('Demo123!', 12);
@@ -81,7 +75,6 @@ async function main() {
       firstName: 'Demo',
       lastName: 'Benutzer',
       isActive: true,
-      emailVerified: true,
       roleId: adminRole.id,
     },
   });
