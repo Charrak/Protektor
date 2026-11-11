@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { planningGroupService, type PlanningGroup, type CreatePlanningGroupInput, type UpdatePlanningGroupInput } from '../../services/planningGroup.service';
 import { objectService } from '../../services/object.service';
 import { employeeService } from '../../services/employee.service';
+import { userService, type UserListItem } from '../../services/user.service';
 
 interface SMSObject {
   id: string;
@@ -24,6 +25,7 @@ export function PlanningGroupManager() {
   const [groups, setGroups] = useState<PlanningGroup[]>([]);
   const [objects, setObjects] = useState<SMSObject[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [users, setUsers] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState<PlanningGroup | null>(null);
@@ -31,6 +33,8 @@ export function PlanningGroupManager() {
     name: '',
     description: '',
     color: '#3B82F6',
+    leadUserId: undefined,
+    leadDeputies: [],
     objectIds: [],
     employeeIds: []
   });
@@ -42,14 +46,16 @@ export function PlanningGroupManager() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [groupsData, objectsData, employeesData] = await Promise.all([
+      const [groupsData, objectsData, employeesData, usersData] = await Promise.all([
         planningGroupService.list(),
         objectService.list({ isActive: true }),
-        employeeService.list({ status: 'active' })
+        employeeService.list({ status: 'active' }),
+        userService.list({ status: 'active', limit: 100 })
       ]);
       setGroups(groupsData);
       setObjects(objectsData.objects);
       setEmployees(employeesData.employees);
+      setUsers(usersData.users);
     } catch (error) {
       console.error('Fehler beim Laden der Daten:', error);
     } finally {
@@ -62,6 +68,8 @@ export function PlanningGroupManager() {
       name: '',
       description: '',
       color: '#3B82F6',
+      leadUserId: undefined,
+      leadDeputies: [],
       objectIds: [],
       employeeIds: []
     });
@@ -74,6 +82,8 @@ export function PlanningGroupManager() {
       name: group.name,
       description: group.description || '',
       color: group.color || '#3B82F6',
+      leadUserId: group.leadUserId || undefined,
+      leadDeputies: group.leadDeputies || [],
       objectIds: group.objects.map(o => o.objectId),
       employeeIds: group.employees.map(e => e.employeeId)
     });
@@ -88,6 +98,8 @@ export function PlanningGroupManager() {
         name: formData.name,
         description: formData.description,
         color: formData.color,
+        leadUserId: formData.leadUserId,
+        leadDeputies: formData.leadDeputies || [],
         objectIds: formData.objectIds || [],
         employeeIds: formData.employeeIds || []
       };
@@ -250,6 +262,37 @@ export function PlanningGroupManager() {
                     )}
                   </div>
                 </div>
+                <div>
+                  <span className="font-medium text-gray-700">Teamleiter:</span>
+                  {group.leadUser ? (
+                    <span className="ml-2 text-purple-600 font-semibold">
+                      {group.leadUser.firstName} {group.leadUser.lastName}
+                    </span>
+                  ) : (
+                    <span className="ml-2 text-gray-400">Nicht zugewiesen</span>
+                  )}
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Vertreter:</span>
+                  {group.leadDeputies && group.leadDeputies.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {group.leadDeputies.map((userId, idx) => {
+                        const user = users.find(u => u.id === userId);
+                        if (!user) return null;
+                        return (
+                          <span
+                            key={idx}
+                            className="px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs"
+                          >
+                            {user.firstName} {user.lastName}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <span className="ml-2 text-gray-400">Keine</span>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -297,6 +340,50 @@ export function PlanningGroupManager() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   rows={3}
                 />
+              </div>
+
+              {/* Teamleiter-Auswahl */}
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Teamleiter</label>
+                  <select
+                    value={formData.leadUserId || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, leadUserId: e.target.value || undefined }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">-- Nicht zugewiesen --</option>
+                    {users.map(user => (
+                      <option key={user.id} value={user.id}>
+                        {user.firstName} {user.lastName} ({user.username})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Vertreter</label>
+                  <div className="border border-gray-300 rounded-lg max-h-32 overflow-y-auto p-2">
+                    {users.map(user => (
+                      <label key={user.id} className="flex items-center py-1 cursor-pointer hover:bg-gray-50">
+                        <input
+                          type="checkbox"
+                          checked={formData.leadDeputies?.includes(user.id) || false}
+                          onChange={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              leadDeputies: prev.leadDeputies?.includes(user.id)
+                                ? prev.leadDeputies.filter(id => id !== user.id)
+                                : [...(prev.leadDeputies || []), user.id]
+                            }));
+                          }}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">
+                          {user.firstName} {user.lastName}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Objektauswahl */}

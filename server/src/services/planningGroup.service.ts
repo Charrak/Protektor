@@ -10,6 +10,8 @@ export class PlanningGroupService {
     name: string;
     description?: string;
     color?: string;
+    leadUserId?: string;
+    leadDeputies?: string[];
     objectIds: string[];
     employeeIds: string[];
   }, userId: string) {
@@ -19,6 +21,26 @@ export class PlanningGroupService {
     });
     if (existing) {
       throw new ConflictError(`Planungsgruppe "${input.name}" existiert bereits`);
+    }
+
+    // Validiere Teamleiter
+    if (input.leadUserId) {
+      const leadUser = await prisma.user.findFirst({
+        where: { id: input.leadUserId, tenantId }
+      });
+      if (!leadUser) {
+        throw new ValidationError('Teamleiter existiert nicht oder gehört nicht zu diesem Mandanten');
+      }
+    }
+
+    // Validiere Vertreter
+    if (input.leadDeputies && input.leadDeputies.length > 0) {
+      const deputies = await prisma.user.findMany({
+        where: { id: { in: input.leadDeputies }, tenantId }
+      });
+      if (deputies.length !== input.leadDeputies.length) {
+        throw new ValidationError('Ein oder mehrere Vertreter existieren nicht oder gehören nicht zu diesem Mandanten');
+      }
     }
 
     // Validiere Objekte (nur wenn welche vorhanden)
@@ -47,6 +69,8 @@ export class PlanningGroupService {
         name: input.name,
         description: input.description,
         color: input.color,
+        leadUserId: input.leadUserId,
+        leadDeputies: input.leadDeputies || [],
         createdBy: userId,
         objects: {
           create: input.objectIds.map((objectId, index) => ({
@@ -128,6 +152,9 @@ export class PlanningGroupService {
     const group = await prisma.planningGroup.findFirst({
       where: { id: groupId, tenantId },
       include: {
+        leadUser: {
+          select: { id: true, firstName: true, lastName: true, username: true }
+        },
         objects: {
           include: {
             object: {
@@ -174,6 +201,8 @@ export class PlanningGroupService {
     name?: string;
     description?: string;
     color?: string;
+    leadUserId?: string | null;
+    leadDeputies?: string[];
     isActive?: boolean;
     objectIds?: string[];
     employeeIds?: string[];
@@ -196,6 +225,26 @@ export class PlanningGroupService {
       }
     }
 
+    // Validiere Teamleiter
+    if (input.leadUserId) {
+      const leadUser = await prisma.user.findFirst({
+        where: { id: input.leadUserId, tenantId }
+      });
+      if (!leadUser) {
+        throw new ValidationError('Teamleiter existiert nicht oder gehört nicht zu diesem Mandanten');
+      }
+    }
+
+    // Validiere Vertreter
+    if (input.leadDeputies && input.leadDeputies.length > 0) {
+      const deputies = await prisma.user.findMany({
+        where: { id: { in: input.leadDeputies }, tenantId }
+      });
+      if (deputies.length !== input.leadDeputies.length) {
+        throw new ValidationError('Ein oder mehrere Vertreter existieren nicht oder gehören nicht zu diesem Mandanten');
+      }
+    }
+
     // Aktualisiere Grunddaten
     const updatedGroup = await prisma.planningGroup.update({
       where: { id: groupId },
@@ -203,6 +252,8 @@ export class PlanningGroupService {
         ...(input.name !== undefined && { name: input.name }),
         ...(input.description !== undefined && { description: input.description }),
         ...(input.color !== undefined && { color: input.color }),
+        ...(input.leadUserId !== undefined && { leadUserId: input.leadUserId }),
+        ...(input.leadDeputies !== undefined && { leadDeputies: input.leadDeputies }),
         ...(input.isActive !== undefined && { isActive: input.isActive })
       }
     });
