@@ -208,7 +208,7 @@ async function main() {
       data: {
         tenantId: tenant1.id,
         planId: professionalPlan.id,
-        status: 'ACTIVE',
+        status: 'active',
         billingInterval: 'MONTHLY',
         currentPeriodStart: new Date(),
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -291,7 +291,7 @@ async function main() {
       data: {
         tenantId: tenant2.id,
         planId: enterprisePlan.id,
-        status: 'ACTIVE',
+        status: 'active',
         billingInterval: 'MONTHLY',
         currentPeriodStart: new Date(),
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -388,46 +388,43 @@ async function main() {
   console.log('   💳 Plan: Starter Test (30 Tage)\n');
 
   // ═══════════════════════════════════════════════════════
-  // 6. QUALIFIKATIONEN (für alle Tenants)
+  // 6. QUALIFIKATIONEN (global, keine Tenant-Trennung)
   // ═══════════════════════════════════════════════════════
   console.log('🎓 Erstelle Qualifikationen...');
   
   const qualificationNames = [
-    { name: 'Bewachungserlaubnis §34a', description: 'Erlaubnis nach §34a GewO', requiredDays: 7 },
-    { name: 'Erste-Hilfe-Ausbildung', description: 'Erste-Hilfe-Kurs (9 Stunden)', requiredDays: 1 },
-    { name: 'Brandschutzhelfer', description: 'Brandschutz-Ausbildung', requiredDays: 2 },
-    { name: 'Sachkundeprüfung §34a', description: 'IHK-Sachkundeprüfung', requiredDays: 14 },
-    { name: 'Unterweisung §34a', description: 'Unterrichtung nach §34a Abs. 1 Satz 4', requiredDays: 3 },
-    { name: 'Waffenbesitzkarte', description: 'Erlaubnis zum Führen von Schusswaffen', requiredDays: 30 },
-    { name: 'Führerschein Klasse B', description: 'Fahrerlaubnis Klasse B', requiredDays: 0 },
-    { name: 'Gabelstaplerschein', description: 'Staplerschein nach DGUV', requiredDays: 2 },
-    { name: 'Security-Management', description: 'Fortbildung Security-Management', requiredDays: 5 },
-    { name: 'Objektschutz-Zertifikat', description: 'Spezialisierung Objektschutz', requiredDays: 3 },
+    { name: 'Bewachungserlaubnis §34a', description: 'Erlaubnis nach §34a GewO', validityDays: 365 },
+    { name: 'Erste-Hilfe-Ausbildung', description: 'Erste-Hilfe-Kurs (9 Stunden)', validityDays: 365 },
+    { name: 'Brandschutzhelfer', description: 'Brandschutz-Ausbildung', validityDays: 365 },
+    { name: 'Sachkundeprüfung §34a', description: 'IHK-Sachkundeprüfung', validityDays: 3650 },
+    { name: 'Unterweisung §34a', description: 'Unterrichtung nach §34a Abs. 1 Satz 4', validityDays: 365 },
+    { name: 'Waffenbesitzkarte', description: 'Erlaubnis zum Führen von Schusswaffen', validityDays: 1825 },
+    { name: 'Führerschein Klasse B', description: 'Fahrerlaubnis Klasse B', validityDays: 5475 },
+    { name: 'Gabelstaplerschein', description: 'Staplerschein nach DGUV', validityDays: 1825 },
+    { name: 'Security-Management', description: 'Fortbildung Security-Management', validityDays: 1095 },
+    { name: 'Objektschutz-Zertifikat', description: 'Spezialisierung Objektschutz', validityDays: 730 },
   ];
 
-  for (const tenant of [tenant1, tenant2, tenant3]) {
-    for (const qual of qualificationNames) {
-      await prisma.qualification.upsert({
-        where: {
-          tenantId_name: {
-            tenantId: tenant.id,
-            name: qual.name,
-          },
-        },
-        update: {},
-        create: {
-          tenantId: tenant.id,
-          name: qual.name,
-          description: qual.description,
-          requiredTrainingDays: qual.requiredDays,
-          expiryDays: 365,
-          color: '#3B82F6',
-        },
-      });
-    }
+  const createdQualifications = [];
+  for (const qual of qualificationNames) {
+    const qualification = await prisma.qualification.upsert({
+      where: {
+        name: qual.name,
+      },
+      update: {},
+      create: {
+        name: qual.name,
+        description: qual.description,
+        category: 'security',
+        validityDays: qual.validityDays,
+        requiresRenewal: true,
+        color: '#3B82F6',
+      },
+    });
+    createdQualifications.push(qualification);
   }
 
-  console.log(`✅ ${qualificationNames.length} Qualifikationen pro Tenant erstellt\n`);
+  console.log(`✅ ${qualificationNames.length} Qualifikationen erstellt\n`);
 
   // ═══════════════════════════════════════════════════════
   // 7. MITARBEITER für Tenant 1 (15 Mitarbeiter, vollständig)
@@ -469,8 +466,8 @@ async function main() {
         zipCode: '20359',
         city: 'Hamburg',
         country: 'DE',
-        taxClass: ['one', 'two', 'three', 'four'][i % 4],
-        religion: ['none', 'catholic', 'evangelical', 'none'][i % 4],
+        taxClass: ['I', 'II', 'III', 'IV'][i % 4],
+        religion: ['none', 'catholic', 'protestant', 'none'][i % 4],
         socialInsuranceId: `12 ${String(20 + i).padStart(2, '0')} ${String(180 + i).padStart(4, '0')} ${String(700 + i).padStart(3, '0')}`,
         healthInsurance: ['TK', 'AOK', 'Barmer', 'DAK', 'KKH'][i % 5],
         healthInsuranceId: `H${String(100000 + i).padStart(6, '0')}`,
@@ -497,7 +494,7 @@ async function main() {
         emergencyContactName: `${firstName} ${lastName} (Familie)`,
         emergencyContactPhone: `+49 40 ${2000000 + i * 4321}`,
         emergencyContactRelation: ['Ehepartner', 'Elternteil', 'Geschwister'][i % 3],
-        status: 'ACTIVE',
+        status: 'active',
       },
     });
     employees1.push(employee);
@@ -547,8 +544,8 @@ async function main() {
         zipCode: '80539',
         city: 'München',
         country: 'DE',
-        taxClass: ['one', 'three', 'two', 'four'][i % 4],
-        religion: ['catholic', 'catholic', 'evangelical', 'none'][i % 4],
+        taxClass: ['I', 'III', 'II', 'IV'][i % 4],
+        religion: ['catholic', 'catholic', 'protestant', 'none'][i % 4],
         socialInsuranceId: `18 ${String(15 + i).padStart(2, '0')} ${String(200 + i).padStart(4, '0')} ${String(800 + i).padStart(3, '0')}`,
         healthInsurance: ['AOK Bayern', 'TK Bayern', 'Barmer', 'HKK'][i % 4],
         healthInsuranceId: `B${String(200000 + i).padStart(6, '0')}`,
@@ -575,7 +572,7 @@ async function main() {
         emergencyContactName: `${firstName} ${lastName} (Familie)`,
         emergencyContactPhone: `+49 89 ${3000000 + i * 5432}`,
         emergencyContactRelation: ['Ehepartner', 'Elternteil', 'Kind'][i % 3],
-        status: 'ACTIVE',
+        status: 'active',
       },
     });
     employees2.push(employee);
@@ -621,7 +618,7 @@ async function main() {
         zipCode: '10117',
         city: 'Berlin',
         country: 'DE',
-        taxClass: ['one', 'one', 'three', 'one'][i % 4],
+        taxClass: ['I', 'I', 'III', 'I'][i % 4],
         religion: 'none',
         socialInsuranceId: `21 ${String(25 + i).padStart(2, '0')} ${String(300 + i).padStart(4, '0')} ${String(900 + i).padStart(3, '0')}`,
         healthInsurance: ['TK', 'AOK', 'Barmer', 'DAK'][i % 4],
@@ -649,7 +646,7 @@ async function main() {
         emergencyContactName: `${firstName} ${lastName} (Familie)`,
         emergencyContactPhone: `+49 30 ${4000000 + i * 6543}`,
         emergencyContactRelation: ['Elternteil', 'Geschwister', 'Partner'][i % 3],
-        status: 'ACTIVE',
+        status: 'active',
       },
     });
     employees3.push(employee);
@@ -756,10 +753,7 @@ async function main() {
         zipCode: '20359',
         city: 'Hamburg',
         country: 'DE',
-        status: 'ACTIVE',
-        billingType: 'invoice',
-        invoiceDeliveryMethod: 'email',
-        paymentTermsDays: 30,
+        status: 'active',
         vatId: `DE${String(100000000 + Math.floor(Math.random() * 900000000))}`,
       },
     });
@@ -782,7 +776,7 @@ async function main() {
 
     // Objekte erstellen
     for (const obj of customerData.objects) {
-      await prisma.object.create({
+      await prisma.sMSObject.create({
         data: {
           tenantId: tenant1.id,
           customerId: dbCustomer.id,
@@ -792,9 +786,7 @@ async function main() {
           zipCode: '20359',
           city: 'Hamburg',
           specialInstructions: obj.instructions,
-          type: obj.type,
-          requiresQualification: true,
-          requiredQualifications: ['Bewachungserlaubnis §34a'],
+          objectType: obj.type,
         },
       });
     }
@@ -912,10 +904,7 @@ async function main() {
         zipCode: '80539',
         city: 'München',
         country: 'DE',
-        status: 'ACTIVE',
-        billingType: 'invoice',
-        invoiceDeliveryMethod: 'email',
-        paymentTermsDays: 30,
+        status: 'active',
         vatId: `DE${String(200000000 + Math.floor(Math.random() * 900000000))}`,
       },
     });
@@ -938,7 +927,7 @@ async function main() {
 
     // Objekte erstellen
     for (const obj of customerData.objects) {
-      await prisma.object.create({
+      await prisma.sMSObject.create({
         data: {
           tenantId: tenant2.id,
           customerId: dbCustomer.id,
@@ -948,9 +937,7 @@ async function main() {
           zipCode: '80539',
           city: 'München',
           specialInstructions: obj.instructions,
-          type: obj.type,
-          requiresQualification: true,
-          requiredQualifications: ['Bewachungserlaubnis §34a'],
+          objectType: obj.type,
         },
       });
     }
@@ -1023,10 +1010,7 @@ async function main() {
         zipCode: '10117',
         city: 'Berlin',
         country: 'DE',
-        status: 'ACTIVE',
-        billingType: 'invoice',
-        invoiceDeliveryMethod: 'email',
-        paymentTermsDays: 30,
+        status: 'active',
         vatId: `DE${String(300000000 + Math.floor(Math.random() * 900000000))}`,
       },
     });
@@ -1049,7 +1033,7 @@ async function main() {
 
     // Objekte erstellen
     for (const obj of customerData.objects) {
-      await prisma.object.create({
+      await prisma.sMSObject.create({
         data: {
           tenantId: tenant3.id,
           customerId: dbCustomer.id,
@@ -1059,9 +1043,7 @@ async function main() {
           zipCode: '10117',
           city: 'Berlin',
           specialInstructions: obj.instructions,
-          type: obj.type,
-          requiresQualification: true,
-          requiredQualifications: ['Bewachungserlaubnis §34a'],
+          objectType: obj.type,
         },
       });
     }
@@ -1101,7 +1083,7 @@ async function main() {
       take: 5,
     });
 
-    const tenant1Objects = await prisma.object.findMany({
+    const tenant1Objects = await prisma.sMSObject.findMany({
       where: { tenantId: tenant1.id },
       take: 5,
     });
@@ -1156,7 +1138,7 @@ async function main() {
       take: 3,
     });
 
-    const tenant2Objects = await prisma.object.findMany({
+    const tenant2Objects = await prisma.sMSObject.findMany({
       where: { tenantId: tenant2.id },
       take: 3,
     });
@@ -1211,7 +1193,7 @@ async function main() {
       take: 2,
     });
 
-    const tenant3Objects = await prisma.object.findMany({
+    const tenant3Objects = await prisma.sMSObject.findMany({
       where: { tenantId: tenant3.id },
       take: 2,
     });
@@ -1273,7 +1255,7 @@ async function main() {
     prisma.user.count(),
     prisma.employee.count(),
     prisma.customer.count(),
-    prisma.object.count(),
+    prisma.sMSObject.count(),
     prisma.deployment.count(),
     prisma.timeRecord.count(),
     prisma.plan.count(),
