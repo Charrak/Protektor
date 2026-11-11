@@ -29,6 +29,7 @@ import notificationRoutes from './notification.routes';
 import supportRoutes from './support.routes';
 import replacementRoutes from './replacement.routes';
 import objectShiftPatternRoutes from './objectShiftPattern.routes';
+import employeeTimePreferenceRoutes from './employeeTimePreference.routes';
 
 const router = Router();
 
@@ -94,6 +95,9 @@ router.use('/replacement', replacementRoutes);
 
 // ─── Objekt-Schichtmuster ───
 router.use('/', objectShiftPatternRoutes);
+
+// ─── Mitarbeiter Zeitpräferenzen & Wünsche ───
+router.use('/', employeeTimePreferenceRoutes);
 
 // router.use('/reports', reportRoutes);
 // router.use('/admin', adminRoutes);

@@ -144,6 +144,8 @@ model Tenant {
   timeCorrections         TimeCorrection[]
   availabilities          Availability[]
   breaks                  Break[]
+  timePreferences         EmployeeTimePreference[]
+  timeRequests            EmployeeTimeRequest[]
   
   // Phase 5: Kundenmanagement & Abrechnung
   customerDocuments       CustomerDocument[]
@@ -335,6 +337,7 @@ model User {
   resolvedReplacements ReplacementRequest[] @relation("resolvedBy")
   approvedAvailabilities Availability[] @relation("approvedBy")
   approvedRecurringAvailabilities RecurringAvailability[] @relation("recurringApprovedBy")
+  approvedTimeRequests EmployeeTimeRequest[] @relation("timeRequestApprovedBy")
   createdRestrictions EmployeeRestriction[] @relation("restrictionCreator")
   createdCorrections TimeCorrection[] @relation("correctionCreator")
   approvedCorrections TimeCorrection[] @relation("correctionApprover")
@@ -560,8 +563,101 @@ model Employee {
   // Planungsgruppen
   planningGroups       PlanningGroupEmployee[]
 
+  // Zeitpräferenzen & Wünsche
+  timePreferences      EmployeeTimePreference[]
+  timeRequests         EmployeeTimeRequest[]
+
   @@unique([tenantId, personnelNumber])
   @@map("employees")
+}
+
+// ═══════════════════════════════════════════════════
+// ZEITPRÄFERENZEN & WÜNSCHE
+// ═══════════════════════════════════════════════════
+
+model EmployeeTimePreference {
+  id           String   @id @default(uuid())
+  tenantId     String   @db.VarChar(36)
+  employeeId   String   @db.VarChar(36)
+  
+  // Art der Präferenz
+  type         TimePreferenceType  // preferred, restricted, requested
+  
+  // Wochentage (1=Mo, 7=So)
+  weekdays     Int[]
+  
+  // Zeitfenster (optional, null = ganzer Tag)
+  startTime    DateTime? @db.Time
+  endTime      DateTime? @db.Time
+  
+  // Beschreibung/Grund
+  reason       String?  @db.Text
+  
+  // Priorität (1=niedrig, 5=hoch)
+  priority     Int      @default(3)
+  
+  // Status
+  isActive     Boolean  @default(true)
+  
+  // Metadaten
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  employee     Employee @relation(fields: [employeeId], references: [id])
+
+  @@map("employee_time_preferences")
+}
+
+model EmployeeTimeRequest {
+  id           String   @id @default(uuid())
+  tenantId     String   @db.VarChar(36)
+  employeeId   String   @db.VarChar(36)
+  
+  // Art der Anfrage
+  type         TimeRequestType  // day_off, early_leave, late_start, extra_hours, swap
+  
+  // Datum oder Zeitraum
+  date         DateTime @db.Date
+  endDate      DateTime? @db.Date  // Für Zeiträume
+  
+  // Zeit (optional)
+  startTime    DateTime? @db.Time
+  endTime      DateTime? @db.Time
+  
+  // Grund
+  reason       String   @db.Text
+  
+  // Genehmigungsworkflow
+  status       ApprovalStatus @default(pending)
+  approvedById String?  @db.VarChar(36)
+  approvedAt   DateTime?
+  rejectionReason String? @db.Text
+  
+  // Metadaten
+  requestedAt  DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  employee     Employee @relation(fields: [employeeId], references: [id])
+  approvedBy   User?    @relation("timeRequestApprovedBy", fields: [approvedById], references: [id])
+
+  @@map("employee_time_requests")
+}
+
+enum TimePreferenceType {
+  preferred     // Möchte zu diesen Zeiten arbeiten
+  restricted    // Kann zu diesen Zeiten NICHT arbeiten
+  requested     // Wunsch für bestimmte Zeiten
+}
+
+enum TimeRequestType {
+  day_off       // Ganzer Tag frei
+  early_leave   // Früher Schluss
+  late_start    // Später anfangen
+  extra_hours   // Mehr Stunden
+  swap          // Schicht tauschen
 }
 
 enum Gender {
