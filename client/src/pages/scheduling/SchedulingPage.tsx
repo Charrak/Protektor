@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday } from 'date-fns';
+import { useState, useEffect, useCallback, Component, ErrorInfo, ReactNode } from 'react';
+import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, isValid, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Badge } from '../../components/common/Badge';
@@ -11,7 +11,71 @@ import { objectService } from '../../services/object.service';
 
 type ViewMode = 'day' | 'week' | 'month';
 
+// ErrorBoundary-Komponente zum Abfangen von Rendering-Fehlern
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class SchedulingErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Scheduling ErrorBoundary caught error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8">
+          <div className="max-w-2xl mx-auto bg-red-50 border border-red-200 rounded-lg p-6">
+            <h2 className="text-xl font-bold text-red-900 mb-2">Fehler beim Laden der Einsatzplanung</h2>
+            <p className="text-red-700 mb-4">
+              Ein unerwarteter Fehler ist aufgetreten. Bitte laden Sie die Seite neu oder kontaktieren Sie den Support.
+            </p>
+            {this.state.error && (
+              <details className="text-sm text-red-600">
+                <summary className="cursor-pointer hover:text-red-800">Fehlerdetails</summary>
+                <pre className="mt-2 p-3 bg-red-100 rounded overflow-auto text-xs">
+                  {this.state.error.message}
+                </pre>
+              </details>
+            )}
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 btn-primary"
+            >
+              Seite neu laden
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 export function SchedulingPage() {
+  return (
+    <SchedulingErrorBoundary>
+      <SchedulingPageContent />
+    </SchedulingErrorBoundary>
+  );
+}
+
+function SchedulingPageContent() {
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [deployments, setDeployments] = useState<Deployment[]>([]);
@@ -69,6 +133,24 @@ export function SchedulingPage() {
     }
   };
 
+  // Hilfsfunktion für sicheres Formatieren von Datumsangaben
+  const safeFormat = (date: Date | string | null | undefined, formatStr: string): string => {
+    if (!date) return '–';
+    const dateObj = typeof date === 'string' ? parseISO(date) : date;
+    if (!isValid(dateObj)) return '–';
+    return format(dateObj, formatStr, { locale: de });
+  };
+
+  // Hilfsfunktion für sicheres Formatieren von Zeiten (HH:mm)
+  const safeFormatTime = (time: string | null | undefined): string => {
+    if (!time) return '–';
+    // Zeit kann als "HH:mm:ss", "HH:mm" oder ISO-String kommen
+    const timeStr = time.includes('T') ? time.split('T')[1] : time;
+    const [hours, minutes] = timeStr.split(':');
+    if (!hours || !minutes) return '–';
+    return `${hours.padStart(2, '0')}:${minutes.substring(0, 2).padStart(2, '0')}`;
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'success' | 'warning' | 'danger' | 'gray' | 'info'> = {
       planned: 'info', confirmed: 'success', cancelled: 'danger', completed: 'success', no_show: 'warning',
@@ -86,8 +168,8 @@ export function SchedulingPage() {
     return (
       <div key={date.toISOString()} className={`flex-1 min-w-[200px] border-r border-gray-100 ${isCurrentDay ? 'bg-primary-50/30' : ''}`}>
         <div className={`p-2 border-b text-center text-xs font-medium sticky top-0 ${isCurrentDay ? 'bg-primary-100 text-primary-800' : 'bg-gray-50 text-gray-600'}`}>
-          <div>{format(date, 'EEEE', { locale: de })}</div>
-          <div className="text-lg font-bold">{format(date, 'd')}</div>
+          <div>{safeFormat(date, 'EEEE')}</div>
+          <div className="text-lg font-bold">{safeFormat(date, 'd')}</div>
           <div className="text-[10px]">{dayDeployments.length} Einsatz{dayDeployments.length !== 1 ? 'e' : ''}</div>
         </div>
         <div className="p-1 space-y-1 min-h-[200px]">
@@ -104,7 +186,7 @@ export function SchedulingPage() {
               <div className="font-medium truncate">{`${dep.employee.firstName} ${dep.employee.lastName}`}</div>
               <div className="text-gray-500 truncate">{dep.object.name}</div>
               <div className="flex items-center gap-1 mt-1">
-                <span className="text-gray-600">{format(new Date(`1970-01-01T${dep.startTime}`), 'HH:mm')} - {format(new Date(`1970-01-01T${dep.endTime}`), 'HH:mm')}</span>
+                <span className="text-gray-600">{safeFormatTime(dep.startTime)} - {safeFormatTime(dep.endTime)}</span>
                 {dep.isNightShift && <span className="text-[10px]">🌙</span>}
                 {dep.isSunday && <span className="text-[10px]">☀️</span>}
               </div>
@@ -148,7 +230,7 @@ export function SchedulingPage() {
             return (
               <div key={day.toISOString()} className={`p-1 min-h-[80px] border rounded text-xs ${isCurrentDay ? 'border-primary-400 bg-primary-50' : 'border-gray-200'}`}>
                 <div className={`text-center font-medium mb-1 ${isCurrentDay ? 'text-primary-700' : 'text-gray-700'}`}>
-                  {format(day, 'd')}
+                  {safeFormat(day, 'd')}
                 </div>
                 {dayDeps.slice(0, 3).map(dep => (
                   <div key={dep.id} className="truncate text-[10px] text-gray-600 px-0.5" title={`${`${dep.employee.firstName} ${dep.employee.lastName}`} - ${dep.object.name}`}>
@@ -376,6 +458,22 @@ function DeploymentDetailModal({ deployment, onClose, onCancel, onConfirm }: {
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  // Hilfsfunktionen für sicheres Formatieren
+  const safeFormatDate = (date: Date | string | null | undefined, formatStr: string): string => {
+    if (!date) return '–';
+    const dateObj = typeof date === 'string' ? parseISO(date) : date;
+    if (!isValid(dateObj)) return '–';
+    return format(dateObj, formatStr);
+  };
+
+  const safeFormatTime = (time: string | null | undefined): string => {
+    if (!time) return '–';
+    const timeStr = time.includes('T') ? time.split('T')[1] : time;
+    const [hours, minutes] = timeStr.split(':');
+    if (!hours || !minutes) return '–';
+    return `${hours.padStart(2, '0')}:${minutes.substring(0, 2).padStart(2, '0')}`;
+  };
+
   return (
     <Modal isOpen={true} onClose={onClose} title="Einsatzdetails">
       <div className="space-y-4">
@@ -390,12 +488,12 @@ function DeploymentDetailModal({ deployment, onClose, onCancel, onConfirm }: {
           </div>
           <div>
             <span className="text-gray-500">Datum:</span>
-            <p className="font-medium">{format(new Date(deployment.date), 'dd.MM.yyyy')}</p>
+            <p className="font-medium">{safeFormatDate(deployment.date, 'dd.MM.yyyy')}</p>
           </div>
           <div>
             <span className="text-gray-500">Zeit:</span>
             <p className="font-medium">
-              {format(new Date(`1970-01-01T${deployment.startTime}`), 'HH:mm')} - {format(new Date(`1970-01-01T${deployment.endTime}`), 'HH:mm')}
+              {safeFormatTime(deployment.startTime)} - {safeFormatTime(deployment.endTime)}
               ({deployment.breakMinutes} Min. Pause)
             </p>
           </div>
