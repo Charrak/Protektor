@@ -100,7 +100,7 @@ export function PlanningGroupManager() {
         name: formData.name,
         description: formData.description,
         color: formData.color,
-        leadUserId: formData.leadUserId,
+        leadUserId: formData.leadUserId || undefined,
         leadDeputies: formData.leadDeputies || [],
         objectIds: formData.objectIds || [],
         employeeIds: formData.employeeIds || []
