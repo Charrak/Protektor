@@ -81,7 +81,7 @@ services:
     container_name: sms-frontend
     restart: unless-stopped
     expose:
-      - "80"
+      - "3000"
     depends_on:
       - backend
     networks:
