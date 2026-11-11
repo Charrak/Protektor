@@ -9,6 +9,7 @@ import { deploymentService, type Deployment } from '../../services/deployment.se
 import { employeeService } from '../../services/employee.service';
 import { objectService } from '../../services/object.service';
 import { AutoPlanner } from '../../components/scheduling/AutoPlanner';
+import { ReplacementFinder } from '../../components/scheduling/ReplacementFinder';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -83,6 +84,7 @@ function SchedulingPageContent() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAutoPlannerModal, setShowAutoPlannerModal] = useState(false);
+  const [showReplacementModal, setShowReplacementModal] = useState(false);
   const [selectedDeployment, setSelectedDeployment] = useState<Deployment | null>(null);
 
   const loadDeployments = useCallback(async () => {
@@ -352,13 +354,27 @@ function SchedulingPageContent() {
         </Modal>
       )}
 
+      {/* Ersatz-Personal Modal */}
+      {showReplacementModal && selectedDeployment && (
+        <ReplacementFinder
+          deploymentId={selectedDeployment.id}
+          onClose={() => setShowReplacementModal(false)}
+          onReplacementComplete={() => {
+            setShowReplacementModal(false);
+            setSelectedDeployment(null);
+            loadDeployments();
+          }}
+        />
+      )}
+
       {/* Detail Modal */}
-      {selectedDeployment && (
+      {selectedDeployment && !showReplacementModal && (
         <DeploymentDetailModal
           deployment={selectedDeployment}
           onClose={() => setSelectedDeployment(null)}
           onCancel={() => handleCancel(selectedDeployment)}
           onConfirm={() => handleConfirm(selectedDeployment)}
+          onFindReplacement={() => setShowReplacementModal(true)}
         />
       )}
     </div>
@@ -461,11 +477,12 @@ function CreateDeploymentModal({ date, onClose, onSuccess }: { date: string; onC
   );
 }
 
-function DeploymentDetailModal({ deployment, onClose, onCancel, onConfirm }: {
+function DeploymentDetailModal({ deployment, onClose, onCancel, onConfirm, onFindReplacement }: {
   deployment: Deployment;
   onClose: () => void;
   onCancel: () => void;
   onConfirm: () => void;
+  onFindReplacement?: () => void;
 }) {
   // Hilfsfunktionen für sicheres Formatieren
   const safeFormatDate = (date: Date | string | null | undefined, formatStr: string): string => {
@@ -535,6 +552,14 @@ function DeploymentDetailModal({ deployment, onClose, onCancel, onConfirm }: {
         )}
 
         <div className="flex justify-end gap-2 pt-4 border-t">
+          {onFindReplacement && (
+            <button
+              onClick={onFindReplacement}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg text-sm"
+            >
+              🔄 Ersatz suchen
+            </button>
+          )}
           {deployment.status === 'planned' && (
             <>
               <button onClick={onConfirm} className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg text-sm">
