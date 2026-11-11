@@ -52,7 +52,7 @@ export function EmployeesPage() {
       await employeeService.delete(employee.id);
       loadEmployees();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Fehler beim Deaktivieren');
+      alert(err.response?.data?.message || err.response?.data?.error || 'Fehler beim Deaktivieren');
     }
   };
 
@@ -247,7 +247,7 @@ function CreateEmployeeModal({ onClose, onSuccess }: { onClose: () => void; onSu
       await employeeService.create(form);
       onSuccess();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Fehler beim Erstellen');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Fehler beim Erstellen');
     } finally {
       setLoading(false);
     }
