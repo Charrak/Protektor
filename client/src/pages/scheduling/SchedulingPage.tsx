@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, Component, ErrorInfo, ReactNode } from 'react';
-import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, isValid, parseISO } from 'date-fns';
+import { useState, useEffect, useCallback, useMemo, Component, ErrorInfo, ReactNode } from 'react';
+import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, isSaturday, isSunday, isValid, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Badge } from '../../components/common/Badge';
@@ -10,6 +10,8 @@ import { employeeService } from '../../services/employee.service';
 import { objectService } from '../../services/object.service';
 import { AutoPlanner } from '../../components/scheduling/AutoPlanner';
 import { ReplacementFinder } from '../../components/scheduling/ReplacementFinder';
+import { SchedulingFilters, defaultFilters, type ScheduleFilters } from '../../components/scheduling/SchedulingFilters';
+import { KPIBar } from '../../components/scheduling/KPIBar';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -86,6 +88,89 @@ function SchedulingPageContent() {
   const [showAutoPlannerModal, setShowAutoPlannerModal] = useState(false);
   const [showReplacementModal, setShowReplacementModal] = useState(false);
   const [selectedDeployment, setSelectedDeployment] = useState<Deployment | null>(null);
+  
+  // Filter-State
+  const [filters, setFilters] = useState<ScheduleFilters>(defaultFilters);
+  const [allEmployees, setAllEmployees] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
+  const [allObjects, setAllObjects] = useState<{ id: string; name: string }[]>([]);
+  
+  // Lade Mitarbeiter und Objekte für Filter
+  useEffect(() => {
+    employeeService.list({ status: 'active', limit: 500 })
+      .then(r => setAllEmployees(r.employees.map((e: any) => ({ id: e.id, firstName: e.firstName, lastName: e.lastName }))))
+      .catch(console.error);
+    objectService.list({ isActive: true, limit: 500 })
+      .then(r => setAllObjects(r.objects.map((o: any) => ({ id: o.id, name: o.name }))))
+      .catch(console.error);
+  }, []);
+  
+  // Aktive Filter zählen
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.search) count++;
+    count += filters.objectIds.length;
+    count += filters.employeeIds.length;
+    count += filters.statuses.length;
+    count += filters.shiftTypes.length;
+    if (filters.quickFilters.onlyUnassigned) count++;
+    if (filters.quickFilters.onlyConflicts) count++;
+    if (filters.quickFilters.myPlanningGroup) count++;
+    return count;
+  }, [filters]);
+  
+  // Hilfsfunktion zur Bestimmung der Schichtart
+  const getShiftType = (dep: Deployment): string => {
+    if (dep.isNightShift) return 'night';
+    const [startH] = dep.startTime.split(':').map(Number);
+    if (startH < 12) return 'morning';
+    if (startH < 18) return 'evening';
+    return 'night';
+  };
+  
+  // Gefilterte Deployments
+  const filteredDeployments = useMemo(() => {
+    return deployments.filter(dep => {
+      // Freitextsuche
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const employeeName = dep.employee ? `${dep.employee.firstName} ${dep.employee.lastName}`.toLowerCase() : '';
+        const objectName = dep.object.name.toLowerCase();
+        if (!employeeName.includes(searchLower) && !objectName.includes(searchLower)) {
+          return false;
+        }
+      }
+      
+      // Objekt-Filter
+      if (filters.objectIds.length > 0 && !filters.objectIds.includes(dep.objectId)) {
+        return false;
+      }
+      
+      // Mitarbeiter-Filter
+      if (filters.employeeIds.length > 0 && (!dep.employeeId || !filters.employeeIds.includes(dep.employeeId))) {
+        return false;
+      }
+      
+      // Status-Filter
+      if (filters.statuses.length > 0 && !filters.statuses.includes(dep.status)) {
+        return false;
+      }
+      
+      // Schichtart-Filter
+      if (filters.shiftTypes.length > 0) {
+        const shiftType = getShiftType(dep);
+        if (!filters.shiftTypes.includes(shiftType)) {
+          return false;
+        }
+      }
+      
+      // Schnellfilter: Nur unbesetzte Schichten
+      if (filters.quickFilters.onlyUnassigned && dep.employeeId) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [deployments, filters]);
 
   const loadDeployments = useCallback(async () => {
     setLoading(true);
@@ -157,21 +242,38 @@ function SchedulingPageContent() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'success' | 'warning' | 'danger' | 'gray' | 'info'> = {
-      planned: 'info', confirmed: 'success', cancelled: 'danger', completed: 'success', no_show: 'warning',
+      planned: 'info',
+      released: 'info',
+      confirmed: 'success',
+      declined: 'warning',
+      cancelled: 'danger',
+      completed: 'success',
+      no_show: 'warning',
     };
     const labels: Record<string, string> = {
-      planned: 'Geplant', confirmed: 'Bestätigt', cancelled: 'Storniert', completed: 'Abgeschlossen', no_show: 'Nicht erschienen',
+      planned: 'Entwurf',
+      released: 'Freigegeben',
+      confirmed: 'Bestätigt',
+      declined: 'Abgelehnt',
+      cancelled: 'Abgesagt',
+      completed: 'Abgeschlossen',
+      no_show: 'Nicht erschienen',
     };
     return <Badge variant={variants[status] || 'gray'} size="sm">{labels[status] || status}</Badge>;
   };
 
   const renderDayColumn = (date: Date) => {
-    const dayDeployments = getDeploymentsForDate(date);
+    const dayDeployments = filteredDeployments.filter(d => isSameDay(new Date(d.date), date));
     const isCurrentDay = isToday(date);
+    const isWeekend = isSaturday(date) || isSunday(date);
 
     return (
-      <div key={date.toISOString()} className={`flex-1 min-w-[200px] border-r border-gray-100 ${isCurrentDay ? 'bg-primary-50/30' : ''}`}>
-        <div className={`p-2 border-b text-center text-xs font-medium sticky top-0 ${isCurrentDay ? 'bg-primary-100 text-primary-800' : 'bg-gray-50 text-gray-600'}`}>
+      <div key={date.toISOString()} className={`flex-1 min-w-[200px] border-r border-gray-100 ${isCurrentDay ? 'bg-primary-50/30' : ''} ${isWeekend ? 'bg-gray-50/50' : ''}`}>
+        <div className={`p-2 border-b text-center text-xs font-medium sticky top-0 ${
+          isCurrentDay ? 'bg-primary-100 text-primary-800' :
+          isWeekend ? 'bg-gray-100 text-gray-500' :
+          'bg-gray-50 text-gray-600'
+        }`}>
           <div>{safeFormat(date, 'EEEE')}</div>
           <div className="text-lg font-bold">{safeFormat(date, 'd')}</div>
           <div className="text-[10px]">{dayDeployments.length} Einsatz{dayDeployments.length !== 1 ? 'e' : ''}</div>
@@ -229,16 +331,25 @@ function SchedulingPageContent() {
             <div key={`empty-${i}`} />
           ))}
           {days.map(day => {
-            const dayDeps = getDeploymentsForDate(day);
+            const dayDeps = filteredDeployments.filter(d => isSameDay(new Date(d.date), day));
             const isCurrentDay = isToday(day);
+            const isWeekend = isSaturday(day) || isSunday(day);
             return (
-              <div key={day.toISOString()} className={`p-1 min-h-[80px] border rounded text-xs ${isCurrentDay ? 'border-primary-400 bg-primary-50' : 'border-gray-200'}`}>
-                <div className={`text-center font-medium mb-1 ${isCurrentDay ? 'text-primary-700' : 'text-gray-700'}`}>
+              <div key={day.toISOString()} className={`p-1 min-h-[80px] border rounded text-xs ${
+                isCurrentDay ? 'border-primary-400 bg-primary-50' :
+                isWeekend ? 'border-gray-200 bg-gray-50' :
+                'border-gray-200'
+              }`}>
+                <div className={`text-center font-medium mb-1 ${
+                  isCurrentDay ? 'text-primary-700' :
+                  isWeekend ? 'text-gray-400' :
+                  'text-gray-700'
+                }`}>
                   {safeFormat(day, 'd')}
                 </div>
                 {dayDeps.slice(0, 3).map(dep => (
-                  <div key={dep.id} className="truncate text-[10px] text-gray-600 px-0.5" title={`${`${dep.employee.firstName} ${dep.employee.lastName}`} - ${dep.object.name}`}>
-                    {`${dep.employee.firstName} ${dep.employee.lastName}`.split(' ')[0]}
+                  <div key={dep.id} className="truncate text-[10px] text-gray-600 px-0.5" title={`${dep.employee ? `${dep.employee.firstName} ${dep.employee.lastName}` : 'Unbesetzt'} - ${dep.object.name}`}>
+                    {dep.employee ? `${dep.employee.firstName} ${dep.employee.lastName}`.split(' ')[0] : '—'}
                   </div>
                 ))}
                 {dayDeps.length > 3 && <div className="text-[10px] text-gray-400">+{dayDeps.length - 3}</div>}
@@ -273,9 +384,9 @@ function SchedulingPageContent() {
   };
 
   const handleReleaseAll = async () => {
-    const plannedDeployments = deployments.filter(d => d.status === 'planned');
+    const plannedDeployments = filteredDeployments.filter(d => d.status === 'planned');
     if (plannedDeployments.length === 0) {
-      alert('Keine geplanten Einsätze zum Freigeben vorhanden');
+      alert('Keine geplanten Einsätze im aktuellen Filter zum Freigeben vorhanden');
       return;
     }
 
@@ -296,7 +407,7 @@ function SchedulingPageContent() {
     <div>
       <PageHeader
         title="Dienstplanung"
-        description={`${deployments.length} Einsätze im aktuellen Zeitraum`}
+        description={`${filteredDeployments.length} von ${deployments.length} Einsätzen im aktuellen Zeitraum`}
         actions={
           <div className="flex items-center gap-2">
             <button onClick={() => setShowAutoPlannerModal(true)} className="btn-secondary">
@@ -312,6 +423,18 @@ function SchedulingPageContent() {
         }
       />
 
+
+      {/* KPI-Leiste */}
+      <KPIBar deployments={filteredDeployments} />
+
+      {/* Filter-Leiste */}
+      <SchedulingFilters
+        filters={filters}
+        onChange={setFilters}
+        objects={allObjects}
+        employees={allEmployees}
+        activeFilterCount={activeFilterCount}
+      />
       {/* Steuerleiste */}
       <div className="card mb-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -344,7 +467,7 @@ function SchedulingPageContent() {
       {/* Ansicht */}
       {loading ? (
         <div className="p-8 text-center text-gray-400">Wird geladen...</div>
-      ) : deployments.length === 0 ? (
+      ) : filteredDeployments.length === 0 ? (
         <EmptyState
           icon="📅"
           title="Keine Einsätze im aktuellen Zeitraum"
