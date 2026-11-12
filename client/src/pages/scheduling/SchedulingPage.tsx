@@ -14,6 +14,9 @@ import { SchedulingFilters, defaultFilters, type ScheduleFilters } from '../../c
 import { KPIBar } from '../../components/scheduling/KPIBar';
 import { ConflictPanel } from '../../components/scheduling/ConflictPanel';
 import { EmployeePanel } from '../../components/scheduling/EmployeePanel';
+import { DragDropProvider } from '../../components/scheduling/DragDropContext';
+import { useDraggable } from '../../hooks/useDraggable';
+import { useDroppable } from '../../hooks/useDroppable';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -76,7 +79,9 @@ class SchedulingErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundar
 export function SchedulingPage() {
   return (
     <SchedulingErrorBoundary>
-      <SchedulingPageContent />
+      <DragDropProvider>
+        <SchedulingPageContent />
+      </DragDropProvider>
     </SchedulingErrorBoundary>
   );
 }
@@ -90,6 +95,7 @@ function SchedulingPageContent() {
   const [showAutoPlannerModal, setShowAutoPlannerModal] = useState(false);
   const [showReplacementModal, setShowReplacementModal] = useState(false);
   const [selectedDeployment, setSelectedDeployment] = useState<Deployment | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   
   // Filter-State
   const [filters, setFilters] = useState<ScheduleFilters>(defaultFilters);
@@ -280,45 +286,39 @@ function SchedulingPageContent() {
     return <Badge variant={variants[status] || 'gray'} size="sm">{labels[status] || status}</Badge>;
   };
 
-  const renderDayColumn = (date: Date) => {
-    const dayDeployments = filteredDeployments.filter(d => isSameDay(new Date(d.date), date));
-    const isCurrentDay = isToday(date);
-    const isWeekend = isSaturday(date) || isSunday(date);
+  const handleDeploymentDrop = useCallback((deployment: Deployment, newDate: string) => {
+    // Zeige Erfolgs-Toast
+    setToast({ message: `Einsatz verschoben auf ${format(new Date(newDate), 'dd.MM.yyyy', { locale: de })}`, type: 'success' });
+    
+    // Aktualisiere lokale Daten
+    loadDeployments();
+    
+    // Verstecke Toast nach 3 Sekunden
+    setTimeout(() => setToast(null), 3000);
+  }, [loadDeployments]);
 
+  const handleDropError = useCallback((error: string) => {
+    // Zeige Fehler-Toast
+    setToast({ message: error, type: 'error' });
+    
+    // Verstecke Toast nach 5 Sekunden
+    setTimeout(() => setToast(null), 5000);
+  }, []);
+
+  const renderDayColumn = (date: Date) => {
+    const dateString = format(date, 'yyyy-MM-dd');
     return (
-      <div key={date.toISOString()} className={`flex-1 min-w-[200px] border-r border-gray-100 ${isCurrentDay ? 'bg-primary-50/30' : ''} ${isWeekend ? 'bg-gray-50/50' : ''}`}>
-        <div className={`p-2 border-b text-center text-xs font-medium sticky top-0 ${
-          isCurrentDay ? 'bg-primary-100 text-primary-800' :
-          isWeekend ? 'bg-gray-100 text-gray-500' :
-          'bg-gray-50 text-gray-600'
-        }`}>
-          <div>{safeFormat(date, 'EEEE')}</div>
-          <div className="text-lg font-bold">{safeFormat(date, 'd')}</div>
-          <div className="text-[10px]">{dayDeployments.length} Einsatz{dayDeployments.length !== 1 ? 'e' : ''}</div>
-        </div>
-        <div className="p-1 space-y-1 min-h-[200px]">
-          {dayDeployments.map(dep => (
-            <div
-              key={dep.id}
-              onClick={() => setSelectedDeployment(dep)}
-              className={`p-2 rounded-lg text-xs cursor-pointer transition-all hover:shadow-md ${
-                dep.status === 'cancelled' ? 'bg-red-50 border border-red-200' :
-                dep.status === 'confirmed' || dep.status === 'released' ? 'bg-green-50 border border-green-200' :
-                'bg-blue-50 border border-blue-200'
-              }`}
-            >
-              <div className="font-medium truncate">{`${dep.employee.firstName} ${dep.employee.lastName}`}</div>
-              <div className="text-gray-500 truncate">{dep.object.name}</div>
-              <div className="flex items-center gap-1 mt-1">
-                <span className="text-gray-600">{safeFormatTime(dep.startTime)} - {safeFormatTime(dep.endTime)}</span>
-                {dep.isNightShift && <span className="text-[10px]">🌙</span>}
-                {dep.isSunday && <span className="text-[10px]">☀️</span>}
-              </div>
-              <div className="mt-1">{getStatusBadge(dep.status)}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <DayColumn
+        key={dateString}
+        date={date}
+        deployments={filteredDeployments}
+        onSelectDeployment={setSelectedDeployment}
+        onDrop={handleDeploymentDrop}
+        onError={handleDropError}
+        safeFormat={safeFormat}
+        safeFormatTime={safeFormatTime}
+        getStatusBadge={getStatusBadge}
+      />
     );
   };
 
@@ -423,6 +423,18 @@ function SchedulingPageContent() {
 
   return (
     <div>
+      {/* Toast-Benachrichtigung */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg transition-all ${
+          toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+        }`}>
+          <div className="flex items-center gap-2">
+            <span>{toast.type === 'success' ? '✓' : '✕'}</span>
+            <span>{toast.message}</span>
+          </div>
+        </div>
+      )}
+
       <PageHeader
         title="Dienstplanung"
         description={`${filteredDeployments.length} von ${deployments.length} Einsätzen im aktuellen Zeitraum`}
@@ -784,5 +796,110 @@ function DeploymentDetailModal({ deployment, onClose, onCancel, onConfirm, onFin
         </div>
       </div>
     </Modal>
+  );
+}
+
+// DayColumn Komponente mit Droppable-Logik
+interface DayColumnProps {
+  date: Date;
+  deployments: Deployment[];
+  onSelectDeployment: (dep: Deployment) => void;
+  onDrop: (deployment: Deployment, newDate: string) => void;
+  onError: (error: string) => void;
+  safeFormat: (date: Date | string | null | undefined, formatStr: string) => string;
+  safeFormatTime: (time: string | null | undefined) => string;
+  getStatusBadge: (status: string) => JSX.Element;
+}
+
+function DayColumn({
+  date,
+  deployments,
+  onSelectDeployment,
+  onDrop,
+  onError,
+  safeFormat,
+  safeFormatTime,
+  getStatusBadge,
+}: DayColumnProps) {
+  const dateString = format(date, 'yyyy-MM-dd');
+  const dayDeployments = deployments.filter(d => isSameDay(new Date(d.date), date));
+  const isCurrentDay = isToday(date);
+  const isWeekend = isSaturday(date) || isSunday(date);
+
+  const { isOver, onDragOver, onDragLeave, onDrop } = useDroppable({
+    date: dateString,
+    onDrop,
+    onError,
+  });
+
+  return (
+    <div
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={`flex-1 min-w-[200px] border-r border-gray-100 transition-colors ${
+        isCurrentDay ? 'bg-primary-50/30' : ''
+      } ${isWeekend ? 'bg-gray-50/50' : ''} ${
+        isOver ? 'bg-green-50 border-2 border-dashed border-green-400' : ''
+      }`}
+    >
+      <div className={`p-2 border-b text-center text-xs font-medium sticky top-0 ${
+        isCurrentDay ? 'bg-primary-100 text-primary-800' :
+        isWeekend ? 'bg-gray-100 text-gray-500' :
+        'bg-gray-50 text-gray-600'
+      }`}>
+        <div>{safeFormat(date, 'EEEE')}</div>
+        <div className="text-lg font-bold">{safeFormat(date, 'd')}</div>
+        <div className="text-[10px]">{dayDeployments.length} Einsatz{dayDeployments.length !== 1 ? 'e' : ''}</div>
+      </div>
+      <div className="p-1 space-y-1 min-h-[200px]">
+        {dayDeployments.map(dep => (
+          <DeploymentCard
+            key={dep.id}
+            deployment={dep}
+            onClick={() => onSelectDeployment(dep)}
+            safeFormatTime={safeFormatTime}
+            getStatusBadge={getStatusBadge}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// DeploymentCard Komponente mit Draggable-Logik
+interface DeploymentCardProps {
+  deployment: Deployment;
+  onClick: () => void;
+  safeFormatTime: (time: string | null | undefined) => string;
+  getStatusBadge: (status: string) => JSX.Element;
+}
+
+function DeploymentCard({ deployment, onClick, safeFormatTime, getStatusBadge }: DeploymentCardProps) {
+  const { draggable, onDragStart, onDragEnd, dragging } = useDraggable({ deployment });
+
+  return (
+    <div
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onClick={onClick}
+      className={`p-2 rounded-lg text-xs cursor-pointer transition-all hover:shadow-md ${
+        dragging ? 'opacity-50 scale-95' : ''
+      } ${
+        deployment.status === 'cancelled' ? 'bg-red-50 border border-red-200' :
+        deployment.status === 'confirmed' || deployment.status === 'released' ? 'bg-green-50 border border-green-200' :
+        'bg-blue-50 border border-blue-200'
+      }`}
+    >
+      <div className="font-medium truncate">{`${deployment.employee.firstName} ${deployment.employee.lastName}`}</div>
+      <div className="text-gray-500 truncate">{deployment.object.name}</div>
+      <div className="flex items-center gap-1 mt-1">
+        <span className="text-gray-600">{safeFormatTime(deployment.startTime)} - {safeFormatTime(deployment.endTime)}</span>
+        {deployment.isNightShift && <span className="text-[10px]">🌙</span>}
+        {deployment.isSunday && <span className="text-[10px]">☀️</span>}
+      </div>
+      <div className="mt-1">{getStatusBadge(deployment.status)}</div>
+    </div>
   );
 }
