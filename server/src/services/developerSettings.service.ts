@@ -170,20 +170,11 @@ export class DeveloperSettingsService {
   }
 
   private async testEmailConnection(settings: SystemSettings) {
-    // Email-Verbindung testen
-    try {
-      // Hier würde echte Email-Logik stehen
-      return {
-        success: true,
-        message: 'Email-Verbindung erfolgreich',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Email-Verbindung fehlgeschlagen',
-        error: error instanceof Error ? error.message : 'Unbekannter Fehler',
-      };
-    }
+    // Email-Verbindung testen (echte SMTP-Prüfung folgt bei aktiver Integration).
+    return {
+      success: true,
+      message: 'Email-Verbindung erfolgreich',
+    };
   }
 
   private async testStripeConnection(settings: SystemSettings) {
