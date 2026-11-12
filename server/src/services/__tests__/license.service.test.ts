@@ -1,10 +1,14 @@
+import { randomUUID } from 'crypto';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { licenseService } from '../license.service';
 import { prisma } from '../../config/database';
 
+const testRunId = randomUUID().replace(/-/g, '').slice(0, 12);
+
 describe('LicenseService', () => {
   let testTenantId: string;
   let testUserId: string;
+  let testPlanId: string;
 
   beforeAll(async () => {
     await prisma.$connect();
@@ -12,8 +16,8 @@ describe('LicenseService', () => {
     // Platform Admin erstellen (braucht keinen Tenant)
     const platformAdmin = await prisma.platformAdmin.create({
       data: {
-        email: 'license-test-admin@protektor.test',
-        username: 'license-test-admin',
+        email: `license-test-${testRunId}@protektor.test`,
+        username: `license-test-${testRunId}`,
         passwordHash: 'hashed-password',
         firstName: 'License',
         lastName: 'Admin',
@@ -21,25 +25,54 @@ describe('LicenseService', () => {
     });
     testUserId = platformAdmin.id;
 
-    // Test-Tenant erstellen
+    const plan = await prisma.plan.create({
+      data: {
+        name: `License Test ${testRunId}`,
+        slug: `license-test-${testRunId}`,
+        monthlyPrice: 0,
+        yearlyPrice: 0,
+        employeeLimit: 10,
+      },
+    });
+    testPlanId = plan.id;
+
+    // Active Lizenz samt gültigem Abonnement erstellen.
     const tenant = await prisma.tenant.create({
       data: {
-        tenantId: 'TEST-LICENSE-001',
+        tenantId: `TEST-LICENSE-${testRunId}`,
         companyName: 'License Test GmbH',
-        contactEmail: 'license@example.com',
+        contactEmail: `license-${testRunId}@example.com`,
+        licenseStatus: 'ACTIVE',
         createdById: platformAdmin.id,
       },
     });
 
     testTenantId = tenant.id;
+    const now = new Date();
+    const periodEnd = new Date(now);
+    periodEnd.setDate(periodEnd.getDate() + 30);
+    await prisma.subscription.create({
+      data: {
+        tenantId: tenant.id,
+        planId: plan.id,
+        billingInterval: 'MONTHLY',
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+        monthlyRevenue: 0,
+      },
+    });
   });
 
   afterAll(async () => {
     if (testTenantId) {
-      await prisma.tenant.delete({ where: { id: testTenantId } }).catch(() => {});
+      await prisma.subscription.deleteMany({ where: { tenantId: testTenantId } });
+      await prisma.tenant.delete({ where: { id: testTenantId } });
+    }
+    if (testPlanId) {
+      await prisma.plan.delete({ where: { id: testPlanId } });
     }
     if (testUserId) {
-      await prisma.platformAdmin.delete({ where: { id: testUserId } }).catch(() => {});
+      await prisma.platformAdmin.delete({ where: { id: testUserId } });
     }
     await prisma.$disconnect();
   });

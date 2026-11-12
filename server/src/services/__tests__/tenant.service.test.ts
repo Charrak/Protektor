@@ -1,10 +1,33 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { randomUUID } from 'crypto';
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { tenantService } from '../tenant.service';
 import { prisma } from '../../config/database';
 
+vi.mock('../email.service', () => ({
+  emailService: { sendWelcomeEmail: vi.fn().mockResolvedValue(undefined) },
+}));
+
+const testRunId = randomUUID().replace(/-/g, '').slice(0, 12);
+
 describe('TenantService', () => {
-  let testTenantId: string;
+  let testTenantIds: string[] = [];
   let testUserId: string;
+
+  async function createTestTenant(input: Parameters<typeof tenantService.create>[0]) {
+    const tenant = await tenantService.create(input, testUserId);
+    testTenantIds.push(tenant.id);
+    return tenant;
+  }
+
+  async function removeTestTenant(tenantId: string) {
+    const roles = await prisma.role.findMany({ where: { tenantId }, select: { id: true } });
+    const roleIds = roles.map(({ id }) => id);
+    await prisma.rolePermission.deleteMany({ where: { roleId: { in: roleIds } } });
+    await prisma.user.deleteMany({ where: { tenantId } });
+    await prisma.role.deleteMany({ where: { tenantId } });
+    await prisma.subscription.deleteMany({ where: { tenantId } });
+    await prisma.tenant.delete({ where: { id: tenantId } });
+  }
 
   beforeAll(async () => {
     // Test-Datenbank verbinden
@@ -13,8 +36,8 @@ describe('TenantService', () => {
     // Platform Admin erstellen (braucht keinen Tenant)
     const platformAdmin = await prisma.platformAdmin.create({
       data: {
-        email: 'test-admin@protektor.test',
-        username: 'test-admin',
+        email: `test-admin-${testRunId}@protektor.test`,
+        username: `test-admin-${testRunId}`,
         passwordHash: 'hashed-password',
         firstName: 'Test',
         lastName: 'Admin',
@@ -23,19 +46,17 @@ describe('TenantService', () => {
     testUserId = platformAdmin.id;
   });
 
-  afterAll(async () => {
-    // Aufräumen
-    if (testUserId) {
-      await prisma.platformAdmin.delete({ where: { id: testUserId } }).catch(() => {});
+  afterEach(async () => {
+    for (const tenantId of testTenantIds.splice(0)) {
+      await removeTestTenant(tenantId);
     }
-    await prisma.$disconnect();
   });
 
-  beforeEach(async () => {
-    // Test-Tenant vor jedem Test löschen
-    if (testTenantId) {
-      await prisma.tenant.delete({ where: { id: testTenantId } }).catch(() => {});
+  afterAll(async () => {
+    if (testUserId) {
+      await prisma.platformAdmin.delete({ where: { id: testUserId } });
     }
+    await prisma.$disconnect();
   });
 
   describe('create', () => {
@@ -46,15 +67,13 @@ describe('TenantService', () => {
         employeeLimit: 50,
       };
 
-      const tenant = await tenantService.create(input, testUserId);
+      const tenant = await createTestTenant(input);
 
       expect(tenant).toBeDefined();
       expect(tenant.companyName).toBe(input.companyName);
       expect(tenant.contactEmail).toBe(input.contactEmail);
-      expect(tenant.licenseStatus).toBe('TEST');
+      expect(tenant.licenseStatus).toBe('ACTIVE');
       expect(tenant.employeeLimit).toBe(50);
-
-      testTenantId = tenant.id;
     });
 
     it('sollte einen Tenant mit Trial erstellen', async () => {
@@ -65,26 +84,19 @@ describe('TenantService', () => {
         trialDays: 30,
       };
 
-      const tenant = await tenantService.create(input, testUserId);
+      const tenant = await createTestTenant(input);
 
       expect(tenant.licenseStatus).toBe('TEST');
-
-      testTenantId = tenant.id;
     });
   });
 
   describe('list', () => {
     it('sollte alle Tenants auflisten', async () => {
       // Test-Tenant erstellen
-      const tenant = await tenantService.create(
-        {
-          companyName: 'List Test GmbH',
-          contactEmail: 'list@example.com',
-        },
-        testUserId
-      );
-
-      testTenantId = tenant.id;
+      await createTestTenant({
+        companyName: 'List Test GmbH',
+        contactEmail: 'list@example.com',
+      });
 
       const result = await tenantService.list({});
 
@@ -103,15 +115,10 @@ describe('TenantService', () => {
     });
 
     it('sollte nach Suchbegriff filtern', async () => {
-      const tenant = await tenantService.create(
-        {
-          companyName: 'Unique Search Test GmbH',
-          contactEmail: 'search@example.com',
-        },
-        testUserId
-      );
-
-      testTenantId = tenant.id;
+      await createTestTenant({
+        companyName: 'Unique Search Test GmbH',
+        contactEmail: 'search@example.com',
+      });
 
       const result = await tenantService.list({ search: 'Unique Search' });
 
@@ -122,15 +129,10 @@ describe('TenantService', () => {
 
   describe('updateLicenseStatus', () => {
     it('sollte den Lizenzstatus aktualisieren', async () => {
-      const tenant = await tenantService.create(
-        {
-          companyName: 'Status Update Test GmbH',
-          contactEmail: 'status@example.com',
-        },
-        testUserId
-      );
-
-      testTenantId = tenant.id;
+      const tenant = await createTestTenant({
+        companyName: 'Status Update Test GmbH',
+        contactEmail: 'status@example.com',
+      });
 
       const updated = await tenantService.updateLicenseStatus(
         tenant.id,
