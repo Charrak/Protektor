@@ -313,7 +313,7 @@ function SchedulingPageContent() {
         date={date}
         deployments={filteredDeployments}
         onSelectDeployment={setSelectedDeployment}
-        onDrop={handleDeploymentDrop}
+        onDeploymentDrop={handleDeploymentDrop}
         onError={handleDropError}
         safeFormat={safeFormat}
         safeFormatTime={safeFormatTime}
@@ -803,7 +803,7 @@ interface DayColumnProps {
   date: Date;
   deployments: Deployment[];
   onSelectDeployment: (dep: Deployment) => void;
-  onDrop: (deployment: Deployment, newDate: string) => void;
+  onDeploymentDrop: (deployment: Deployment, newDate: string) => void;
   onError: (error: string) => void;
   safeFormat: (date: Date | string | null | undefined, formatStr: string) => string;
   safeFormatTime: (time: string | null | undefined) => string;
@@ -814,7 +814,7 @@ function DayColumn({
   date,
   deployments,
   onSelectDeployment,
-  onDrop,
+  onDeploymentDrop,
   onError,
   safeFormat,
   safeFormatTime,
@@ -825,9 +825,9 @@ function DayColumn({
   const isCurrentDay = isToday(date);
   const isWeekend = isSaturday(date) || isSunday(date);
 
-  const { isOver, onDragOver, onDragLeave, onDrop } = useDroppable({
+  const { isOver, onDragOver, onDragLeave, onDrop: handleDrop } = useDroppable({
     date: dateString,
-    onDrop,
+    onDrop: onDeploymentDrop,
     onError,
   });
 
@@ -835,7 +835,7 @@ function DayColumn({
     <div
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
-      onDrop={onDrop}
+      onDrop={handleDrop}
       className={`flex-1 min-w-[200px] border-r border-gray-100 transition-colors ${
         isCurrentDay ? 'bg-primary-50/30' : ''
       } ${isWeekend ? 'bg-gray-50/50' : ''} ${

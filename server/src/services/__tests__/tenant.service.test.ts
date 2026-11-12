@@ -17,7 +17,7 @@ describe('TenantService', () => {
         username: 'test-admin',
         firstName: 'Test',
         lastName: 'Admin',
-        password: 'hashed-password',
+        passwordHash: 'hashed-password',
         role: 'PLATFORM_ADMIN',
       },
     });

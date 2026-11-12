@@ -16,7 +16,7 @@ describe('UsageTrackingService', () => {
         username: 'usage-test-admin',
         firstName: 'Usage',
         lastName: 'Admin',
-        password: 'hashed-password',
+        passwordHash: 'hashed-password',
         role: 'PLATFORM_ADMIN',
       },
     });
