@@ -4,9 +4,22 @@ import { prisma } from '../../config/database';
 
 describe('UsageTrackingService', () => {
   let testTenantId: string;
+  let testUserId: string;
 
   beforeAll(async () => {
     await prisma.$connect();
+
+    // Test-User erstellen (wird für createdById benötigt)
+    const user = await prisma.user.create({
+      data: {
+        email: 'usage-test-admin@protektor.test',
+        firstName: 'Usage',
+        lastName: 'Admin',
+        password: 'hashed-password',
+        role: 'PLATFORM_ADMIN',
+      },
+    });
+    testUserId = user.id;
 
     // Test-Tenant erstellen
     const tenant = await prisma.tenant.create({
@@ -16,7 +29,7 @@ describe('UsageTrackingService', () => {
         contactEmail: 'usage@example.com',
         licenseStatus: 'ACTIVE',
         employeeLimit: 10,
-        createdById: 'admin-id',
+        createdById: testUserId,
       },
     });
 
@@ -29,6 +42,9 @@ describe('UsageTrackingService', () => {
       await prisma.usageEvent.deleteMany({ where: { tenantId: testTenantId } }).catch(() => {});
       await prisma.usageStat.deleteMany({ where: { tenantId: testTenantId } }).catch(() => {});
       await prisma.tenant.delete({ where: { id: testTenantId } }).catch(() => {});
+    }
+    if (testUserId) {
+      await prisma.user.delete({ where: { id: testUserId } }).catch(() => {});
     }
     await prisma.$disconnect();
   });
