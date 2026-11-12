@@ -1086,6 +1086,7 @@ model SMSObject {
   alarmNumber         String?  @db.VarChar(50)
   keyDepot            String?  @db.Text
   accessCode          String?  @db.VarChar(100)
+  accessCredentials   Json?
   accessRegulations   String?  @db.Text        // Zutrittsregelungen
   specialInstructions String?  @db.Text
   
@@ -1967,6 +1968,8 @@ enum ReplacementStatus {
   candidates_found
   assigned
   unresolved
+  approved
+  declined
   cancelled
 }
 

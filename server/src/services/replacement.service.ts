@@ -33,7 +33,7 @@ export class ReplacementService {
       const originalDeployment = await prisma.deployment.findUnique({
         where: { id: request.deploymentId },
         include: {
-          employee: true,
+          employee: { include: { qualifications: true } },
           object: {
             include: {
               requirements: {
@@ -140,7 +140,9 @@ export class ReplacementService {
       // 1. Original-Einsatz laden
       const originalDeployment = await prisma.deployment.findUnique({
         where: { id: deploymentId },
-        include: { employee: true }
+        include: {
+          employee: { include: { qualifications: true } },
+        }
       });
 
       if (!originalDeployment) {

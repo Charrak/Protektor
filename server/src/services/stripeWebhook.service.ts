@@ -99,6 +99,7 @@ export class StripeWebhookService {
     // Tenant finden
     const tenant = await prisma.tenant.findFirst({
       where: { stripeCustomerId: customerId },
+      include: { subscriptions: true },
     });
 
     if (!tenant) {
@@ -148,6 +149,7 @@ export class StripeWebhookService {
 
     const tenant = await prisma.tenant.findFirst({
       where: { stripeCustomerId: customerId },
+      include: { subscriptions: true },
     });
 
     if (!tenant) return;
@@ -192,6 +194,7 @@ export class StripeWebhookService {
 
     const tenant = await prisma.tenant.findFirst({
       where: { stripeCustomerId: customerId },
+      include: { subscriptions: true },
     });
 
     if (!tenant) return;

@@ -310,9 +310,9 @@ export class ReminderService {
       paidReminders,
       overdueInvoices,
       openAmount: {
-        due: openAmount._sum.amountDue || 0,
-        fees: openAmount._sum.lateFees || 0,
-        total: (openAmount._sum.amountDue || 0) + (openAmount._sum.lateFees || 0),
+        due: Number(openAmount._sum.amountDue || 0),
+        fees: Number(openAmount._sum.lateFees || 0),
+        total: Number(openAmount._sum.amountDue || 0) + Number(openAmount._sum.lateFees || 0),
       },
     };
   }

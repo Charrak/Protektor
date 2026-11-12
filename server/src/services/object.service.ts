@@ -127,14 +127,23 @@ export class ObjectService {
       data.accessCredentials = encrypted;
     }
 
+    const customer = await prisma.customer.findUnique({
+      where: { id: data.customerId },
+      select: { tenantId: true },
+    });
+    if (!customer) throw new Error('Kunde nicht gefunden');
+
     const object = await prisma.sMSObject.create({
       data: {
+        tenantId: customer.tenantId,
         objectNumber: data.objectNumber,
         customerId: data.customerId,
         name: data.name,
-        address: data.address || {},
-        contactPerson: data.contactPerson || {},
-        accessCredentials: data.accessCredentials || {},
+        street: data.street ?? data.address?.street,
+        zipCode: data.zipCode ?? data.address?.zipCode,
+        city: data.city ?? data.address?.city,
+        contactPersonId: data.contactPersonId || undefined,
+        accessCredentials: data.accessCredentials || undefined,
         notes: data.notes || '',
         isActive: data.isActive !== false,
       },
