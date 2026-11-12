@@ -70,8 +70,7 @@ export class CacheService {
       tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
         include: {
-          subscription: true,
-          plan: true,
+          subscriptions: { include: { plan: true } },
         },
       });
 
@@ -138,7 +137,7 @@ export class CacheService {
 
     const plans = await prisma.plan.findMany({
       where: { isActive: true },
-      orderBy: { displayOrder: 'asc' },
+      orderBy: { sortOrder: 'asc' },
     });
 
     this.set(cacheKey, plans, 30 * 60 * 1000); // 30 Minuten

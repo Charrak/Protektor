@@ -77,7 +77,7 @@ export class CustomerService {
     // Validierung
     const validation = customerCreateSchema.safeParse(input);
     if (!validation.success) {
-      throw new ValidationError(validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
+      throw new ValidationError(validation.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
     }
     
     const data = validation.data;
@@ -144,7 +144,7 @@ export class CustomerService {
     // Validierung
     const validation = customerUpdateSchema.safeParse(input);
     if (!validation.success) {
-      throw new ValidationError(validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
+      throw new ValidationError(validation.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
     }
     
     const data = validation.data;
@@ -225,7 +225,7 @@ export class CustomerService {
     // Validierung
     const validation = contactPersonCreateSchema.safeParse(data);
     if (!validation.success) {
-      throw new ValidationError(validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
+      throw new ValidationError(validation.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
     }
     
     const validData = validation.data;
@@ -265,7 +265,7 @@ export class CustomerService {
     // Validierung
     const validation = contactPersonUpdateSchema.safeParse(data);
     if (!validation.success) {
-      throw new ValidationError(validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
+      throw new ValidationError(validation.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
     }
     
     const validData = validation.data;

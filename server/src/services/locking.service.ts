@@ -56,7 +56,7 @@ export class LockingService {
             },
             include: { lockedBy: { include: { role: true } } },
           });
-          return { status: 'refreshed', lock: updated as LockInfo };
+          return { status: 'refreshed' as const, lock: updated as LockInfo };
         }
 
         // Fremde Sperre – Konflikt
@@ -111,7 +111,7 @@ export class LockingService {
         expiresAt: lock.expiresAt,
       }, resourceType, resourceId);
 
-      return { status: 'acquired', lock: lock as LockInfo };
+      return { status: 'acquired' as const, lock: lock as LockInfo };
     });
   }
 

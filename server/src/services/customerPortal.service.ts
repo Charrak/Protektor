@@ -44,7 +44,7 @@ export class CustomerPortalService {
     // Validierung
     const validation = portalUserCreateSchema.safeParse(input);
     if (!validation.success) {
-      throw new ValidationError(validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
+      throw new ValidationError(validation.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
     }
 
     const data = validation.data;

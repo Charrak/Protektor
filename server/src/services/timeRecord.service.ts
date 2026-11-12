@@ -188,6 +188,7 @@ export class TimeRecordService {
       data: {
         tenantId,
         employeeId: input.employeeId,
+        date: input.clockIn,
         deploymentId: input.deploymentId,
         objectId: input.objectId,
         postNumber: input.postNumber,

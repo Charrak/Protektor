@@ -68,7 +68,7 @@ export class CriticalReportsService {
     const overduePayments = await prisma.payment.count({
       where: {
         status: 'PENDING',
-        dueDate: { lt: new Date() },
+        createdAt: { lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
       },
     });
 
@@ -444,7 +444,7 @@ export class CriticalReportsService {
     const payments = await prisma.payment.aggregate({
       where: {
         createdAt: { gte: startOfMonth },
-        status: 'COMPLETED',
+        status: 'SUCCEEDED',
       },
       _sum: { amount: true },
       _count: true,
@@ -455,7 +455,7 @@ export class CriticalReportsService {
       arr,
       newSubscriptions,
       canceledSubscriptions,
-      totalPayments: Number(payments._sum.amount || 0),
+      totalPayments: Number(payments._sum?.amount || 0),
       paymentCount: payments._count,
       netNewMRR: (newSubscriptions - canceledSubscriptions) * 99, // Vereinfacht
     };

@@ -41,7 +41,7 @@ export class LicenseService {
     // Lizenzstatus prüfen
     switch (tenant.licenseStatus) {
       case 'TEST':
-      case 'ACTIVE':
+      case 'ACTIVE': {
         // Prüfen ob Subscription noch gültig
         const subscription = tenant.subscriptions[0];
         if (subscription && subscription.currentPeriodEnd > new Date()) {
@@ -57,6 +57,7 @@ export class LicenseService {
           message: 'Abonnement abgelaufen',
           restrictions: ['Keine neuen Einsätze', 'Keine neuen Mitarbeiter'],
         };
+      }
 
       case 'PAYMENT_PENDING':
       case 'GRACE_PERIOD':

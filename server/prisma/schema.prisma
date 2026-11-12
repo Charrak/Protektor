@@ -90,6 +90,7 @@ model PlatformAuditLog {
 model Tenant {
   id                  String      @id @default(uuid())
   tenantId            String      @unique @db.VarChar(36)
+  licenseKey          String?     @unique @db.VarChar(100)
   companyName         String      @db.VarChar(200)
   contactEmail        String      @db.VarChar(255)
   contactPhone        String?     @db.VarChar(50)
@@ -166,6 +167,8 @@ model Tenant {
   // Support & Feedback
   supportTickets     SupportTicket[]
   contactRequests    ContactRequest[]
+  auditLogs          AuditLog[]
+  apiKeys            ApiKey[]
 
   // Planungsgruppen
   planningGroups     PlanningGroup[]
@@ -248,16 +251,22 @@ model Payment {
 model WebhookEvent {
   id           String   @id @default(uuid())
   tenantId     String?  @db.VarChar(36)
-  stripeEventId String  @unique @db.VarChar(255)
-  eventType    String   @db.VarChar(100)
-  payload      Json
-  processed    Boolean  @default(false)
-  processedAt  DateTime?
-  error        String?  @db.Text
-  createdAt    DateTime @default(now())
+  stripeEventId String?  @unique @db.VarChar(255)
+  webhookId     String?  @db.VarChar(36)
+  eventType     String   @db.VarChar(100)
+  payload       Json
+  processed     Boolean  @default(false)
+  processedAt   DateTime?
+  error         String?  @db.Text
+  responseCode  Int?
+  success       Boolean?
+  errorMessage  String?  @db.Text
+  createdAt     DateTime @default(now())
 
-  tenant Tenant? @relation(fields: [tenantId], references: [id])
+  tenant  Tenant?  @relation(fields: [tenantId], references: [id])
+  webhook Webhook? @relation(fields: [webhookId], references: [id])
 
+  @@index([webhookId, createdAt])
   @@map("webhook_events")
 }
 
@@ -1083,6 +1092,7 @@ model SMSObject {
   alarmNumber         String?  @db.VarChar(50)
   keyDepot            String?  @db.Text
   accessCode          String?  @db.VarChar(100)
+  accessCredentials   Json?
   accessRegulations   String?  @db.Text        // Zutrittsregelungen
   specialInstructions String?  @db.Text
   
@@ -1874,20 +1884,27 @@ model Session {
 
 model AuditLog {
   id           String   @id @default(uuid())
+  tenantId     String?  @db.VarChar(36)
   userId       String?  @db.VarChar(36)
   userName     String?  @db.VarChar(200)
   sessionId    String?  @db.VarChar(100)
   action       String   @db.VarChar(50)
   resourceType String   @db.VarChar(50)
   resourceId   String   @db.VarChar(36)
+  entityType   String?  @db.VarChar(100)
+  entityId     String?  @db.VarChar(36)
+  changes      Json?
+  metadata     Json?
   oldValue     Json?
   newValue     Json?
   ipAddress    String?  @db.VarChar(45)
   userAgent    String?  @db.Text
   createdAt    DateTime @default(now())
 
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
   user User? @relation(fields: [userId], references: [id])
 
+  @@index([tenantId, createdAt(sort: Desc)])
   @@index([resourceType, resourceId, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
   @@map("audit_logs")
@@ -1957,6 +1974,8 @@ enum ReplacementStatus {
   candidates_found
   assigned
   unresolved
+  approved
+  declined
   cancelled
 }
 
@@ -2020,7 +2039,7 @@ model TenantFeature {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  @@index([tenantId])
+  @@unique([tenantId, featureKey])
   @@index([featureKey])
   @@map("tenant_features")
 }
@@ -2040,6 +2059,7 @@ model SystemSettings {
 
 model ApiKey {
   id          String    @id @default(uuid())
+  tenantId    String?   @db.VarChar(36)
   name        String    @db.VarChar(100)
   key         String    @unique @db.VarChar(255)
   type        String    @db.VarChar(50) // datev, sms, push, maps, etc.
@@ -2047,7 +2067,10 @@ model ApiKey {
   lastUsed    DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
   @@map("api_keys")
 }
 
@@ -2510,6 +2533,7 @@ model Webhook {
   lastTrigger DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  deliveries  WebhookEvent[]
 
   @@index([tenantId])
   @@map("webhooks")

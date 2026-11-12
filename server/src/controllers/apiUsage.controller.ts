@@ -170,9 +170,9 @@ export async function getApiKeyUsage(req: Request, res: Response) {
       apiKey: {
         id: apiKey.id,
         name: apiKey.name,
-        prefix: apiKey.keyHash.substring(0, 8),
+        prefix: apiKey.key.substring(0, 8),
         createdAt: apiKey.createdAt,
-        lastUsedAt: apiKey.lastUsedAt,
+        lastUsedAt: apiKey.lastUsed,
         isActive: apiKey.isActive,
       },
       summary: {

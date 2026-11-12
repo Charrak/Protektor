@@ -30,6 +30,7 @@ import { PlanListPage } from './pages/platform/PlanListPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { ShiftSwapManagement } from './pages/scheduling/ShiftSwapManagement';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
+import { ModalSafetyGuard } from './components/common/ModalSafetyGuard';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -120,6 +121,7 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
+      <ModalSafetyGuard />
       <AppRoutes />
     </AuthProvider>
   );

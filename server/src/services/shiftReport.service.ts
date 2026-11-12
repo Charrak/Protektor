@@ -123,7 +123,7 @@ export class ShiftReportService {
     // Validierung
     const validation = shiftReportCreateSchema.safeParse(input);
     if (!validation.success) {
-      throw new ValidationError(validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
+      throw new ValidationError(validation.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
     }
 
     const data = validation.data;
@@ -181,7 +181,7 @@ export class ShiftReportService {
     // Validierung
     const validation = shiftReportUpdateSchema.safeParse(input);
     if (!validation.success) {
-      throw new ValidationError(validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
+      throw new ValidationError(validation.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
     }
 
     const data = validation.data;

@@ -408,6 +408,7 @@ export class EmployeeService {
 
     const availability = await prisma.availability.create({
       data: {
+        tenantId: employee.tenantId,
         employeeId,
         type: data.type as any,
         startDate: new Date(data.startDate),

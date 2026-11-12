@@ -29,6 +29,8 @@ export class AuditService {
           tenantId: entry.tenantId,
           userId: entry.userId,
           action: entry.action,
+          resourceType: entry.entityType,
+          resourceId: entry.entityId || '',
           entityType: entry.entityType,
           entityId: entry.entityId,
           changes: entry.changes,

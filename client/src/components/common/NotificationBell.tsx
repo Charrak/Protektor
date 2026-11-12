@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notificationService, type Notification } from '../../services/notification.service';
 
@@ -8,8 +8,6 @@ export function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
   // Lade Notifications und zähle ungelesene
   useEffect(() => {
     loadNotifications();
@@ -21,20 +19,6 @@ export function NotificationBell() {
 
     return () => clearInterval(interval);
   }, []);
-
-  // Schließe Dropdown bei Klick außerhalb
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isOpen]);
 
   const loadNotifications = async () => {
     try {
@@ -118,7 +102,7 @@ export function NotificationBell() {
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative">
       {/* Bell Icon */}
       <button
         onClick={() => {
@@ -127,7 +111,7 @@ export function NotificationBell() {
             loadNotifications();
           }
         }}
-        className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+        className={`relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors ${isOpen ? 'z-50' : ''}`}
         aria-label="Benachrichtigungen"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,9 +131,12 @@ export function NotificationBell() {
         )}
       </button>
 
+      {/* Unsichtbarer Schutzschild: Klicks außerhalb schließen das Popup nicht. */}
+      {isOpen && <div className="fixed inset-0 z-40" aria-hidden="true" />}
+
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[500px] overflow-hidden flex flex-col">
+        <div data-modal-guard="" className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[500px] overflow-hidden flex flex-col">
           {/* Header */}
           <div className="p-4 border-b border-gray-200 bg-gray-50">
             <div className="flex items-center justify-between">

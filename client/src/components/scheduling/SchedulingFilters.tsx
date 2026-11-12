@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 
 export interface ScheduleFilters {
   search: string;
@@ -54,18 +54,6 @@ interface MultiSelectProps {
 function MultiSelect({ label, options, selected, onChange, icon }: MultiSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-        setSearch('');
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
 
   const filtered = options.filter(o => o.label.toLowerCase().includes(search.toLowerCase()));
 
@@ -78,10 +66,10 @@ function MultiSelect({ label, options, selected, onChange, icon }: MultiSelectPr
   };
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${
+        className={`relative flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${open ? 'z-50' : ''} ${
           selected.length > 0
             ? 'border-primary-300 bg-primary-50 text-primary-700'
             : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
@@ -96,7 +84,9 @@ function MultiSelect({ label, options, selected, onChange, icon }: MultiSelectPr
         )}
       </button>
       {open && (
-        <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+        <>
+          <div className="fixed inset-0 z-40" aria-hidden="true" />
+          <div data-modal-guard="" className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
           <div className="p-2 border-b">
             <input
               type="text"
@@ -137,7 +127,8 @@ function MultiSelect({ label, options, selected, onChange, icon }: MultiSelectPr
               </button>
             </div>
           )}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

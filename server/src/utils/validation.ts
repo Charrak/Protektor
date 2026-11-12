@@ -95,7 +95,7 @@ export function validateBody(schema: z.ZodSchema) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({
           error: 'Validierungsfehler',
-          details: error.errors.map(e => ({
+          details: error.issues.map(e => ({
             field: e.path.join('.'),
             message: e.message,
           })),
@@ -116,7 +116,7 @@ export function validateParams(schema: z.ZodSchema) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({
           error: 'Validierungsfehler',
-          details: error.errors,
+          details: error.issues,
         });
       }
       next(error);
@@ -134,7 +134,7 @@ export function validateQuery(schema: z.ZodSchema) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({
           error: 'Validierungsfehler',
-          details: error.errors,
+          details: error.issues,
         });
       }
       next(error);

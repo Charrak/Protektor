@@ -1,6 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { randomUUID } from 'crypto';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { usageTrackingService } from '../usageTracking.service';
 import { prisma } from '../../config/database';
+
+const testRunId = randomUUID().replace(/-/g, '').slice(0, 12);
 
 describe('UsageTrackingService', () => {
   let testTenantId: string;
@@ -12,8 +15,8 @@ describe('UsageTrackingService', () => {
     // Platform Admin erstellen (braucht keinen Tenant)
     const platformAdmin = await prisma.platformAdmin.create({
       data: {
-        email: 'usage-test-admin@protektor.test',
-        username: 'usage-test-admin',
+        email: `usage-test-${testRunId}@protektor.test`,
+        username: `usage-test-${testRunId}`,
         passwordHash: 'hashed-password',
         firstName: 'Usage',
         lastName: 'Admin',
@@ -24,9 +27,10 @@ describe('UsageTrackingService', () => {
     // Test-Tenant erstellen
     const tenant = await prisma.tenant.create({
       data: {
-        tenantId: 'TEST-USAGE-001',
+        tenantId: `TEST-USAGE-${testRunId}`,
         companyName: 'Usage Test GmbH',
-        contactEmail: 'usage@example.com',
+        contactEmail: `usage-${testRunId}@example.com`,
+        employeeLimit: 10,
         createdById: platformAdmin.id,
       },
     });
@@ -34,15 +38,21 @@ describe('UsageTrackingService', () => {
     testTenantId = tenant.id;
   });
 
+  beforeEach(async () => {
+    if (testTenantId) {
+      await prisma.employee.deleteMany({ where: { tenantId: testTenantId } });
+    }
+  });
+
   afterAll(async () => {
     if (testTenantId) {
-      // Aufräumen
-      await prisma.usageEvent.deleteMany({ where: { tenantId: testTenantId } }).catch(() => {});
-      await prisma.usageStat.deleteMany({ where: { tenantId: testTenantId } }).catch(() => {});
-      await prisma.tenant.delete({ where: { id: testTenantId } }).catch(() => {});
+      await prisma.employee.deleteMany({ where: { tenantId: testTenantId } });
+      await prisma.usageEvent.deleteMany({ where: { tenantId: testTenantId } });
+      await prisma.usageStat.deleteMany({ where: { tenantId: testTenantId } });
+      await prisma.tenant.delete({ where: { id: testTenantId } });
     }
     if (testUserId) {
-      await prisma.platformAdmin.delete({ where: { id: testUserId } }).catch(() => {});
+      await prisma.platformAdmin.delete({ where: { id: testUserId } });
     }
     await prisma.$disconnect();
   });
@@ -89,7 +99,7 @@ describe('UsageTrackingService', () => {
           tenantId: testTenantId,
           firstName: 'Max',
           lastName: 'Mustermann',
-          personnelNumber: 'MA001',
+          personnelNumber: `UT${testRunId}MA001`,
           status: 'active',
         },
       });
@@ -121,16 +131,16 @@ describe('UsageTrackingService', () => {
             tenantId: testTenantId,
             firstName: `Employee ${i}`,
             lastName: 'Test',
-            personnelNumber: `MA${i.toString().padStart(3, '0')}`,
+            personnelNumber: `UT${testRunId}MA${i.toString().padStart(3, '0')}`,
             status: 'active',
           },
-        }).catch(() => {}); // Duplikate ignorieren
+        });
       }
 
       const result = await usageTrackingService.checkResourceLimit(testTenantId, 'employees');
 
       expect(result.allowed).toBe(false);
-      expect(result.message).toContain('Limit erreicht');
+      expect(result.message).toContain('Limit für employees erreicht');
     });
   });
 

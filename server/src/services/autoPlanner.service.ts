@@ -13,6 +13,7 @@ export interface Candidate {
   warnings: string[];       // Weiche Warnungen (nicht disqualifizierend)
   disqualified: boolean;
   disqualificationReason?: string;
+  qualifications?: { qualificationId: string }[];
 }
 
 export interface PlanningRequest {
@@ -371,7 +372,7 @@ export class AutoPlannerService {
       }
 
       // HC9: Max Wochenstunden (basierend auf weeklyHours aus Vertrag)
-      if (emp.weeklyHours && emp.weeklyHours > 0) {
+      if (emp.weeklyHours && Number(emp.weeklyHours) > 0) {
         const weekStart = new Date(date);
         weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Montag
         const weekEnd = new Date(weekStart);
@@ -420,6 +421,9 @@ export class AutoPlannerService {
         conflicts: [],
         warnings,
         disqualified: false,
+        qualifications: emp.qualifications.map((qualification: { qualificationId: string }) => ({
+          qualificationId: qualification.qualificationId,
+        })),
       });
     }
 

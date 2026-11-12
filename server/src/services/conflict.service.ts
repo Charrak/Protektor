@@ -56,14 +56,14 @@ export class ConflictService {
         },
         object: {
           include: {
-            requiredQualifications: true,
+            requirements: { include: { qualification: true } },
           },
         },
       },
     });
 
     // Lade Abwesenheiten im Zeitraum
-    const availabilities = await prisma.employeeAvailability.findMany({
+    const availabilities = await prisma.availability.findMany({
       where: {
         tenantId,
         startDate: { lte: endDate },
@@ -355,13 +355,13 @@ export class ConflictService {
     const conflicts: Conflict[] = [];
 
     deployments.forEach(dep => {
-      if (!dep.employeeId || !dep.object.requiredQualifications?.length) return;
+      if (!dep.employeeId || !dep.object.requirements?.length) return;
 
       const employeeQualifications = new Set(
         dep.employee.qualifications?.map((eq: any) => eq.qualificationId) || []
       );
 
-      dep.object.requiredQualifications.forEach((required: any) => {
+      dep.object.requirements.forEach((required: any) => {
         if (!employeeQualifications.has(required.qualificationId)) {
           const employeeName = `${dep.employee.firstName} ${dep.employee.lastName}`;
           conflicts.push({

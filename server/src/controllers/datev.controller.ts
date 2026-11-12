@@ -44,6 +44,8 @@ export class DatevController {
           tenantId,
           userId: (req as any).user?.userId,
           action: 'DATEV_EXPORT',
+          resourceType: 'DatevExport',
+          resourceId: '',
           entityType: 'DatevExport',
           changes: exportData.summary,
           ipAddress: req.ip,
