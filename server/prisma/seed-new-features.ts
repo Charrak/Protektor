@@ -500,6 +500,222 @@ async function main() {
 
   console.log('✓ 4 Einsätze mit verschiedenen Status erstellt');
 
+  // ═══════════════════════════════════════════════════════
+  // 6. ZUSÄTZLICHE EINSÄTZE FÜR KPI-BAR & EMPLOYEE PANEL
+  // ═══════════════════════════════════════════════════════
+  console.log('\n📅 Erstelle zusätzliche Einsätze für alle Mitarbeiter...');
+
+  if (annaEmployee && object2) {
+    // Einsätze für Anna (diese Woche)
+    for (let i = 0; i < 3; i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() + i);
+
+      const existingAnnaDeployment = await prisma.deployment.findFirst({
+        where: { employeeId: annaEmployee.id, date }
+      });
+
+      if (!existingAnnaDeployment) {
+        await prisma.deployment.create({
+          data: {
+            tenantId: tenant.id,
+            objectId: object2.id,
+            employeeId: annaEmployee.id,
+            date,
+            startTime: new Date('1970-01-01T08:00:00Z'),
+            endTime: new Date('1970-01-01T16:00:00Z'),
+            breakMinutes: 45,
+            status: i === 0 ? 'released' : 'confirmed',
+            plannedById: dispatcherUser?.id || 'system',
+            confirmedById: annaEmployee.id,
+            confirmedAt: new Date(),
+          },
+        });
+      }
+    }
+  }
+
+  if (thomasEmployee && object3) {
+    // Einsätze für Thomas (diese Woche)
+    for (let i = 0; i < 2; i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() + i + 1);
+
+      const existingThomasDeployment = await prisma.deployment.findFirst({
+        where: { employeeId: thomasEmployee.id, date }
+      });
+
+      if (!existingThomasDeployment) {
+        await prisma.deployment.create({
+          data: {
+            tenantId: tenant.id,
+            objectId: object3.id,
+            employeeId: thomasEmployee.id,
+            date,
+            startTime: new Date('1970-01-01T10:00:00Z'),
+            endTime: new Date('1970-01-01T18:00:00Z'),
+            breakMinutes: 60,
+            status: 'released',
+            plannedById: dispatcherUser?.id || 'system',
+          },
+        });
+      }
+    }
+  }
+
+  console.log('✓ Zusätzliche Einsätze für Anna (3) und Thomas (2) erstellt');
+
+  // ═══════════════════════════════════════════════════════
+  // 7. SHIFT SWAP TESTDATEN
+  // ═══════════════════════════════════════════════════════
+  console.log('\n🔄 Erstelle Shift Swap Testdaten...');
+
+  if (maxEmployee && annaEmployee && object1) {
+    const swapDate = new Date(today);
+    swapDate.setDate(swapDate.getDate() + 5);
+
+    // Original Einsatz für Max
+    const existingSwapDeployment = await prisma.deployment.findFirst({
+      where: {
+        employeeId: maxEmployee.id,
+        date: swapDate,
+        status: 'released'
+      }
+    });
+
+    if (!existingSwapDeployment) {
+      await prisma.deployment.create({
+        data: {
+          tenantId: tenant.id,
+          objectId: object1.id,
+          employeeId: maxEmployee.id,
+          date: swapDate,
+          startTime: new Date('1970-01-01T06:00:00Z'),
+          endTime: new Date('1970-01-01T14:00:00Z'),
+          breakMinutes: 30,
+          status: 'released',
+          plannedById: dispatcherUser?.id || 'system',
+        },
+      });
+    }
+  }
+
+  console.log('✓ Shift Swap Einsatz erstellt');
+
+  // ═══════════════════════════════════════════════════════
+  // 8. NOTIFICATIONS
+  // ═══════════════════════════════════════════════════════
+  console.log('\n🔔 Erstelle Notifications...');
+
+  if (demoUser && maxEmployee) {
+    // Notification für User
+    const existingNotification1 = await prisma.notification.findFirst({
+      where: {
+        userId: demoUser.id,
+        type: 'deployment_assigned',
+        title: 'Neuer Einsatz zugewiesen'
+      }
+    });
+
+    if (!existingNotification1) {
+      await prisma.notification.create({
+        data: {
+          userId: demoUser.id,
+          type: 'deployment_assigned',
+          title: 'Neuer Einsatz zugewiesen',
+          message: 'Ihnen wurde ein neuer Einsatz für morgen zugewiesen. Bitte überprüfen Sie Ihre Dienstplanung.',
+          resourceType: 'deployment',
+          resourceId: maxEmployee.id,
+          isRead: false,
+        },
+      });
+    }
+
+    // Notification für Mitarbeiter
+    const existingNotification2 = await prisma.notification.findFirst({
+      where: {
+        userId: maxEmployee.id,
+        type: 'general',
+        title: 'Willkommen'
+      }
+    });
+
+    if (!existingNotification2) {
+      await prisma.notification.create({
+        data: {
+          userId: maxEmployee.id,
+          type: 'general',
+          title: 'Willkommen im System',
+          message: 'Ihr Account wurde erfolgreich eingerichtet. Sie können jetzt Ihre Einsätze einsehen.',
+          isRead: false,
+        },
+      });
+    }
+  }
+
+  console.log('✓ 2 Notifications erstellt');
+
+  // ═══════════════════════════════════════════════════════
+  // 9. KONFLIKT-TESTDATEN (Doppelbelegung)
+  // ═══════════════════════════════════════════════════════
+  console.log('\n⚠️ Erstelle Konflikt-Testdaten...');
+
+  if (maxEmployee && annaEmployee && object1) {
+    const conflictDate = new Date(today);
+    conflictDate.setDate(conflictDate.getDate() + 6);
+
+    // Erstelle zwei Einsätze zur gleichen Zeit für gleiches Objekt (Konflikt)
+    const existingConflict1 = await prisma.deployment.findFirst({
+      where: {
+        employeeId: maxEmployee.id,
+        date: conflictDate,
+        status: 'released'
+      }
+    });
+
+    const existingConflict2 = await prisma.deployment.findFirst({
+      where: {
+        employeeId: annaEmployee.id,
+        date: conflictDate,
+        status: 'released'
+      }
+    });
+
+    if (!existingConflict1) {
+      await prisma.deployment.create({
+        data: {
+          tenantId: tenant.id,
+          objectId: object1.id,
+          employeeId: maxEmployee.id,
+          date: conflictDate,
+          startTime: new Date('1970-01-01T06:00:00Z'),
+          endTime: new Date('1970-01-01T14:00:00Z'),
+          breakMinutes: 30,
+          status: 'released',
+          plannedById: dispatcherUser?.id || 'system',
+        },
+      });
+    }
+
+    if (!existingConflict2) {
+      await prisma.deployment.create({
+        data: {
+          tenantId: tenant.id,
+          objectId: object1.id,
+          employeeId: annaEmployee.id,
+          date: conflictDate,
+          startTime: new Date('1970-01-01T06:00:00Z'),
+          endTime: new Date('1970-01-01T14:00:00Z'),
+          breakMinutes: 30,
+          status: 'released',
+          plannedById: dispatcherUser?.id || 'system',
+        },
+      });
+    }
+  }
+
+  console.log('✓ Konflikt-Testdaten erstellt (Doppelbelegung)');
+
   console.log('\n═══════════════════════════════════════════════════');
   console.log('✅ Neue Demo-Daten erfolgreich erstellt!');
   console.log('═══════════════════════════════════════════════════\n');
@@ -509,7 +725,10 @@ async function main() {
   console.log('  • 2 Planungsgruppen mit Teamleitern');
   console.log('  • 3 Zeitpräferenzen (EmployeeTimePreference)');
   console.log('  • 3 Freiwünsche (EmployeeTimeRequest)');
-  console.log('  • 4 Einsätze mit Status: planned, released, confirmed, declined');
+  console.log('  • 9 Einsätze (verschiedene Status, Mitarbeiter, Konflikte)');
+  console.log('  • 2 Notifications');
+  console.log('  • 1 Shift Swap Einsatz');
+  console.log('  • 2 Konflikt-Einsätze (Doppelbelegung)');
 
   console.log('\n🔐 Login-Daten:');
   console.log('  • Admin: demo / Demo123!');
