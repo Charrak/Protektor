@@ -1,94 +1,28 @@
-import { Router, Request, Response } from 'express';
-import { notificationService } from '../services/notification.service';
+import { Router } from 'express';
+import { notificationController } from '../controllers/notification.controller';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
-/**
- * GET /api/v1/notifications
- * Liste aller Benachrichtigungen des aktuellen Benutzers
- */
-router.get('/', async (req: Request, res: Response) => {
-  try {
-    const { tenantId, id: userId } = req.user!;
-    const { isRead, type, page, limit } = req.query;
+// Alle Routes erfordern Authentifizierung
+router.use(authenticate);
 
-    const result = await notificationService.list(tenantId, userId, {
-      isRead: isRead === 'true' ? true : isRead === 'false' ? false : undefined,
-      type: type as string,
-      page: page ? parseInt(page as string) : undefined,
-      limit: limit ? parseInt(limit as string) : undefined,
-    });
+// GET /notifications - Alle Notifications
+router.get('/', notificationController.getNotifications);
 
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: 'Benachrichtigungen konnten nicht geladen werden' });
-  }
-});
+// GET /notifications/unread - Ungelesene Notifications
+router.get('/unread', notificationController.getUnreadNotifications);
 
-/**
- * GET /api/v1/notifications/unread-count
- * Anzahl ungelesener Benachrichtigungen
- */
-router.get('/unread-count', async (req: Request, res: Response) => {
-  try {
-    const { tenantId, id: userId } = req.user!;
-    const result = await notificationService.getUnreadCount(tenantId, userId);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: 'Anzahl konnte nicht ermittelt werden' });
-  }
-});
+// GET /notifications/count - Anzahl ungelesener Notifications
+router.get('/count', notificationController.countUnread);
 
-/**
- * PUT /api/v1/notifications/:id/read
- * Benachrichtigung als gelesen markieren
- */
-router.put('/:id/read', async (req: Request, res: Response) => {
-  try {
-    const { tenantId, id: userId } = req.user!;
-    const notificationId = req.params.id as string;
+// PUT /notifications/read-all - Alle als gelesen markieren
+router.put('/read-all', notificationController.markAllAsRead);
 
-    const notification = await notificationService.markAsRead(tenantId, userId, notificationId);
-    res.json({ success: true, data: notification });
-  } catch (error: any) {
-    if (error.message === 'Benachrichtigung nicht gefunden') {
-      return res.status(404).json({ error: error.message });
-    }
-    res.status(500).json({ error: 'Benachrichtigung konnte nicht aktualisiert werden' });
-  }
-});
+// PUT /notifications/:id/read - Einzelne als gelesen markieren
+router.put('/:id/read', notificationController.markAsRead);
 
-/**
- * PUT /api/v1/notifications/read-all
- * Alle Benachrichtigungen als gelesen markieren
- */
-router.put('/read-all', async (req: Request, res: Response) => {
-  try {
-    const { tenantId, id: userId } = req.user!;
-    const result = await notificationService.markAllAsRead(tenantId, userId);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: 'Benachrichtigungen konnten nicht aktualisiert werden' });
-  }
-});
-
-/**
- * DELETE /api/v1/notifications/:id
- * Benachrichtigung löschen
- */
-router.delete('/:id', async (req: Request, res: Response) => {
-  try {
-    const { tenantId, id: userId } = req.user!;
-    const notificationId = req.params.id as string;
-
-    const result = await notificationService.delete(tenantId, userId, notificationId);
-    res.json(result);
-  } catch (error: any) {
-    if (error.message === 'Benachrichtigung nicht gefunden') {
-      return res.status(404).json({ error: error.message });
-    }
-    res.status(500).json({ error: 'Benachrichtigung konnte nicht gelöscht werden' });
-  }
-});
+// DELETE /notifications/:id - Notification löschen
+router.delete('/:id', notificationController.deleteNotification);
 
 export default router;

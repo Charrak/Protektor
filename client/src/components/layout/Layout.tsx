@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { brandingService, BrandingSettings } from '../../services/branding.service';
+import { NotificationBell } from '../common/NotificationBell';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: '📊' },
@@ -134,9 +135,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </button>
           <div className="flex-1" />
           <div className="flex items-center gap-4">
-            <button className="p-2 rounded-lg hover:bg-gray-100 relative">
-              🔔
-            </button>
+            <NotificationBell />
             <div className="hidden sm:flex items-center gap-2 text-sm text-gray-600">
               <span>{user?.firstName} {user?.lastName}</span>
               <span className="text-gray-300">|</span>
