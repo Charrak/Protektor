@@ -56,7 +56,7 @@ export class PlanningGroupController {
 
       // Prüfe, ob User Admin ist oder alle Planungsgruppen sehen darf
       // Wenn nicht, filtere nach Teamleiter/Vertreter
-      const isAdmin = req.user.role?.slug === 'admin' || req.user.role?.slug === 'planning-admin';
+      const isAdmin = req.user.roleSlug === 'admin' || req.user.roleSlug === 'planning-admin';
       const userId = isAdmin ? undefined : req.user.id;
 
       const groups = await planningGroupService.list(
@@ -118,7 +118,7 @@ export class PlanningGroupController {
         req.user.tenantId || req.user.id,
         id,
         req.user.id,
-        req.user.role?.slug
+        req.user.roleSlug
       );
 
       const group = await planningGroupService.update(
@@ -163,7 +163,7 @@ export class PlanningGroupController {
         req.user.tenantId || req.user.id,
         id,
         req.user.id,
-        req.user.role?.slug
+        req.user.roleSlug
       );
       
       await planningGroupService.delete(
@@ -204,7 +204,7 @@ export class PlanningGroupController {
         req.user.tenantId || req.user.id,
         id,
         req.user.id,
-        req.user.role?.slug
+        req.user.roleSlug
       );
 
       const group = await planningGroupService.addObjects(
@@ -246,7 +246,7 @@ export class PlanningGroupController {
         req.user.tenantId || req.user.id,
         id,
         req.user.id,
-        req.user.role?.slug
+        req.user.roleSlug
       );
 
       const group = await planningGroupService.addEmployees(
@@ -288,7 +288,7 @@ export class PlanningGroupController {
         req.user.tenantId || req.user.id,
         id,
         req.user.id,
-        req.user.role?.slug
+        req.user.roleSlug
       );
 
       const group = await planningGroupService.removeObjects(
@@ -330,7 +330,7 @@ export class PlanningGroupController {
         req.user.tenantId || req.user.id,
         id,
         req.user.id,
-        req.user.role?.slug
+        req.user.roleSlug
       );
 
       const group = await planningGroupService.removeEmployees(

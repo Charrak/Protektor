@@ -7,8 +7,8 @@ export class DeploymentController {
       const { date, startDate, endDate, employeeId, objectId, status, page, limit, releasedOnly } = req.query;
       
       // Wenn der User ein Mitarbeiter ist (nicht Admin), zeige nur freigegebene Einsätze
-      const isEmployee = req.user?.role?.slug === 'employee';
-      const shouldFilterReleased = releasedOnly === 'true' || (isEmployee && employeeId);
+      const isEmployee = req.user?.roleSlug === 'employee';
+      const shouldFilterReleased = releasedOnly === 'true' || (isEmployee && Boolean(employeeId));
       
       const result = await deploymentService.list({
         date: date as string,

@@ -154,7 +154,7 @@ export class AutoPlannerController {
 
       const tenantId = req.user!.tenantId || req.user!.id;
       const userId = req.user!.id;
-      const userRoleSlug = req.user!.role?.slug;
+      const userRoleSlug = req.user!.roleSlug;
       const start = parseISO(startDate);
       const end = parseISO(endDate);
 
@@ -188,7 +188,7 @@ export class AutoPlannerController {
 
       const tenantId = req.user!.tenantId || req.user!.id;
       const userId = req.user!.id;
-      const userRoleSlug = req.user!.role?.slug;
+      const userRoleSlug = req.user!.roleSlug;
       const start = parseISO(startDate);
       const end = parseISO(endDate);
       const dates = eachDayOfInterval({ start, end });

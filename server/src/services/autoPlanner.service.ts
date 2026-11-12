@@ -13,6 +13,7 @@ export interface Candidate {
   warnings: string[];       // Weiche Warnungen (nicht disqualifizierend)
   disqualified: boolean;
   disqualificationReason?: string;
+  qualifications?: { qualificationId: string }[];
 }
 
 export interface PlanningRequest {
@@ -420,6 +421,9 @@ export class AutoPlannerService {
         conflicts: [],
         warnings,
         disqualified: false,
+        qualifications: emp.qualifications.map((qualification: { qualificationId: string }) => ({
+          qualificationId: qualification.qualificationId,
+        })),
       });
     }
 
