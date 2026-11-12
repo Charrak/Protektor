@@ -251,16 +251,22 @@ model Payment {
 model WebhookEvent {
   id           String   @id @default(uuid())
   tenantId     String?  @db.VarChar(36)
-  stripeEventId String  @unique @db.VarChar(255)
-  eventType    String   @db.VarChar(100)
-  payload      Json
-  processed    Boolean  @default(false)
-  processedAt  DateTime?
-  error        String?  @db.Text
-  createdAt    DateTime @default(now())
+  stripeEventId String?  @unique @db.VarChar(255)
+  webhookId     String?  @db.VarChar(36)
+  eventType     String   @db.VarChar(100)
+  payload       Json
+  processed     Boolean  @default(false)
+  processedAt   DateTime?
+  error         String?  @db.Text
+  responseCode  Int?
+  success       Boolean?
+  errorMessage  String?  @db.Text
+  createdAt     DateTime @default(now())
 
-  tenant Tenant? @relation(fields: [tenantId], references: [id])
+  tenant  Tenant?  @relation(fields: [tenantId], references: [id])
+  webhook Webhook? @relation(fields: [webhookId], references: [id])
 
+  @@index([webhookId, createdAt])
   @@map("webhook_events")
 }
 
@@ -2527,6 +2533,7 @@ model Webhook {
   lastTrigger DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  events      WebhookEvent[]
 
   @@index([tenantId])
   @@map("webhooks")

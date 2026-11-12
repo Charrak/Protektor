@@ -96,8 +96,8 @@ export async function triggerWebhookEvent(tenantId: string, eventType: string, d
         tenantId,
         isActive: true,
         OR: [
-          { events: { array_contains: [eventType] } },
-          { events: { array_contains: ['*'] } }, // Wildcard
+          { events: { has: eventType } },
+          { events: { has: '*' } }, // Wildcard
         ],
       },
     });

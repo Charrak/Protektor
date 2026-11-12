@@ -144,7 +144,7 @@ export class ObjectService {
         city: data.city ?? data.address?.city,
         contactPersonId: data.contactPersonId || undefined,
         accessCredentials: data.accessCredentials || undefined,
-        notes: data.notes || '',
+        description: data.description || data.notes || undefined,
         isActive: data.isActive !== false,
       },
     });

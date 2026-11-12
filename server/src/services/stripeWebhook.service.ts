@@ -306,8 +306,8 @@ export class StripeWebhookService {
   /**
    * Mappt Stripe Status zu internem Status
    */
-  private mapStripeStatus(stripeStatus: string): string {
-    const mapping: Record<string, string> = {
+  private mapStripeStatus(stripeStatus: string): 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'UNPAID' | 'INCOMPLETE' | 'PAUSED' {
+    const mapping: Record<string, 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'UNPAID' | 'INCOMPLETE' | 'PAUSED'> = {
       active: 'ACTIVE',
       past_due: 'PAST_DUE',
       canceled: 'CANCELED',
