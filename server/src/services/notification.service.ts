@@ -1,279 +1,282 @@
 import { prisma } from '../config/database';
 import { logger } from '../config/logger';
-import { broadcastToUser } from '../config/websocket';
 
 export type NotificationType =
-  | 'info'
-  | 'success'
-  | 'warning'
-  | 'error'
-  | 'reminder'
-  | 'deployment'
-  | 'invoice'
-  | 'document'
-  | 'shift_report'
-  | 'system';
-
-export interface CreateNotificationInput {
-  userId: string;
-  type: NotificationType;
-  title: string;
-  message: string;
-  resourceType?: string;
-  resourceId?: string;
-}
+  | 'deployment_assigned'
+  | 'deployment_released'
+  | 'deployment_cancelled'
+  | 'deployment_confirmed'
+  | 'deployment_declined'
+  | 'shift_swap_request'
+  | 'shift_swap_approved'
+  | 'shift_swap_declined'
+  | 'vacation_request'
+  | 'vacation_approved'
+  | 'vacation_declined'
+  | 'time_request_approved'
+  | 'time_request_declined'
+  | 'general';
 
 export class NotificationService {
   /**
-   * Erstellt eine Benachrichtigung und sendet sie per WebSocket
+   * Erstellt eine neue Notification
    */
-  async create(input: CreateNotificationInput) {
+  async createNotification(params: {
+    userId: string;
+    type: NotificationType;
+    title: string;
+    message: string;
+    resourceType?: string;
+    resourceId?: string;
+  }) {
     try {
       const notification = await prisma.notification.create({
         data: {
-          userId: input.userId,
-          type: input.type,
-          title: input.title,
-          message: input.message,
-          resourceType: input.resourceType,
-          resourceId: input.resourceId,
+          userId: params.userId,
+          type: params.type,
+          title: params.title,
+          message: params.message,
+          resourceType: params.resourceType,
+          resourceId: params.resourceId,
         },
       });
 
-      // Echtzeit-Benachrichtigung per WebSocket
-      try {
-        broadcastToUser('notification:new', notification, input.userId);
-      } catch (wsError) {
-        // WebSocket-Fehler nicht kritisch
-        logger.debug('WebSocket-Benachrichtigung fehlgeschlagen', wsError);
-      }
-
-      logger.debug(`Benachrichtigung erstellt: ${input.title} → User ${input.userId}`);
+      logger.info(`Notification erstellt für User ${params.userId}: ${params.type}`);
       return notification;
     } catch (error) {
-      logger.error('Benachrichtigung erstellen fehlgeschlagen', error);
+      logger.error('Fehler beim Erstellen der Notification:', error);
       throw error;
     }
   }
 
   /**
-   * Erstellt Benachrichtigungen für mehrere Benutzer
+   * Erstellt Notifications für mehrere User
    */
-  async createBatch(userIds: string[], input: Omit<CreateNotificationInput, 'userId'>) {
+  async createNotificationsForUsers(params: {
+    userIds: string[];
+    type: NotificationType;
+    title: string;
+    message: string;
+    resourceType?: string;
+    resourceId?: string;
+  }) {
     try {
-      const notifications = await Promise.all(
-        userIds.map((userId) => this.create({ ...input, userId }))
-      );
+      const notifications = await prisma.notification.createMany({
+        data: params.userIds.map(userId => ({
+          userId,
+          type: params.type,
+          title: params.title,
+          message: params.message,
+          resourceType: params.resourceType,
+          resourceId: params.resourceId,
+        })),
+      });
+
+      logger.info(`${notifications.count} Notifications erstellt`);
       return notifications;
     } catch (error) {
-      logger.error('Batch-Benachrichtigung fehlgeschlagen', error);
+      logger.error('Fehler beim Erstellen der Notifications:', error);
       throw error;
     }
   }
 
   /**
-   * Liste der Benachrichtigungen für einen Benutzer
+   * Holt alle Notifications für einen User
    */
-  async list(tenantId: string, userId: string, filters: {
-    isRead?: boolean;
-    type?: string;
-    page?: number;
-    limit?: number;
-  }) {
-    const { isRead, type, page = 1, limit = 20 } = filters;
-
-    const where: any = { userId };
-    if (isRead !== undefined) where.isRead = isRead;
-    if (type) where.type = type;
-
-    const [notifications, total, unreadCount] = await Promise.all([
-      prisma.notification.findMany({
-        where,
+  async getNotificationsForUser(userId: string, limit: number = 50) {
+    try {
+      const notifications = await prisma.notification.findMany({
+        where: { userId },
         orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
         take: limit,
-      }),
-      prisma.notification.count({ where }),
-      prisma.notification.count({ where: { userId, isRead: false } }),
-    ]);
+      });
 
-    return {
-      notifications,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-      unreadCount,
-    };
-  }
-
-  /**
-   * Markiert eine Benachrichtigung als gelesen
-   */
-  async markAsRead(tenantId: string, userId: string, notificationId: string) {
-    const notification = await prisma.notification.findFirst({
-      where: { id: notificationId, userId },
-    });
-
-    if (!notification) {
-      throw new Error('Benachrichtigung nicht gefunden');
+      return notifications;
+    } catch (error) {
+      logger.error('Fehler beim Laden der Notifications:', error);
+      throw error;
     }
-
-    return prisma.notification.update({
-      where: { id: notificationId },
-      data: { isRead: true, readAt: new Date() },
-    });
   }
 
   /**
-   * Markiert alle Benachrichtigungen als gelesen
+   * Holt ungelesene Notifications für einen User
    */
-  async markAllAsRead(tenantId: string, userId: string) {
-    const result = await prisma.notification.updateMany({
-      where: { userId, isRead: false },
-      data: { isRead: true, readAt: new Date() },
-    });
+  async getUnreadNotifications(userId: string) {
+    try {
+      const notifications = await prisma.notification.findMany({
+        where: {
+          userId,
+          isRead: false,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
 
-    return { updated: result.count };
-  }
-
-  /**
-   * Löscht eine Benachrichtigung
-   */
-  async delete(tenantId: string, userId: string, notificationId: string) {
-    const notification = await prisma.notification.findFirst({
-      where: { id: notificationId, userId },
-    });
-
-    if (!notification) {
-      throw new Error('Benachrichtigung nicht gefunden');
+      return notifications;
+    } catch (error) {
+      logger.error('Fehler beim Laden der ungelesenen Notifications:', error);
+      throw error;
     }
-
-    await prisma.notification.delete({ where: { id: notificationId } });
-    return { success: true };
   }
 
   /**
-   * Anzahl ungelesener Benachrichtigungen
+   * Markiert eine Notification als gelesen
    */
-  async getUnreadCount(tenantId: string, userId: string) {
-    const count = await prisma.notification.count({
-      where: { userId, isRead: false },
-    });
-    return { unreadCount: count };
+  async markAsRead(notificationId: string, userId: string) {
+    try {
+      const notification = await prisma.notification.update({
+        where: {
+          id: notificationId,
+          userId,
+        },
+        data: {
+          isRead: true,
+          readAt: new Date(),
+        },
+      });
+
+      logger.info(`Notification ${notificationId} als gelesen markiert`);
+      return notification;
+    } catch (error) {
+      logger.error('Fehler beim Markieren der Notification:', error);
+      throw error;
+    }
   }
 
-  // ─── Vordefinierte Benachrichtigungen ───
+  /**
+   * Markiert alle Notifications eines Users als gelesen
+   */
+  async markAllAsRead(userId: string) {
+    try {
+      const result = await prisma.notification.updateMany({
+        where: {
+          userId,
+          isRead: false,
+        },
+        data: {
+          isRead: true,
+          readAt: new Date(),
+        },
+      });
+
+      logger.info(`${result.count} Notifications als gelesen markiert`);
+      return result;
+    } catch (error) {
+      logger.error('Fehler beim Markieren aller Notifications:', error);
+      throw error;
+    }
+  }
 
   /**
-   * Benachrichtigung für neue Schichtzuweisung
+   * Löscht eine Notification
    */
-  async notifyNewDeployment(tenantId: string, userId: string, deployment: {
-    id: string;
-    customerName: string;
+  async deleteNotification(notificationId: string, userId: string) {
+    try {
+      await prisma.notification.delete({
+        where: {
+          id: notificationId,
+          userId,
+        },
+      });
+
+      logger.info(`Notification ${notificationId} gelöscht`);
+    } catch (error) {
+      logger.error('Fehler beim Löschen der Notification:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Zählt ungelesene Notifications für einen User
+   */
+  async countUnread(userId: string) {
+    try {
+      const count = await prisma.notification.count({
+        where: {
+          userId,
+          isRead: false,
+        },
+      });
+
+      return count;
+    } catch (error) {
+      logger.error('Fehler beim Zählen der Notifications:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Benachrichtigt Mitarbeiter über neuen Einsatz
+   */
+  async notifyDeploymentAssigned(userId: string, deploymentId: string, deploymentDetails: {
     date: Date;
     startTime: string;
     endTime: string;
-  }) {
-    return this.create({
-      userId,
-      type: 'deployment',
-      title: 'Neue Schicht zugewiesen',
-      message: `Schicht bei ${deployment.customerName} am ${new Date(deployment.date).toLocaleDateString('de-DE')} (${deployment.startTime} - ${deployment.endTime})`,
-      resourceType: 'deployment',
-      resourceId: deployment.id,
-    });
-  }
-
-  /**
-   * Benachrichtigung für Schichtänderung
-   */
-  async notifyDeploymentChanged(tenantId: string, userId: string, deployment: {
-    id: string;
-    customerName: string;
-    change: string;
-  }) {
-    return this.create({
-      userId,
-      type: 'deployment',
-      title: 'Schicht geändert',
-      message: `Ihre Schicht bei ${deployment.customerName} wurde geändert: ${deployment.change}`,
-      resourceType: 'deployment',
-      resourceId: deployment.id,
-    });
-  }
-
-  /**
-   * Benachrichtigung für neue Rechnung
-   */
-  async notifyNewInvoice(tenantId: string, userId: string, invoice: {
-    id: string;
-    invoiceNumber: string;
-    amount: number;
-  }) {
-    return this.create({
-      userId,
-      type: 'invoice',
-      title: 'Neue Rechnung erstellt',
-      message: `Rechnung ${invoice.invoiceNumber} über ${invoice.amount.toFixed(2)} € wurde erstellt.`,
-      resourceType: 'invoice',
-      resourceId: invoice.id,
-    });
-  }
-
-  /**
-   * Benachrichtigung für Zahlungserinnerung
-   */
-  async notifyPaymentDue(tenantId: string, userId: string, invoice: {
-    id: string;
-    invoiceNumber: string;
-    dueDate: Date;
-  }) {
-    return this.create({
-      userId,
-      type: 'reminder',
-      title: 'Zahlung fällig',
-      message: `Rechnung ${invoice.invoiceNumber} ist am ${new Date(invoice.dueDate).toLocaleDateString('de-DE')} fällig.`,
-      resourceType: 'invoice',
-      resourceId: invoice.id,
-    });
-  }
-
-  /**
-   * Benachrichtigung für neues Dokument
-   */
-  async notifyNewDocument(tenantId: string, userId: string, document: {
-    id: string;
-    name: string;
-    type: string;
-  }) {
-    return this.create({
-      userId,
-      type: 'document',
-      title: 'Neues Dokument',
-      message: `Dokument "${document.name}" (${document.type}) wurde hochgeladen.`,
-      resourceType: 'document',
-      resourceId: document.id,
-    });
-  }
-
-  /**
-   * Benachrichtigung für Schichtbericht
-   */
-  async notifyShiftReportSubmitted(tenantId: string, userId: string, report: {
-    id: string;
     objectName: string;
-    reporterName: string;
   }) {
-    return this.create({
+    const dateStr = deploymentDetails.date.toLocaleDateString('de-DE');
+    
+    return this.createNotification({
       userId,
-      type: 'shift_report',
-      title: 'Schichtbericht eingereicht',
-      message: `${report.reporterName} hat einen Schichtbericht für ${report.objectName} eingereicht.`,
-      resourceType: 'shift_report',
-      resourceId: report.id,
+      type: 'deployment_assigned',
+      title: 'Neuer Einsatz zugewiesen',
+      message: `Du wurdest für den ${dateStr} von ${deploymentDetails.startTime} bis ${deploymentDetails.endTime} bei ${deploymentDetails.objectName} eingeplant.`,
+      resourceType: 'deployment',
+      resourceId: deploymentId,
+    });
+  }
+
+  /**
+   * Benachrichtigt Mitarbeiter über freigegebenen Einsatz
+   */
+  async notifyDeploymentReleased(userIds: string[], deploymentIds: string[]) {
+    return this.createNotificationsForUsers({
+      userIds,
+      type: 'deployment_released',
+      title: 'Einsätze freigegeben',
+      message: `${deploymentIds.length} neue Einsätze wurden freigegeben und warten auf deine Bestätigung.`,
+      resourceType: 'deployments',
+    });
+  }
+
+  /**
+   * Benachrichtigt über Schichtwechsel-Anfrage
+   */
+  async notifyShiftSwapRequest(recipientId: string, requestId: string, details: {
+    requesterName: string;
+    date: Date;
+    objectName: string;
+  }) {
+    const dateStr = details.date.toLocaleDateString('de-DE');
+    
+    return this.createNotification({
+      userId: recipientId,
+      type: 'shift_swap_request',
+      title: 'Schichtwechsel-Anfrage',
+      message: `${details.requesterName} möchte die Schicht am ${dateStr} bei ${details.objectName} mit dir tauschen.`,
+      resourceType: 'shift_swap',
+      resourceId: requestId,
+    });
+  }
+
+  /**
+   * Benachrichtigt über Urlaubsantrag
+   */
+  async notifyVacationRequest(recipientId: string, requestId: string, details: {
+    requesterName: string;
+    startDate: Date;
+    endDate: Date;
+    days: number;
+  }) {
+    const startStr = details.startDate.toLocaleDateString('de-DE');
+    const endStr = details.endDate.toLocaleDateString('de-DE');
+    
+    return this.createNotification({
+      userId: recipientId,
+      type: 'vacation_request',
+      title: 'Neuer Urlaubsantrag',
+      message: `${details.requesterName} hat Urlaub von ${startStr} bis ${endStr} beantragt (${details.days} Tage).`,
+      resourceType: 'vacation',
+      resourceId: requestId,
     });
   }
 }

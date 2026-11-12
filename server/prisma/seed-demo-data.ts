@@ -390,8 +390,10 @@ async function main() {
   const periodEnd = new Date(today.getFullYear(), today.getMonth(), 0);
 
   const invoices = await Promise.all([
-    prisma.customerInvoice.create({
-      data: {
+    prisma.customerInvoice.upsert({
+      where: { tenantId_invoiceNumber: { tenantId: tenant.id, invoiceNumber: 'INV-2024-001' } },
+      update: {},
+      create: {
         tenantId: tenant.id, customerId: customers[0].id, invoiceNumber: 'INV-2024-001',
         invoiceDate: new Date(today.getFullYear(), today.getMonth() - 1, 28),
         dueDate: new Date(today.getFullYear(), today.getMonth(), 28),
@@ -402,8 +404,10 @@ async function main() {
         createdById: accountantUser.id,
       },
     }),
-    prisma.customerInvoice.create({
-      data: {
+    prisma.customerInvoice.upsert({
+      where: { tenantId_invoiceNumber: { tenantId: tenant.id, invoiceNumber: 'INV-2024-002' } },
+      update: {},
+      create: {
         tenantId: tenant.id, customerId: customers[2].id, invoiceNumber: 'INV-2024-002',
         invoiceDate: new Date(today.getFullYear(), today.getMonth() - 1, 28),
         dueDate: new Date(today.getFullYear(), today.getMonth(), 28),
@@ -414,8 +418,10 @@ async function main() {
         createdById: accountantUser.id,
       },
     }),
-    prisma.customerInvoice.create({
-      data: {
+    prisma.customerInvoice.upsert({
+      where: { tenantId_invoiceNumber: { tenantId: tenant.id, invoiceNumber: 'INV-2024-003' } },
+      update: {},
+      create: {
         tenantId: tenant.id, customerId: customers[3].id, invoiceNumber: 'INV-2024-003',
         invoiceDate: today,
         dueDate: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30),

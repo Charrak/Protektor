@@ -27,6 +27,8 @@ import { PlatformDashboardPage } from './pages/platform/PlatformDashboardPage';
 import { TenantListPage } from './pages/platform/TenantListPage';
 import { SubscriptionListPage } from './pages/platform/SubscriptionListPage';
 import { PlanListPage } from './pages/platform/PlanListPage';
+import { NotificationsPage } from './pages/NotificationsPage';
+import { ShiftSwapManagement } from './pages/scheduling/ShiftSwapManagement';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -100,6 +102,8 @@ function AppRoutes() {
                   <Route path="/admin/users" element={<UsersPage />} />
                   <Route path="/admin/roles" element={<RolesPage />} />
                   <Route path="/admin/branding" element={<BrandingSettingsPage />} />
+                  <Route path="/notifications" element={<NotificationsPage />} />
+                  <Route path="/shift-swaps" element={<ShiftSwapManagement />} />
 
                   {/* Fallback */}
                   <Route path="*" element={<Navigate to="/" replace />} />
