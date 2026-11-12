@@ -32,8 +32,14 @@ import objectShiftPatternRoutes from './objectShiftPattern.routes';
 import employeeTimePreferenceRoutes from './employeeTimePreference.routes';
 import shiftSwapRoutes from './shiftSwap.routes';
 import conflictRoutes from './conflict.routes';
+import testRoutes from './test.routes';
 
 const router = Router();
+
+// ─── Test & Debug Routes (nur für Entwicklung) ───
+if (process.env.NODE_ENV !== 'production') {
+  router.use('/test', testRoutes);
+}
 
 // ─── Help & Support (öffentlich, vor Auth) ───
 router.use('/help', helpRoutes);
