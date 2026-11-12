@@ -12,6 +12,7 @@ import { AutoPlanner } from '../../components/scheduling/AutoPlanner';
 import { ReplacementFinder } from '../../components/scheduling/ReplacementFinder';
 import { SchedulingFilters, defaultFilters, type ScheduleFilters } from '../../components/scheduling/SchedulingFilters';
 import { KPIBar } from '../../components/scheduling/KPIBar';
+import { ConflictPanel } from '../../components/scheduling/ConflictPanel';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -93,6 +94,7 @@ function SchedulingPageContent() {
   const [filters, setFilters] = useState<ScheduleFilters>(defaultFilters);
   const [allEmployees, setAllEmployees] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
   const [allObjects, setAllObjects] = useState<{ id: string; name: string }[]>([]);
+  const [showConflictPanel, setShowConflictPanel] = useState(false);
   
   // Lade Mitarbeiter und Objekte für Filter
   useEffect(() => {
@@ -172,25 +174,32 @@ function SchedulingPageContent() {
     });
   }, [deployments, filters]);
 
+  // Berechne Zeitraum für Konfliktprüfung
+  const viewPeriod = useMemo(() => {
+    let startDate: string, endDate: string;
+
+    if (viewMode === 'day') {
+      startDate = format(currentDate, 'yyyy-MM-dd');
+      endDate = startDate;
+    } else if (viewMode === 'week') {
+      const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
+      startDate = format(weekStart, 'yyyy-MM-dd');
+      endDate = format(weekEnd, 'yyyy-MM-dd');
+    } else {
+      const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      startDate = format(monthStart, 'yyyy-MM-dd');
+      endDate = format(monthEnd, 'yyyy-MM-dd');
+    }
+
+    return { startDate, endDate };
+  }, [currentDate, viewMode]);
+
   const loadDeployments = useCallback(async () => {
     setLoading(true);
     try {
-      let startDate: string, endDate: string;
-
-      if (viewMode === 'day') {
-        startDate = format(currentDate, 'yyyy-MM-dd');
-        endDate = startDate;
-      } else if (viewMode === 'week') {
-        const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-        const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
-        startDate = format(weekStart, 'yyyy-MM-dd');
-        endDate = format(weekEnd, 'yyyy-MM-dd');
-      } else {
-        const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-        const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-        startDate = format(monthStart, 'yyyy-MM-dd');
-        endDate = format(monthEnd, 'yyyy-MM-dd');
-      }
+      const { startDate, endDate } = viewPeriod;
 
       const result = await deploymentService.list({ startDate, endDate, limit: 200 });
       setDeployments(result.deployments);
@@ -199,7 +208,7 @@ function SchedulingPageContent() {
     } finally {
       setLoading(false);
     }
-  }, [currentDate, viewMode]);
+  }, [viewPeriod]);
 
   useEffect(() => { loadDeployments(); }, [loadDeployments]);
 
@@ -410,6 +419,9 @@ function SchedulingPageContent() {
         description={`${filteredDeployments.length} von ${deployments.length} Einsätzen im aktuellen Zeitraum`}
         actions={
           <div className="flex items-center gap-2">
+            <button onClick={() => setShowConflictPanel(!showConflictPanel)} className="btn-secondary">
+              ⚡ Konflikte
+            </button>
             <button onClick={() => setShowAutoPlannerModal(true)} className="btn-secondary">
               🤖 Auto-Planung
             </button>
@@ -463,6 +475,20 @@ function SchedulingPageContent() {
           </div>
         </div>
       </div>
+
+      {/* Konflikt-Panel */}
+      {showConflictPanel && (
+        <div className="mb-4">
+          <ConflictPanel
+            startDate={viewPeriod.startDate}
+            endDate={viewPeriod.endDate}
+            onConflictClick={(conflict) => {
+              // Optional: Scrollen zum entsprechenden Einsatz
+              console.log('Konflikt angeklickt:', conflict);
+            }}
+          />
+        </div>
+      )}
 
       {/* Ansicht */}
       {loading ? (
