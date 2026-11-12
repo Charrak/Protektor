@@ -153,6 +153,8 @@ export class AuditRollbackService {
         tenantId: log.tenantId,
         userId: adminId,
         action: 'ROLLBACK',
+        resourceType: log.entityType || 'Unknown',
+        resourceId: log.entityId || '',
         entityType: log.entityType,
         entityId: log.entityId,
         changes: {

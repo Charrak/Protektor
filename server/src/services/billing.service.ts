@@ -30,10 +30,10 @@ export class BillingService {
       },
     });
 
-    const baseRate = rate?.rateBase ?? employee.hourlyRateBase ?? 0;
-    const nightSurcharge = rate?.rateNight ?? employee.surchargeNight ?? 0;
-    const sundaySurcharge = rate?.rateSunday ?? employee.surchargeSunday ?? 0;
-    const holidaySurcharge = rate?.rateHoliday ?? employee.surchargeHoliday ?? 0;
+    const baseRate = Number(rate?.rateBase ?? employee.hourlyRateBase ?? 0);
+    const nightSurcharge = Number(rate?.rateNight ?? employee.surchargeNight ?? 0);
+    const sundaySurcharge = Number(rate?.rateSunday ?? employee.surchargeSunday ?? 0);
+    const holidaySurcharge = Number(rate?.rateHoliday ?? employee.surchargeHoliday ?? 0);
 
     let regularPay = 0;
     let nightPay = 0;
