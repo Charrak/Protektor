@@ -6,13 +6,14 @@ import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
 import { EmptyState } from '../../components/common/EmptyState';
 import { deploymentService, type Deployment } from '../../services/deployment.service';
-import { employeeService } from '../../services/employee.service';
+import { employeeService, type EmployeeListItem } from '../../services/employee.service';
 import { objectService } from '../../services/object.service';
 import { AutoPlanner } from '../../components/scheduling/AutoPlanner';
 import { ReplacementFinder } from '../../components/scheduling/ReplacementFinder';
 import { SchedulingFilters, defaultFilters, type ScheduleFilters } from '../../components/scheduling/SchedulingFilters';
 import { KPIBar } from '../../components/scheduling/KPIBar';
 import { ConflictPanel } from '../../components/scheduling/ConflictPanel';
+import { EmployeePanel } from '../../components/scheduling/EmployeePanel';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -96,10 +97,18 @@ function SchedulingPageContent() {
   const [allObjects, setAllObjects] = useState<{ id: string; name: string }[]>([]);
   const [showConflictPanel, setShowConflictPanel] = useState(false);
   
+  // Employee Panel State
+  const [showEmployeePanel, setShowEmployeePanel] = useState(false);
+  const [fullEmployees, setFullEmployees] = useState<EmployeeListItem[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | undefined>();
+  
   // Lade Mitarbeiter und Objekte für Filter
   useEffect(() => {
     employeeService.list({ status: 'active', limit: 500 })
-      .then(r => setAllEmployees(r.employees.map((e: any) => ({ id: e.id, firstName: e.firstName, lastName: e.lastName }))))
+      .then(r => {
+        setAllEmployees(r.employees.map((e: any) => ({ id: e.id, firstName: e.firstName, lastName: e.lastName })));
+        setFullEmployees(r.employees);
+      })
       .catch(console.error);
     objectService.list({ isActive: true, limit: 500 })
       .then(r => setAllObjects(r.objects.map((o: any) => ({ id: o.id, name: o.name }))))
@@ -473,9 +482,21 @@ function SchedulingPageContent() {
               </button>
             ))}
           </div>
+          <div className="w-px h-6 bg-gray-300" />
+          <button
+            onClick={() => setShowEmployeePanel(!showEmployeePanel)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+              showEmployeePanel
+                ? 'bg-primary-100 text-primary-700 border border-primary-300'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
+            }`}
+          >
+            👥 Mitarbeiter
+          </button>
         </div>
       </div>
 
+<<<<<<< HEAD
       {/* Konflikt-Panel */}
       {showConflictPanel && (
         <div className="mb-4">
@@ -490,25 +511,40 @@ function SchedulingPageContent() {
         </div>
       )}
 
-      {/* Ansicht */}
-      {loading ? (
-        <div className="p-8 text-center text-gray-400">Wird geladen...</div>
-      ) : filteredDeployments.length === 0 ? (
-        <EmptyState
-          icon="📅"
-          title="Keine Einsätze im aktuellen Zeitraum"
-          description="Erstelle den ersten Einsatz"
-          action={
-            <button onClick={() => setShowCreateModal(true)} className="btn-primary">
-              + Neuer Einsatz
-            </button>
-          }
-        />
-      ) : (
-        <div className="card overflow-hidden p-0">
-          {renderView()}
+      {/* Ansicht mit optionalem Mitarbeiter-Panel */}
+      <div className={`flex ${showEmployeePanel ? 'gap-4' : ''}`}>
+        <div className={`flex-1 ${showEmployeePanel ? 'min-w-0' : ''}`}>
+          {loading ? (
+            <div className="p-8 text-center text-gray-400">Wird geladen...</div>
+          ) : filteredDeployments.length === 0 ? (
+            <EmptyState
+              icon="📅"
+              title="Keine Einsätze im aktuellen Zeitraum"
+              description="Erstelle den ersten Einsatz"
+              action={
+                <button onClick={() => setShowCreateModal(true)} className="btn-primary">
+                  + Neuer Einsatz
+                </button>
+              }
+            />
+          ) : (
+            <div className="card overflow-hidden p-0">
+              {renderView()}
+            </div>
+          )}
         </div>
-      )}
+
+        {showEmployeePanel && (
+          <div className="card overflow-hidden p-0 h-[calc(100vh-400px)] min-h-[600px]">
+            <EmployeePanel
+              employees={fullEmployees}
+              deployments={filteredDeployments}
+              onSelectEmployee={(id) => setSelectedEmployeeId(id)}
+              selectedEmployeeId={selectedEmployeeId}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Create Modal */}
       {showCreateModal && (
