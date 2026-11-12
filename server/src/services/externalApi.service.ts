@@ -18,10 +18,11 @@ export class ExternalApiService {
         key: apiKey,
         isActive: true,
         type: 'external',
+        tenantId: { not: null },
       },
     });
 
-    if (!key) return null;
+    if (!key?.tenantId) return null;
 
     // Last Used aktualisieren
     await prisma.apiKey.update({

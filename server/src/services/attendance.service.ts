@@ -81,6 +81,7 @@ export class AttendanceService {
 
     const record = await prisma.timeRecord.create({
       data: {
+        tenantId: employee.tenantId,
         employeeId,
         deploymentId,
         date: new Date(),

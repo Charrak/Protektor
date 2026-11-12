@@ -106,9 +106,6 @@ export class MLTrainingService {
     // Alle Deployments laden
     const deployments = await prisma.deployment.findMany({
       where: { tenantId, status: { in: ['confirmed', 'completed'] } },
-      include: {
-        shiftReport: true,
-      },
     });
 
     // Alle Schichtberichte laden

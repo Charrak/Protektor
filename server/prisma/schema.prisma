@@ -90,6 +90,7 @@ model PlatformAuditLog {
 model Tenant {
   id                  String      @id @default(uuid())
   tenantId            String      @unique @db.VarChar(36)
+  licenseKey          String?     @unique @db.VarChar(100)
   companyName         String      @db.VarChar(200)
   contactEmail        String      @db.VarChar(255)
   contactPhone        String?     @db.VarChar(50)
@@ -166,6 +167,8 @@ model Tenant {
   // Support & Feedback
   supportTickets     SupportTicket[]
   contactRequests    ContactRequest[]
+  auditLogs          AuditLog[]
+  apiKeys            ApiKey[]
 
   // Planungsgruppen
   planningGroups     PlanningGroup[]
@@ -1874,20 +1877,27 @@ model Session {
 
 model AuditLog {
   id           String   @id @default(uuid())
+  tenantId     String?  @db.VarChar(36)
   userId       String?  @db.VarChar(36)
   userName     String?  @db.VarChar(200)
   sessionId    String?  @db.VarChar(100)
   action       String   @db.VarChar(50)
   resourceType String   @db.VarChar(50)
   resourceId   String   @db.VarChar(36)
+  entityType   String?  @db.VarChar(100)
+  entityId     String?  @db.VarChar(36)
+  changes      Json?
+  metadata     Json?
   oldValue     Json?
   newValue     Json?
   ipAddress    String?  @db.VarChar(45)
   userAgent    String?  @db.Text
   createdAt    DateTime @default(now())
 
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
   user User? @relation(fields: [userId], references: [id])
 
+  @@index([tenantId, createdAt(sort: Desc)])
   @@index([resourceType, resourceId, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
   @@map("audit_logs")
@@ -2040,6 +2050,7 @@ model SystemSettings {
 
 model ApiKey {
   id          String    @id @default(uuid())
+  tenantId    String?   @db.VarChar(36)
   name        String    @db.VarChar(100)
   key         String    @unique @db.VarChar(255)
   type        String    @db.VarChar(50) // datev, sms, push, maps, etc.
@@ -2047,7 +2058,10 @@ model ApiKey {
   lastUsed    DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
   @@map("api_keys")
 }
 
