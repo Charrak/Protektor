@@ -13,6 +13,7 @@ describe('LicenseService', () => {
     const user = await prisma.user.create({
       data: {
         email: 'license-test-admin@protektor.test',
+        username: 'license-test-admin',
         firstName: 'License',
         lastName: 'Admin',
         password: 'hashed-password',
