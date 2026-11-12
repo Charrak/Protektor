@@ -77,16 +77,6 @@ export class DatevExportService {
         tenantId,
         status: 'active',
       },
-      include: {
-        timeEntries: {
-          where: {
-            date: {
-              gte: new Date(period.year, period.month - 1, 1),
-              lt: new Date(period.year, period.month, 0),
-            },
-          },
-        },
-      },
     });
 
     const datevEmployees: DatevEmployeeExport[] = employees.map((emp: any) => {
@@ -116,7 +106,7 @@ export class DatevExportService {
         bic: (emp.bankDetails as any)?.bic || undefined,
         
         beschaeftigungsart,
-        stundenloehne: emp.hourlyRate || undefined,
+        stundenloehne: emp.hourlyRateBase || undefined,
         monatsgehalt: emp.monthlySalary || undefined,
         
         steuerklasse: (emp.taxClass as any) || undefined,
@@ -165,7 +155,7 @@ export class DatevExportService {
       if (entry.type === 'HOLIDAY_WORK') lohnart = 7; // Feiertagszuschlag
 
       const stunden = entry.hours;
-      const stundensatz = entry.employee.hourlyRate || 0;
+      const stundensatz = entry.employee.hourlyRateBase || 0;
       const betrag = stunden * stundensatz;
 
       return {
@@ -410,7 +400,7 @@ export class DatevExportService {
       if (!emp.taxId) {
         errors.push({ employeeId: emp.id, field: 'taxId', message: 'Steuer-ID erforderlich für DATEV' });
       }
-      if (!emp.hourlyRate && !emp.monthlySalary) {
+      if (!emp.hourlyRateBase && !emp.monthlySalary) {
         errors.push({ employeeId: emp.id, field: 'hourlyRate/monthlySalary', message: 'Stundenlohn oder Monatsgehalt erforderlich' });
       }
       if (!emp.dateOfBirth) {

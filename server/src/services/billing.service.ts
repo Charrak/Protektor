@@ -140,6 +140,7 @@ export class BillingService {
 
     const invoice = await prisma.customerInvoice.create({
       data: {
+        tenantId: customer.tenantId,
         invoiceNumber,
         customerId,
         invoiceDate: new Date(),
