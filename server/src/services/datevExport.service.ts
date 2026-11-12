@@ -82,9 +82,8 @@ export class DatevExportService {
     const datevEmployees: DatevEmployeeExport[] = employees.map((emp: any) => {
       // Beschäftigungsart bestimmen
       let beschaeftigungsart = 1; // Vollzeit
-      if (emp.employmentType === 'PART_TIME') beschaeftigungsart = 2;
-      if (emp.employmentType === 'MINIJOB') beschaeftigungsart = 4;
-      if (emp.employmentType === 'WORKING_STUDENT') beschaeftigungsart = 5;
+      if (emp.employmentType === 'part_time') beschaeftigungsart = 2;
+      if (emp.employmentType === 'mini_job') beschaeftigungsart = 4;
 
       return {
         personalNumber: emp.personnelNumber,
@@ -92,31 +91,31 @@ export class DatevExportService {
         nachname: emp.lastName,
         vorname: emp.firstName,
         geburtsdatum: emp.dateOfBirth ? format(new Date(emp.dateOfBirth), 'ddMMyyyy') : '',
-        eintrittsdatum: format(new Date(emp.hireDate), 'ddMMyyyy'),
-        austrittsdatum: emp.terminationDate ? format(new Date(emp.terminationDate), 'ddMMyyyy') : undefined,
+        eintrittsdatum: emp.contractStart ? format(new Date(emp.contractStart), 'ddMMyyyy') : '',
+        austrittsdatum: emp.contractEnd ? format(new Date(emp.contractEnd), 'ddMMyyyy') : undefined,
         
-        strasse: (emp.address as any)?.street || '',
-        plz: (emp.address as any)?.zipCode || '',
-        ort: (emp.address as any)?.city || '',
+        strasse: emp.street || '',
+        plz: emp.zipCode || '',
+        ort: emp.city || '',
         
         steuerIdNr: emp.taxId || undefined,
-        sozialversicherungsnr: (emp.socialInsurance as any)?.number || undefined,
+        sozialversicherungsnr: emp.socialInsuranceId || undefined,
         
-        iban: (emp.bankDetails as any)?.iban || undefined,
-        bic: (emp.bankDetails as any)?.bic || undefined,
+        iban: emp.iban || undefined,
+        bic: emp.bic || undefined,
         
         beschaeftigungsart,
         stundenloehne: emp.hourlyRateBase || undefined,
         monatsgehalt: emp.monthlySalary || undefined,
         
         steuerklasse: (emp.taxClass as any) || undefined,
-        freibetrag: (emp.taxAllowances as any)?.amount || undefined,
-        kinderfreibetraege: (emp.taxAllowances as any)?.children || 0,
+        freibetrag: undefined,
+        kinderfreibetraege: emp.children || 0,
         
-        kvGruppe: (emp.socialInsurance as any)?.healthInsurance || undefined,
-        pvGruppe: (emp.socialInsurance as any)?.careInsurance || undefined,
-        rvGruppe: (emp.socialInsurance as any)?.pensionInsurance || undefined,
-        avGruppe: (emp.socialInsurance as any)?.unemploymentInsurance || undefined,
+        kvGruppe: emp.healthInsuranceType || undefined,
+        pvGruppe: undefined,
+        rvGruppe: emp.pensionInsuranceId || undefined,
+        avGruppe: undefined,
       };
     });
 
@@ -406,17 +405,17 @@ export class DatevExportService {
       if (!emp.dateOfBirth) {
         errors.push({ employeeId: emp.id, field: 'dateOfBirth', message: 'Geburtsdatum erforderlich' });
       }
-      if (!emp.hireDate) {
+      if (!emp.contractStart) {
         errors.push({ employeeId: emp.id, field: 'hireDate', message: 'Eintrittsdatum erforderlich' });
       }
 
       // Bankverbindung prüfen (optional aber empfohlen)
-      if (!(emp.bankDetails as any)?.iban) {
+      if (!emp.iban) {
         errors.push({ employeeId: emp.id, field: 'bankDetails.iban', message: 'IBAN empfohlen für DATEV' });
       }
 
       // Sozialversicherungsnummer prüfen (pflicht für SV-pflichtige)
-      if (emp.employmentType !== 'MINIJOB' && !(emp.socialInsurance as any)?.number) {
+      if (emp.employmentType !== 'mini_job' && !emp.socialInsuranceId) {
         errors.push({ employeeId: emp.id, field: 'socialInsurance.number', message: 'Sozialversicherungsnummer erforderlich' });
       }
     }

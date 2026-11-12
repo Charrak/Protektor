@@ -154,6 +154,7 @@ export class DeploymentService {
 
     const deployment = await prisma.deployment.create({
       data: {
+        tenantId: object.tenantId,
         objectId,
         employeeId,
         date: dateObj,

@@ -2030,7 +2030,7 @@ model TenantFeature {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  @@index([tenantId])
+  @@unique([tenantId, featureKey])
   @@index([featureKey])
   @@map("tenant_features")
 }

@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { auditService } from './audit.service';
 import { logger } from '../config/logger';
+import { generateSecureToken } from '../utils/encryption';
 
 const prisma = new PrismaClient();
 
@@ -146,8 +147,11 @@ export class ExternalApiService {
         tenantId,
         companyName: data.companyName,
         customerNumber: data.customerNumber,
-        contactEmail: data.contactEmail,
-        contactPhone: data.contactPhone,
+        email: data.email || data.contactEmail,
+        phone: data.phone || data.contactPhone,
+        street: data.street || '',
+        zipCode: data.zipCode || '',
+        city: data.city || '',
         status: data.status || 'active',
       },
     });
@@ -193,17 +197,22 @@ export class ExternalApiService {
    * POST /api/external/time-entries
    */
   async createTimeEntry(tenantId: string, data: any, apiKeyId: string) {
+    const entryDate = new Date(data.date);
+    const toTimestamp = (value: string) => /^\d{1,2}:\d{2}/.test(value)
+      ? new Date(`${data.date}T${value}`)
+      : new Date(value);
+
     const entry = await prisma.timeRecord.create({
       data: {
         tenantId,
         employeeId: data.employeeId,
-        date: new Date(data.date),
-        startTime: data.startTime,
-        endTime: data.endTime,
-        hours: data.hours,
-        type: data.type || 'REGULAR',
+        date: entryDate,
+        clockIn: toTimestamp(data.startTime),
+        clockOut: toTimestamp(data.endTime),
+        totalHours: data.hours,
         notes: data.notes,
-        status: 'pending',
+        sourceType: 'manual',
+        status: 'completed',
       },
     });
 
@@ -244,6 +253,7 @@ export class ExternalApiService {
       data: {
         tenantId,
         url: data.url,
+        secret: generateSecureToken(32),
         events: data.events,
         isActive: true,
       },
