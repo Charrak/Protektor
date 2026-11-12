@@ -508,7 +508,6 @@ function SchedulingPageContent() {
         </div>
       </div>
 
-<<<<<<< HEAD
       {/* Konflikt-Panel */}
       {showConflictPanel && (
         <div className="mb-4">
