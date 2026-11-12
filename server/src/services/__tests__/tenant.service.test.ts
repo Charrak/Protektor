@@ -14,6 +14,7 @@ describe('TenantService', () => {
     const user = await prisma.user.create({
       data: {
         email: 'test-admin@protektor.test',
+        username: 'test-admin',
         firstName: 'Test',
         lastName: 'Admin',
         password: 'hashed-password',

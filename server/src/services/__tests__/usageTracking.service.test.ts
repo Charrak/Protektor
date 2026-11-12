@@ -13,6 +13,7 @@ describe('UsageTrackingService', () => {
     const user = await prisma.user.create({
       data: {
         email: 'usage-test-admin@protektor.test',
+        username: 'usage-test-admin',
         firstName: 'Usage',
         lastName: 'Admin',
         password: 'hashed-password',
