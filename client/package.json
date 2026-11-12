@@ -12,6 +12,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.0",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.1.5",
     "axios": "^1.7.7",

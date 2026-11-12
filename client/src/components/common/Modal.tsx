@@ -19,7 +19,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={onClose}>
+      <Dialog as="div" className="relative z-50" data-modal-guard="" onClose={() => {}}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -49,6 +49,8 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
                     {title}
                   </Dialog.Title>
                   <button
+                    type="button"
+                    data-modal-cancel-button
                     onClick={onClose}
                     className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                   >

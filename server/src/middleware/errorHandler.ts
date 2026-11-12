@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { logger } from '../config/logger';
 
 export class AppError extends Error {
@@ -17,6 +17,13 @@ export class ValidationError extends AppError {
   constructor(message: string) {
     super(message, 400);
     this.name = 'ValidationError';
+  }
+}
+
+export class BadRequestError extends AppError {
+  constructor(message: string) {
+    super(message, 400);
+    this.name = 'BadRequestError';
   }
 }
 
@@ -46,6 +53,15 @@ export class ForbiddenError extends AppError {
     super(message, 403);
     this.name = 'ForbiddenError';
   }
+}
+
+/** Forwards rejected async route handlers to Express's error middleware. */
+export function asyncHandler(
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<unknown>,
+): RequestHandler {
+  return (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
 }
 
 export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction): void {

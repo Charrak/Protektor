@@ -21,8 +21,8 @@ export function ConfirmDialog({ isOpen, onClose, onConfirm, title, message, conf
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-black/30" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-modal-guard="">
+      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
       <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
         <p className="text-sm text-gray-600 mb-6">{message}</p>
