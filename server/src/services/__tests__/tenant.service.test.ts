@@ -4,16 +4,32 @@ import { prisma } from '../../config/database';
 
 describe('TenantService', () => {
   let testTenantId: string;
+  let testUserId: string;
 
   beforeAll(async () => {
     // Test-Datenbank verbinden
     await prisma.$connect();
+    
+    // Test-User erstellen (wird für createdById benötigt)
+    const user = await prisma.user.create({
+      data: {
+        email: 'test-admin@protektor.test',
+        firstName: 'Test',
+        lastName: 'Admin',
+        password: 'hashed-password',
+        role: 'PLATFORM_ADMIN',
+      },
+    });
+    testUserId = user.id;
   });
 
   afterAll(async () => {
     // Aufräumen
     if (testTenantId) {
       await prisma.tenant.delete({ where: { id: testTenantId } }).catch(() => {});
+    }
+    if (testUserId) {
+      await prisma.user.delete({ where: { id: testUserId } }).catch(() => {});
     }
     await prisma.$disconnect();
   });
@@ -33,7 +49,7 @@ describe('TenantService', () => {
         employeeLimit: 50,
       };
 
-      const tenant = await tenantService.create(input, 'admin-id');
+      const tenant = await tenantService.create(input, testUserId);
 
       expect(tenant).toBeDefined();
       expect(tenant.companyName).toBe(input.companyName);
@@ -52,7 +68,7 @@ describe('TenantService', () => {
         trialDays: 30,
       };
 
-      const tenant = await tenantService.create(input, 'admin-id');
+      const tenant = await tenantService.create(input, testUserId);
 
       expect(tenant.licenseStatus).toBe('TEST');
 
@@ -68,7 +84,7 @@ describe('TenantService', () => {
           companyName: 'List Test GmbH',
           contactEmail: 'list@example.com',
         },
-        'admin-id'
+        testUserId
       );
 
       testTenantId = tenant.id;
@@ -95,7 +111,7 @@ describe('TenantService', () => {
           companyName: 'Unique Search Test GmbH',
           contactEmail: 'search@example.com',
         },
-        'admin-id'
+        testUserId
       );
 
       testTenantId = tenant.id;
@@ -114,7 +130,7 @@ describe('TenantService', () => {
           companyName: 'Status Update Test GmbH',
           contactEmail: 'status@example.com',
         },
-        'admin-id'
+        testUserId
       );
 
       testTenantId = tenant.id;
@@ -122,7 +138,7 @@ describe('TenantService', () => {
       const updated = await tenantService.updateLicenseStatus(
         tenant.id,
         'ACTIVE',
-        'admin-id'
+        testUserId
       );
 
       expect(updated.licenseStatus).toBe('ACTIVE');

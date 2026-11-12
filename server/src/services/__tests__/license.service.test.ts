@@ -4,9 +4,22 @@ import { prisma } from '../../config/database';
 
 describe('LicenseService', () => {
   let testTenantId: string;
+  let testUserId: string;
 
   beforeAll(async () => {
     await prisma.$connect();
+
+    // Test-User erstellen (wird für createdById benötigt)
+    const user = await prisma.user.create({
+      data: {
+        email: 'license-test-admin@protektor.test',
+        firstName: 'License',
+        lastName: 'Admin',
+        password: 'hashed-password',
+        role: 'PLATFORM_ADMIN',
+      },
+    });
+    testUserId = user.id;
 
     // Test-Tenant erstellen
     const tenant = await prisma.tenant.create({
@@ -18,7 +31,7 @@ describe('LicenseService', () => {
         employeeLimit: 50,
         paymentGraceDays: 7,
         offlineGraceMinutes: 1440,
-        createdById: 'admin-id',
+        createdById: testUserId,
       },
     });
 
@@ -28,6 +41,9 @@ describe('LicenseService', () => {
   afterAll(async () => {
     if (testTenantId) {
       await prisma.tenant.delete({ where: { id: testTenantId } }).catch(() => {});
+    }
+    if (testUserId) {
+      await prisma.user.delete({ where: { id: testUserId } }).catch(() => {});
     }
     await prisma.$disconnect();
   });
