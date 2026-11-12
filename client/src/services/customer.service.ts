@@ -4,6 +4,7 @@ export interface Customer {
   id: string;
   customerNumber: string;
   companyName: string;
+  legalForm?: string;
   department?: string;
   street?: string;
   zipCode?: string;
@@ -12,6 +13,7 @@ export interface Customer {
   phone?: string;
   fax?: string;
   email?: string;
+  invoiceEmail?: string;
   website?: string;
   taxNumber?: string;
   vatId?: string;

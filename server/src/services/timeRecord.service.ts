@@ -45,8 +45,8 @@ interface LockInput {
 }
 
 interface CorrectInput {
-  field: string;
-  value: any;
+  field: 'clockIn' | 'clockOut' | 'breakDuration' | 'notes';
+  value: string | number | null;
   reason: string;
 }
 
@@ -394,6 +394,39 @@ export class TimeRecordService {
       throw new ConflictError('Zeiterfassung ist gesperrt');
     }
 
+    const allowedFields = ['clockIn', 'clockOut', 'breakDuration', 'notes'];
+    if (!allowedFields.includes(input.field)) {
+      throw new ValidationError('Dieses Feld kann nicht korrigiert werden');
+    }
+    const reason = typeof input.reason === 'string' ? input.reason.trim() : '';
+    if (!reason) throw new ValidationError('Ein Korrekturgrund ist erforderlich');
+
+    let value: Date | number | string | null = input.value;
+    if (input.field === 'clockIn' || input.field === 'clockOut') {
+      if (input.field === 'clockOut' && (input.value === null || input.value === '')) {
+        value = null;
+      } else {
+        const parsedDate = new Date(String(input.value));
+        if (Number.isNaN(parsedDate.getTime())) throw new ValidationError('Ungültige Uhrzeit');
+        value = parsedDate;
+      }
+    } else if (input.field === 'breakDuration') {
+      const breakDuration = Number(input.value);
+      if (!Number.isInteger(breakDuration) || breakDuration < 0) {
+        throw new ValidationError('Die Pausendauer muss eine positive Minutenzahl sein');
+      }
+      value = breakDuration;
+    } else {
+      value = String(input.value ?? '');
+    }
+
+    const nextClockIn = input.field === 'clockIn' ? value as Date : timeRecord.clockIn;
+    const nextClockOut = input.field === 'clockOut' ? value as Date | null : timeRecord.clockOut;
+    const nextBreakDuration = input.field === 'breakDuration' ? value as number : timeRecord.breakDuration;
+    if (nextClockOut && nextClockOut <= nextClockIn) {
+      throw new ValidationError('Die Endzeit muss nach der Startzeit liegen');
+    }
+
     // Erstelle Korrektur-Eintrag
     const correction = await prisma.timeCorrection.create({
       data: {
@@ -401,21 +434,35 @@ export class TimeRecordService {
         timeRecordId,
         correctedById: userId,
         fieldChanged: input.field,
-        oldValue: String(timeRecord[input.field as keyof typeof timeRecord] || ''),
-        newValue: String(input.value),
-        reason: input.reason,
+        oldValue: String(timeRecord[input.field] ?? ''),
+        newValue: String(value ?? ''),
+        reason,
       },
     });
 
-    // Aktualisiere Zeitrecord
+    // Aktualisiere Zeitrecord mit Audit-Trail und synchronisierten Stunden.
     const updateData: any = {
-      [input.field]: input.value,
+      [input.field]: value,
       changedById: userId,
       changedAt: new Date(),
-      changeReason: input.reason,
-      correctionReason: input.reason,
+      changeReason: reason,
+      correctionReason: reason,
       correctedById: userId,
     };
+    if (input.field === 'clockIn') updateData.date = nextClockIn;
+    if (input.field === 'clockIn' || input.field === 'clockOut' || input.field === 'breakDuration') {
+      if (nextClockOut) {
+        Object.assign(updateData, await this.calculateSurcharges(
+          tenantId,
+          timeRecord.employeeId,
+          nextClockIn,
+          nextClockOut,
+          nextBreakDuration,
+        ));
+      } else {
+        updateData.totalHours = null;
+      }
+    }
 
     const updated = await prisma.timeRecord.update({
       where: { id: timeRecordId },

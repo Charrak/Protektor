@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { Fragment, useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Badge } from '../../components/common/Badge';
 import { EmptyState } from '../../components/common/EmptyState';
 import { attendanceService, type TimeRecord } from '../../services/attendance.service';
-import { employeeService } from '../../services/employee.service';
+import { AttendanceRecordDetails } from './AttendanceRecordDetails';
 
 export function AttendancePage() {
   const [records, setRecords] = useState<TimeRecord[]>([]);
@@ -95,7 +95,8 @@ export function AttendancePage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {records.map(record => (
-                  <tr key={record.id} className="hover:bg-gray-50">
+                  <Fragment key={record.id}>
+                  <tr className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <p className="font-medium text-sm text-gray-900">{`${record.employee.firstName} ${record.employee.lastName}`}</p>
                       <p className="text-xs text-gray-500">{record.employee.personnelNumber}</p>
@@ -111,6 +112,13 @@ export function AttendancePage() {
                     </td>
                     <td className="px-4 py-3">{getStatusBadge(record.status)}</td>
                     <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRecord(current => current?.id === record.id ? null : record)}
+                        className="mr-2 text-xs text-primary-700 hover:underline"
+                      >
+                        {selectedRecord?.id === record.id ? 'Schließen' : 'Details'}
+                      </button>
                       {record.status === 'completed' && (
                         <button onClick={() => handleApprove(record)} className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">
                           ✓ Genehmigen
@@ -118,6 +126,10 @@ export function AttendancePage() {
                       )}
                     </td>
                   </tr>
+                  {selectedRecord?.id === record.id && (
+                    <AttendanceRecordDetails record={record} onClose={() => setSelectedRecord(null)} onSaved={loadRecords} />
+                  )}
+                </Fragment>
                 ))}
               </tbody>
             </table>

@@ -11,7 +11,9 @@ import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { EmployeesPage } from './pages/employees/EmployeesPage';
 import { EmployeeDetailPage } from './pages/employees/EmployeeDetailPage';
 import { CustomersPage } from './pages/customers/CustomersPage';
+import { CustomerDetailPage } from './pages/customers/CustomerDetailPage';
 import { ObjectsPage } from './pages/objects/ObjectsPage';
+import { ObjectDetailPage } from './pages/objects/ObjectDetailPage';
 import { SchedulingPage } from './pages/scheduling/SchedulingPage';
 import { PlanningGroupManager } from './components/planning/PlanningGroupManager';
 import { AttendancePage } from './pages/attendance/AttendancePage';
@@ -89,9 +91,9 @@ function AppRoutes() {
                   <Route path="/employees" element={<EmployeesPage />} />
                   <Route path="/employees/:id" element={<EmployeeDetailPage />} />
                   <Route path="/customers" element={<CustomersPage />} />
-                  <Route path="/customers/:id" element={<div>Kunden-Detail</div>} />
+                  <Route path="/customers/:id" element={<CustomerDetailPage />} />
                   <Route path="/objects" element={<ObjectsPage />} />
-                  <Route path="/objects/:id" element={<div>Objekt-Detail</div>} />
+                  <Route path="/objects/:id" element={<ObjectDetailPage />} />
                   <Route path="/scheduling" element={<SchedulingPage />} />
                   <Route path="/planning-groups" element={<PlanningGroupManager />} />
                   <Route path="/attendance" element={<AttendancePage />} />
