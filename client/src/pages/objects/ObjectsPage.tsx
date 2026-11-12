@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
@@ -83,7 +84,7 @@ export function ObjectsPage() {
                 {objects.map(obj => (
                   <tr key={obj.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900 text-sm">{obj.name}</p>
+                      <Link to={`/objects/${obj.id}`} className="font-medium text-gray-900 text-sm hover:text-primary-600">{obj.name}</Link>
                       <p className="text-xs text-gray-500 font-mono">{obj.objectNumber}</p>
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">
@@ -99,6 +100,13 @@ export function ObjectsPage() {
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-right">
+                      <Link
+                        to={`/objects/${obj.id}`}
+                        className="inline-block p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50"
+                        title="Objektdetails öffnen"
+                      >
+                        👁️
+                      </Link>
                       <button 
                         onClick={() => setSelectedObject(obj)}
                         className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50" 

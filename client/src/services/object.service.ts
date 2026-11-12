@@ -14,7 +14,12 @@ export interface SMSObject {
   alarmNumber?: string;
   keyDepot?: string;
   accessCode?: string;
+  accessRegulations?: string;
   specialInstructions?: string;
+  requiredPersonnel?: number;
+  equipmentRequirements?: string;
+  alarmPlan?: string;
+  serviceType?: 'objectProtection' | 'guardService' | 'entryControl' | 'patrolService' | 'eventSecurity';
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -53,6 +58,7 @@ export interface ObjectDetail extends SMSObject {
   customer: any;
   contactPerson?: any;
   requirements: any[];
+  deployments?: any[];
 }
 
 export const objectService = {

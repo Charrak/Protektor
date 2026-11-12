@@ -14,8 +14,11 @@ export interface TimeRecord {
   holidayHours?: number;
   overtimeHours?: number;
   totalHours?: number;
-  status: 'open' | 'completed' | 'approved' | 'rejected';
+  status: 'open' | 'completed' | 'approved' | 'rejected' | 'locked';
   deploymentId?: string;
+  notes?: string;
+  isLocked?: boolean;
+  updatedAt?: string;
 }
 
 export interface TimeRecordListResponse {
@@ -64,8 +67,8 @@ export const attendanceService = {
     return data;
   },
 
-  async correct(recordId: string, corrections: any): Promise<TimeRecord> {
-    const { data } = await api.post<TimeRecord>(`/time-records/${recordId}/correct`, corrections);
+  async correct(recordId: string, corrections: { field: 'clockIn' | 'clockOut' | 'breakDuration' | 'notes'; value: string | number | null; reason: string }): Promise<{ timeRecord: TimeRecord }> {
+    const { data } = await api.post<{ timeRecord: TimeRecord }>(`/time-records/${recordId}/correct`, corrections);
     return data;
   },
 };
