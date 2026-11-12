@@ -9,18 +9,17 @@ describe('UsageTrackingService', () => {
   beforeAll(async () => {
     await prisma.$connect();
 
-    // Test-User erstellen (wird für createdById benötigt)
-    const user = await prisma.user.create({
+    // Platform Admin erstellen (braucht keinen Tenant)
+    const platformAdmin = await prisma.platformAdmin.create({
       data: {
         email: 'usage-test-admin@protektor.test',
         username: 'usage-test-admin',
+        passwordHash: 'hashed-password',
         firstName: 'Usage',
         lastName: 'Admin',
-        passwordHash: 'hashed-password',
-        role: 'PLATFORM_ADMIN',
       },
     });
-    testUserId = user.id;
+    testUserId = platformAdmin.id;
 
     // Test-Tenant erstellen
     const tenant = await prisma.tenant.create({
@@ -28,9 +27,7 @@ describe('UsageTrackingService', () => {
         tenantId: 'TEST-USAGE-001',
         companyName: 'Usage Test GmbH',
         contactEmail: 'usage@example.com',
-        licenseStatus: 'ACTIVE',
-        employeeLimit: 10,
-        createdById: testUserId,
+        createdById: platformAdmin.id,
       },
     });
 
@@ -45,7 +42,7 @@ describe('UsageTrackingService', () => {
       await prisma.tenant.delete({ where: { id: testTenantId } }).catch(() => {});
     }
     if (testUserId) {
-      await prisma.user.delete({ where: { id: testUserId } }).catch(() => {});
+      await prisma.platformAdmin.delete({ where: { id: testUserId } }).catch(() => {});
     }
     await prisma.$disconnect();
   });
