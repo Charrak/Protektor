@@ -50,7 +50,7 @@ export function EmployeeDeployments({ employeeId }: EmployeeDeploymentsProps) {
         employeeId,
         startDate,
         endDate,
-        releasedOnly: true, // Nur freigegebene Einsätze anzeigen
+        status: 'released',
       });
       
       setDeployments(result.deployments as Deployment[]);
