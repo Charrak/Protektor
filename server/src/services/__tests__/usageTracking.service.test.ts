@@ -140,7 +140,7 @@ describe('UsageTrackingService', () => {
       const result = await usageTrackingService.checkResourceLimit(testTenantId, 'employees');
 
       expect(result.allowed).toBe(false);
-      expect(result.message).toContain('Limit erreicht');
+      expect(result.message).toContain('Limit für employees erreicht');
     });
   });
 
