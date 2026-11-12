@@ -9,18 +9,17 @@ describe('LicenseService', () => {
   beforeAll(async () => {
     await prisma.$connect();
 
-    // Test-User erstellen (wird für createdById benötigt)
-    const user = await prisma.user.create({
+    // Platform Admin erstellen (braucht keinen Tenant)
+    const platformAdmin = await prisma.platformAdmin.create({
       data: {
         email: 'license-test-admin@protektor.test',
         username: 'license-test-admin',
+        passwordHash: 'hashed-password',
         firstName: 'License',
         lastName: 'Admin',
-        passwordHash: 'hashed-password',
-        role: 'PLATFORM_ADMIN',
       },
     });
-    testUserId = user.id;
+    testUserId = platformAdmin.id;
 
     // Test-Tenant erstellen
     const tenant = await prisma.tenant.create({
@@ -28,11 +27,7 @@ describe('LicenseService', () => {
         tenantId: 'TEST-LICENSE-001',
         companyName: 'License Test GmbH',
         contactEmail: 'license@example.com',
-        licenseStatus: 'ACTIVE',
-        employeeLimit: 50,
-        paymentGraceDays: 7,
-        offlineGraceMinutes: 1440,
-        createdById: testUserId,
+        createdById: platformAdmin.id,
       },
     });
 
@@ -44,7 +39,7 @@ describe('LicenseService', () => {
       await prisma.tenant.delete({ where: { id: testTenantId } }).catch(() => {});
     }
     if (testUserId) {
-      await prisma.user.delete({ where: { id: testUserId } }).catch(() => {});
+      await prisma.platformAdmin.delete({ where: { id: testUserId } }).catch(() => {});
     }
     await prisma.$disconnect();
   });

@@ -10,27 +10,23 @@ describe('TenantService', () => {
     // Test-Datenbank verbinden
     await prisma.$connect();
     
-    // Test-User erstellen (wird für createdById benötigt)
-    const user = await prisma.user.create({
+    // Platform Admin erstellen (braucht keinen Tenant)
+    const platformAdmin = await prisma.platformAdmin.create({
       data: {
         email: 'test-admin@protektor.test',
         username: 'test-admin',
+        passwordHash: 'hashed-password',
         firstName: 'Test',
         lastName: 'Admin',
-        passwordHash: 'hashed-password',
-        role: 'PLATFORM_ADMIN',
       },
     });
-    testUserId = user.id;
+    testUserId = platformAdmin.id;
   });
 
   afterAll(async () => {
     // Aufräumen
-    if (testTenantId) {
-      await prisma.tenant.delete({ where: { id: testTenantId } }).catch(() => {});
-    }
     if (testUserId) {
-      await prisma.user.delete({ where: { id: testUserId } }).catch(() => {});
+      await prisma.platformAdmin.delete({ where: { id: testUserId } }).catch(() => {});
     }
     await prisma.$disconnect();
   });
