@@ -1,7 +1,17 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { dashboardService, type DashboardStats, type TodayDeployment } from '../../services/dashboard.service';
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [todayDeployments, setTodayDeployments] = useState<TodayDeployment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [systemStatus, setSystemStatus] = useState({
+    backend: false,
+    database: false,
+    webSocket: false,
+  });
 
   const currentDate = new Date().toLocaleDateString('de-DE', {
     weekday: 'long',
@@ -9,6 +19,29 @@ export function DashboardPage() {
     month: 'long',
     day: 'numeric',
   });
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [statsData, deploymentsData, statusData] = await Promise.all([
+        dashboardService.getStats(),
+        dashboardService.getTodayDeployments(),
+        dashboardService.getSystemStatus(),
+      ]);
+      
+      setStats(statsData);
+      setTodayDeployments(deploymentsData);
+      setSystemStatus(statusData);
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -24,29 +57,25 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Aktive Mitarbeiter"
-          value="–"
-          subtitle="Wird in Phase 2 geladen"
+          value={loading ? '...' : stats?.activeEmployees.toString() || '0'}
           icon="👥"
           color="blue"
         />
         <StatCard
           title="Heutige Einsätze"
-          value="–"
-          subtitle="Wird in Phase 4 geladen"
+          value={loading ? '...' : stats?.todayDeployments.toString() || '0'}
           icon="📅"
           color="green"
         />
         <StatCard
           title="Krank heute"
-          value="–"
-          subtitle="Wird in Phase 2 geladen"
+          value={loading ? '...' : stats?.sickToday.toString() || '0'}
           icon="🤒"
           color="red"
         />
         <StatCard
           title="Offene Dienste"
-          value="–"
-          subtitle="Wird in Phase 4 geladen"
+          value={loading ? '...' : stats?.openDeployments.toString() || '0'}
           icon="⚠️"
           color="yellow"
         />
@@ -57,10 +86,49 @@ export function DashboardPage() {
         {/* Heute */}
         <div className="lg:col-span-2 card">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Heutige Einsätze</h2>
-          <div className="text-center py-12 text-gray-400">
-            <p className="text-4xl mb-3">📋</p>
-            <p className="text-sm">Einsatzübersicht wird in Phase 4 implementiert</p>
-          </div>
+          {loading ? (
+            <div className="text-center py-12 text-gray-400">
+              <p className="text-sm">Lade Einsätze...</p>
+            </div>
+          ) : todayDeployments.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <p className="text-4xl mb-3">📋</p>
+              <p className="text-sm">Keine Einsätze für heute geplant</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {todayDeployments.map((deployment) => (
+                <div
+                  key={deployment.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="text-2xl">🏗️</div>
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {deployment.object.name}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {deployment.startTime.slice(0, 5)} - {deployment.endTime.slice(0, 5)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    {deployment.employee ? (
+                      <p className="text-sm font-medium text-gray-900">
+                        {deployment.employee.firstName} {deployment.employee.lastName}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-orange-600 font-medium">Nicht besetzt</p>
+                    )}
+                    {deployment.customer && (
+                      <p className="text-xs text-gray-500">{deployment.customer.name}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Schnellzugriff */}
@@ -79,10 +147,22 @@ export function DashboardPage() {
       <div className="card">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Systemstatus</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatusItem label="Backend" status="ok" />
-          <StatusItem label="Datenbank" status="ok" />
-          <StatusItem label="WebSocket" status="pending" />
-          <StatusItem label="Letztes Backup" status="pending" />
+          <StatusItem 
+            label="Backend" 
+            status={systemStatus.backend ? 'ok' : 'error'} 
+          />
+          <StatusItem 
+            label="Datenbank" 
+            status={systemStatus.database ? 'ok' : 'error'} 
+          />
+          <StatusItem 
+            label="WebSocket" 
+            status={systemStatus.webSocket ? 'ok' : 'pending'} 
+          />
+          <StatusItem 
+            label="Daten geladen" 
+            status={!loading ? 'ok' : 'pending'} 
+          />
         </div>
       </div>
 
@@ -90,17 +170,18 @@ export function DashboardPage() {
       <div className="card">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Letzte Aktivitäten</h2>
         <div className="text-center py-8 text-gray-400">
-          <p className="text-sm">Aktivitätsprotokoll wird in Phase 9 implementiert</p>
+          <p className="text-4xl mb-3">📊</p>
+          <p className="text-sm">Das Dashboard zeigt Echtzeit-Daten aus dem System</p>
+          <p className="text-xs mt-2">Tipp: Notifications werden oben rechts angezeigt</p>
         </div>
       </div>
     </div>
   );
 }
 
-function StatCard({ title, value, subtitle, icon, color }: {
+function StatCard({ title, value, icon, color }: {
   title: string;
   value: string;
-  subtitle: string;
   icon: string;
   color: string;
 }) {
@@ -120,7 +201,6 @@ function StatCard({ title, value, subtitle, icon, color }: {
       </div>
       <p className="text-2xl font-bold text-gray-900">{value}</p>
       <p className="text-sm text-gray-600 mt-1">{title}</p>
-      <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
     </div>
   );
 }
