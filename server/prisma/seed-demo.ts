@@ -4,6 +4,54 @@ import { ensureDefaultRoles } from '../src/services/defaultRoles.service';
 
 const prisma = new PrismaClient();
 
+// Demo seeds can be interrupted and safely rerun without duplicating unique records.
+async function ensureDemoContact(data: any) {
+  const existing = await prisma.contactPerson.findFirst({
+    where: {
+      tenantId: data.tenantId,
+      customerId: data.customerId,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+    },
+  });
+  if (existing) return prisma.contactPerson.update({ where: { id: existing.id }, data });
+  return prisma.contactPerson.create({ data });
+}
+
+async function ensureDemoObject(data: any) {
+  return prisma.sMSObject.upsert({
+    where: { tenantId_objectNumber: { tenantId: data.tenantId, objectNumber: data.objectNumber } },
+    update: data,
+    create: data,
+  });
+}
+
+async function ensureDemoDeployment(data: any) {
+  const existing = await prisma.deployment.findFirst({
+    where: {
+      tenantId: data.tenantId,
+      employeeId: data.employeeId,
+      objectId: data.objectId,
+      date: data.date,
+      startTime: data.startTime,
+      endTime: data.endTime,
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+  if (existing) return prisma.deployment.update({ where: { id: existing.id }, data });
+  return prisma.deployment.create({ data });
+}
+
+async function ensureDemoTimeRecord(data: any) {
+  const existing = await prisma.timeRecord.findFirst({
+    where: { deploymentId: data.deploymentId },
+    orderBy: { createdAt: 'asc' },
+  });
+  if (existing) return prisma.timeRecord.update({ where: { id: existing.id }, data });
+  return prisma.timeRecord.create({ data });
+}
+
 async function main() {
   console.log('\n🌱 Starte Demo-Daten-Generierung...\n');
 
@@ -762,34 +810,30 @@ async function main() {
 
     // Kontaktpersonen erstellen
     for (const contact of customerData.contacts) {
-      await prisma.contactPerson.create({
-        data: {
-          tenantId: tenant1.id,
-          customerId: dbCustomer.id,
-          firstName: contact.name.split(' ')[0],
-          lastName: contact.name.split(' ').slice(1).join(' '),
-          role: contact.role,
-          phone: contact.phone,
-          email: contact.email,
-          isPrimary: contact === customerData.contacts[0],
-        },
+      await ensureDemoContact({
+        tenantId: tenant1.id,
+        customerId: dbCustomer.id,
+        firstName: contact.name.split(' ')[0],
+        lastName: contact.name.split(' ').slice(1).join(' '),
+        role: contact.role,
+        phone: contact.phone,
+        email: contact.email,
+        isPrimary: contact === customerData.contacts[0],
       });
     }
 
     // Objekte erstellen
     for (const obj of customerData.objects) {
-      await prisma.sMSObject.create({
-        data: {
-          tenantId: tenant1.id,
-          customerId: dbCustomer.id,
-          name: obj.name,
-          objectNumber: `${customerData.number}-O${String(customerData.objects.indexOf(obj) + 1).padStart(2, '0')}`,
-          street: customerData.street,
-          zipCode: '20359',
-          city: 'Hamburg',
-          specialInstructions: obj.instructions,
-          objectType: obj.type,
-        },
+      await ensureDemoObject({
+        tenantId: tenant1.id,
+        customerId: dbCustomer.id,
+        name: obj.name,
+        objectNumber: `${customerData.number}-O${String(customerData.objects.indexOf(obj) + 1).padStart(2, '0')}`,
+        street: customerData.street,
+        zipCode: '20359',
+        city: 'Hamburg',
+        specialInstructions: obj.instructions,
+        objectType: obj.type,
       });
     }
   }
@@ -913,34 +957,30 @@ async function main() {
 
     // Kontaktpersonen erstellen
     for (const contact of customerData.contacts) {
-      await prisma.contactPerson.create({
-        data: {
-          tenantId: tenant2.id,
-          customerId: dbCustomer.id,
-          firstName: contact.name.split(' ')[0],
-          lastName: contact.name.split(' ').slice(1).join(' '),
-          role: contact.role,
-          phone: contact.phone,
-          email: contact.email,
-          isPrimary: contact === customerData.contacts[0],
-        },
+      await ensureDemoContact({
+        tenantId: tenant2.id,
+        customerId: dbCustomer.id,
+        firstName: contact.name.split(' ')[0],
+        lastName: contact.name.split(' ').slice(1).join(' '),
+        role: contact.role,
+        phone: contact.phone,
+        email: contact.email,
+        isPrimary: contact === customerData.contacts[0],
       });
     }
 
     // Objekte erstellen
     for (const obj of customerData.objects) {
-      await prisma.sMSObject.create({
-        data: {
-          tenantId: tenant2.id,
-          customerId: dbCustomer.id,
-          name: obj.name,
-          objectNumber: `${customerData.number}-O${String(customerData.objects.indexOf(obj) + 1).padStart(2, '0')}`,
-          street: customerData.street,
-          zipCode: '80539',
-          city: 'München',
-          specialInstructions: obj.instructions,
-          objectType: obj.type,
-        },
+      await ensureDemoObject({
+        tenantId: tenant2.id,
+        customerId: dbCustomer.id,
+        name: obj.name,
+        objectNumber: `${customerData.number}-O${String(customerData.objects.indexOf(obj) + 1).padStart(2, '0')}`,
+        street: customerData.street,
+        zipCode: '80539',
+        city: 'München',
+        specialInstructions: obj.instructions,
+        objectType: obj.type,
       });
     }
   }
@@ -1019,34 +1059,30 @@ async function main() {
 
     // Kontaktpersonen erstellen
     for (const contact of customerData.contacts) {
-      await prisma.contactPerson.create({
-        data: {
-          tenantId: tenant3.id,
-          customerId: dbCustomer.id,
-          firstName: contact.name.split(' ')[0],
-          lastName: contact.name.split(' ').slice(1).join(' '),
-          role: contact.role,
-          phone: contact.phone,
-          email: contact.email,
-          isPrimary: contact === customerData.contacts[0],
-        },
+      await ensureDemoContact({
+        tenantId: tenant3.id,
+        customerId: dbCustomer.id,
+        firstName: contact.name.split(' ')[0],
+        lastName: contact.name.split(' ').slice(1).join(' '),
+        role: contact.role,
+        phone: contact.phone,
+        email: contact.email,
+        isPrimary: contact === customerData.contacts[0],
       });
     }
 
     // Objekte erstellen
     for (const obj of customerData.objects) {
-      await prisma.sMSObject.create({
-        data: {
-          tenantId: tenant3.id,
-          customerId: dbCustomer.id,
-          name: obj.name,
-          objectNumber: `${customerData.number}-O${String(customerData.objects.indexOf(obj) + 1).padStart(2, '0')}`,
-          street: customerData.street,
-          zipCode: '10117',
-          city: 'Berlin',
-          specialInstructions: obj.instructions,
-          objectType: obj.type,
-        },
+      await ensureDemoObject({
+        tenantId: tenant3.id,
+        customerId: dbCustomer.id,
+        name: obj.name,
+        objectNumber: `${customerData.number}-O${String(customerData.objects.indexOf(obj) + 1).padStart(2, '0')}`,
+        street: customerData.street,
+        zipCode: '10117',
+        city: 'Berlin',
+        specialInstructions: obj.instructions,
+        objectType: obj.type,
       });
     }
   }
@@ -1082,11 +1118,13 @@ async function main() {
     // Tenant 1: ~5 Einsätze pro Tag
     const tenant1Employees = await prisma.employee.findMany({
       where: { tenantId: tenant1.id },
+      orderBy: { personnelNumber: 'asc' },
       take: 5,
     });
 
     const tenant1Objects = await prisma.sMSObject.findMany({
       where: { tenantId: tenant1.id },
+      orderBy: { objectNumber: 'asc' },
       take: 5,
     });
 
@@ -1099,32 +1137,28 @@ async function main() {
       const isToday = deploymentDate.toDateString() === today.toDateString();
       const deploymentStatus = isFuture ? 'planned' : isToday ? 'confirmed' : 'completed';
 
-      const deployment = await prisma.deployment.create({
-        data: {
-          tenantId: tenant1.id,
-          employeeId: tenant1Employees[i].id,
-          objectId: tenant1Objects[i % tenant1Objects.length].id,
-          date: deploymentDate,
-          startTime,
-          endTime,
-          status: deploymentStatus,
-          plannedById: tenant1User.id,
-          confirmedAt: isFuture ? null : new Date(),
-        },
+      const deployment = await ensureDemoDeployment({
+        tenantId: tenant1.id,
+        employeeId: tenant1Employees[i].id,
+        objectId: tenant1Objects[i % tenant1Objects.length].id,
+        date: deploymentDate,
+        startTime,
+        endTime,
+        status: deploymentStatus,
+        plannedById: tenant1User.id,
+        confirmedAt: isFuture ? null : new Date(),
       });
 
       // Nur für Vergangenheit und heute TimeRecords erstellen
       if (!isFuture) {
-        await prisma.timeRecord.create({
-          data: {
-            tenantId: tenant1.id,
-            employeeId: tenant1Employees[i].id,
-            deploymentId: deployment.id,
-            date: deploymentDate,
-            clockIn: startTime,
-            clockOut: endTime,
-            regularHours: 8,
-          },
+        await ensureDemoTimeRecord({
+          tenantId: tenant1.id,
+          employeeId: tenant1Employees[i].id,
+          deploymentId: deployment.id,
+          date: deploymentDate,
+          clockIn: startTime,
+          clockOut: endTime,
+          regularHours: 8,
         });
         timeEntryCount++;
       }
@@ -1135,11 +1169,13 @@ async function main() {
     // Tenant 2: ~3 Einsätze pro Tag
     const tenant2Employees = await prisma.employee.findMany({
       where: { tenantId: tenant2.id },
+      orderBy: { personnelNumber: 'asc' },
       take: 3,
     });
 
     const tenant2Objects = await prisma.sMSObject.findMany({
       where: { tenantId: tenant2.id },
+      orderBy: { objectNumber: 'asc' },
       take: 3,
     });
 
@@ -1152,32 +1188,28 @@ async function main() {
       const isToday = deploymentDate.toDateString() === today.toDateString();
       const deploymentStatus = isFuture ? 'planned' : isToday ? 'confirmed' : 'completed';
 
-      const deployment = await prisma.deployment.create({
-        data: {
-          tenantId: tenant2.id,
-          employeeId: tenant2Employees[i].id,
-          objectId: tenant2Objects[i % tenant2Objects.length].id,
-          date: deploymentDate,
-          startTime,
-          endTime,
-          status: deploymentStatus,
-          plannedById: tenant2User.id,
-          confirmedAt: isFuture ? null : new Date(),
-        },
+      const deployment = await ensureDemoDeployment({
+        tenantId: tenant2.id,
+        employeeId: tenant2Employees[i].id,
+        objectId: tenant2Objects[i % tenant2Objects.length].id,
+        date: deploymentDate,
+        startTime,
+        endTime,
+        status: deploymentStatus,
+        plannedById: tenant2User.id,
+        confirmedAt: isFuture ? null : new Date(),
       });
 
       // Nur für Vergangenheit und heute TimeRecords erstellen
       if (!isFuture) {
-        await prisma.timeRecord.create({
-          data: {
-            tenantId: tenant2.id,
-            employeeId: tenant2Employees[i].id,
-            deploymentId: deployment.id,
-            date: deploymentDate,
-            clockIn: startTime,
-            clockOut: endTime,
-            regularHours: 8,
-          },
+        await ensureDemoTimeRecord({
+          tenantId: tenant2.id,
+          employeeId: tenant2Employees[i].id,
+          deploymentId: deployment.id,
+          date: deploymentDate,
+          clockIn: startTime,
+          clockOut: endTime,
+          regularHours: 8,
         });
         timeEntryCount++;
       }
@@ -1188,11 +1220,13 @@ async function main() {
     // Tenant 3: ~2 Einsätze pro Tag
     const tenant3Employees = await prisma.employee.findMany({
       where: { tenantId: tenant3.id },
+      orderBy: { personnelNumber: 'asc' },
       take: 2,
     });
 
     const tenant3Objects = await prisma.sMSObject.findMany({
       where: { tenantId: tenant3.id },
+      orderBy: { objectNumber: 'asc' },
       take: 2,
     });
 
@@ -1205,32 +1239,28 @@ async function main() {
       const isToday = deploymentDate.toDateString() === today.toDateString();
       const deploymentStatus = isFuture ? 'planned' : isToday ? 'confirmed' : 'completed';
 
-      const deployment = await prisma.deployment.create({
-        data: {
-          tenantId: tenant3.id,
-          employeeId: tenant3Employees[i].id,
-          objectId: tenant3Objects[i % tenant3Objects.length].id,
-          date: deploymentDate,
-          startTime,
-          endTime,
-          status: deploymentStatus,
-          plannedById: tenant3User.id,
-          confirmedAt: isFuture ? null : new Date(),
-        },
+      const deployment = await ensureDemoDeployment({
+        tenantId: tenant3.id,
+        employeeId: tenant3Employees[i].id,
+        objectId: tenant3Objects[i % tenant3Objects.length].id,
+        date: deploymentDate,
+        startTime,
+        endTime,
+        status: deploymentStatus,
+        plannedById: tenant3User.id,
+        confirmedAt: isFuture ? null : new Date(),
       });
 
       // Nur für Vergangenheit und heute TimeRecords erstellen
       if (!isFuture) {
-        await prisma.timeRecord.create({
-          data: {
-            tenantId: tenant3.id,
-            employeeId: tenant3Employees[i].id,
-            deploymentId: deployment.id,
-            date: deploymentDate,
-            clockIn: startTime,
-            clockOut: endTime,
-            regularHours: 8,
-          },
+        await ensureDemoTimeRecord({
+          tenantId: tenant3.id,
+          employeeId: tenant3Employees[i].id,
+          deploymentId: deployment.id,
+          date: deploymentDate,
+          clockIn: startTime,
+          clockOut: endTime,
+          regularHours: 8,
         });
         timeEntryCount++;
       }
