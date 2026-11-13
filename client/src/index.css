@@ -8,6 +8,27 @@
   }
 }
 
+@media print {
+  @page { size: A4 portrait; margin: 14mm; }
+  body * { visibility: hidden !important; }
+  #timesheet-print,
+  #timesheet-print * { visibility: visible !important; }
+  #timesheet-print {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    color: #111 !important;
+    background: #fff !important;
+    font-size: 10pt !important;
+  }
+  #timesheet-print table { width: 100%; border-collapse: collapse; }
+  #timesheet-print th,
+  #timesheet-print td { border: 1px solid #777; padding: 5px 6px; text-align: left; }
+  #timesheet-print thead { display: table-header-group; }
+  #timesheet-print tr { break-inside: avoid; }
+}
+
 @layer components {
   .btn-primary {
     @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;

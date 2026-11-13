@@ -4,6 +4,7 @@ export interface TimeRecord {
   id: string;
   employeeId: string;
   employee: { id: string; firstName: string; lastName: string; personnelNumber: string };
+  object?: { name: string; objectNumber?: string } | null;
   date: string;
   clockIn: string;
   clockOut?: string;
@@ -56,10 +57,12 @@ export const attendanceService = {
     link.download = `stunden-${params.groupBy === 'employee' ? 'mitarbeiter' : 'objekt'}.${params.format}`; link.click(); URL.revokeObjectURL(url);
   },
 
-  async summary(params?: { startDate?: string; endDate?: string }) {
+  async summary(params?: { startDate?: string; endDate?: string; employeeId?: string; objectId?: string }) {
     const search = new URLSearchParams();
     if (params?.startDate) search.set('startDate', params.startDate);
     if (params?.endDate) search.set('endDate', params.endDate);
+    if (params?.employeeId) search.set('employeeId', params.employeeId);
+    if (params?.objectId) search.set('objectId', params.objectId);
     const { data } = await api.get(`/time-records/summary?${search.toString()}`);
     return data as { total: number; totalHours: number; byStatus: Record<string, number>; employeeHours: Array<{ employeeId: string; employeeName: string; hours: number; plannedHours: number; varianceHours: number; records: number }>; objects: Array<{ id: string; name: string }>; warnings: Array<{ recordId: string; employeeName: string; date: string; type: string; message: string }> };
   },
