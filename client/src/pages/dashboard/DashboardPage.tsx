@@ -79,6 +79,18 @@ export function DashboardPage() {
               icon="⏱️"
               color="blue"
             />
+            <StatCard
+              title="Monatsstunden aktuell"
+              value={loading ? '...' : `${(stats?.monthHoursToDate ?? 0).toFixed(1)} h`}
+              icon="🕒"
+              color="blue"
+            />
+            <StatCard
+              title="Prognose bis Monatsende"
+              value={loading ? '...' : `${(stats?.projectedMonthHours ?? 0).toFixed(1)} h`}
+              icon="📈"
+              color="green"
+            />
           </>
         ) : (
           <>
@@ -89,6 +101,11 @@ export function DashboardPage() {
           </>
         )}
       </div>
+      {isEmployeeDashboard && employeeRecordLinked && (
+        <p className="-mt-4 text-xs text-gray-500">
+          Die Monatsprognose addiert deine erfassten Stunden zu den freigegebenen Einsätzen ab morgen.
+        </p>
+      )}
 
       {/* Hauptbereich */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -6,6 +6,8 @@ export interface DashboardStats {
   sickToday: number;
   openDeployments: number;
   ownTimeRecordsToday: number;
+  monthHoursToDate: number;
+  projectedMonthHours: number;
 }
 
 export interface DashboardData {
