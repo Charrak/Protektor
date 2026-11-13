@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { encrypt, decrypt } from '../utils/encryption';
 import { auditService } from './audit.service';
 import { logger } from '../config/logger';
+import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 
 const prisma = new PrismaClient();
 
@@ -67,12 +68,14 @@ export class ObjectService {
   /**
    * Ruft ein Objekt ab und entschlüsselt Zugangsdaten falls vorhanden
    */
-  async getById(id: string) {
-    const object = await prisma.sMSObject.findUnique({
-      where: { id },
+  async getById(id: string, tenantId: string) {
+    const object = await prisma.sMSObject.findFirst({
+      where: { id, tenantId },
       include: {
         customer: true,
         deployments: true,
+        requirements: { include: { qualification: true } },
+        shiftPatterns: true,
       },
     });
 
@@ -207,24 +210,39 @@ export class ObjectService {
   /**
    * Setzt Objekt-Anforderungen
    */
-  async setRequirements(objectId: string, requirements: any[], userId: string) {
-    const object = await prisma.sMSObject.update({
-      where: { id: objectId },
-      data: {
-        requirements: requirements as any,
-      },
+  async setRequirements(objectId: string, requirements: any[], tenantId: string, userId: string) {
+    const object = await prisma.sMSObject.findFirst({ where: { id: objectId, tenantId } });
+    if (!object) throw new NotFoundError('Objekt');
+
+    const normalized = requirements.map((requirement) => ({
+      qualificationId: String(requirement.qualificationId || ''),
+      isMandatory: requirement.isMandatory !== false,
+      notes: requirement.notes ? String(requirement.notes) : null,
+    }));
+    if (normalized.some((requirement) => !requirement.qualificationId)) {
+      throw new ValidationError('Für jede Anforderung muss eine Qualifikation ausgewählt sein');
+    }
+
+    const uniqueIds = new Set(normalized.map((requirement) => requirement.qualificationId));
+    if (uniqueIds.size !== normalized.length) throw new ValidationError('Eine Qualifikation kann nur einmal zugeordnet werden');
+    const qualificationCount = await prisma.qualification.count({ where: { id: { in: [...uniqueIds] } } });
+    if (qualificationCount !== uniqueIds.size) throw new ValidationError('Eine ausgewählte Qualifikation wurde nicht gefunden');
+
+    await prisma.$transaction(async (tx) => {
+      await tx.objectRequirement.deleteMany({ where: { objectId } });
+      if (normalized.length) {
+        await tx.objectRequirement.createMany({
+          data: normalized.map((requirement) => ({ objectId, ...requirement })),
+        });
+      }
     });
 
-    // Audit Log
-    await auditService.logUpdate(
-      (object as any).tenantId || '',
-      userId,
-      'Object',
-      objectId,
-      { requirements }
-    );
-
-    return object;
+    await auditService.logUpdate(tenantId, userId, 'Object', objectId, { requirements: normalized });
+    return prisma.objectRequirement.findMany({
+      where: { objectId },
+      include: { qualification: true },
+      orderBy: { qualification: { name: 'asc' } },
+    });
   }
 }
 

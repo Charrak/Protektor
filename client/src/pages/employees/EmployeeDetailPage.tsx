@@ -8,6 +8,7 @@ import { employeeService, qualificationService, type EmployeeDetail, type Qualif
 import { employeeTimePreferenceService, type TimePreference, type TimeRequest } from '../../services/employeeTimePreference.service';
 import { TimePreferencesTab } from '../../components/employees/TimePreferencesTab';
 import { EmployeeDeployments } from '../../components/deployments/EmployeeDeployments';
+import { RecurringAvailabilityPanel } from '../../components/employees/RecurringAvailabilityPanel';
 
 type TabId = 'overview' | 'security' | 'qualifications' | 'availability' | 'timepreferences' | 'deployments' | 'documents' | 'contract';
 
@@ -694,8 +695,9 @@ function AvailabilityTab({ employee, showModal, setShowModal, onReload }: {
 
   return (
     <div>
+      <RecurringAvailabilityPanel employeeId={employee.id} />
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Verfügbarkeiten & Abwesenheiten</h3>
+        <h3 className="font-semibold text-gray-900">Abwesenheiten & einzelne Verfügbarkeitstage</h3>
         <button onClick={() => setShowModal(true)} className="btn-primary text-sm">
           + Abwesenheit eintragen
         </button>

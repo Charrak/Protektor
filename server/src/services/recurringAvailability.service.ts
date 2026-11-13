@@ -60,12 +60,21 @@ export class RecurringAvailabilityService {
    */
   async create(tenantId: string, input: CreateRecurringInput, userId: string) {
     // Validierung
-    if (input.dayOfWeek < 1 || input.dayOfWeek > 7) {
+    if (!Number.isInteger(input.dayOfWeek) || input.dayOfWeek < 1 || input.dayOfWeek > 7) {
       throw new ValidationError('Wochentag muss zwischen 1 (Montag) und 7 (Sonntag) sein');
     }
 
     if (!this.isValidTime(input.startTime) || !this.isValidTime(input.endTime)) {
       throw new ValidationError('Ungültiges Zeitformat (HH:MM)');
+    }
+    if (input.startTime >= input.endTime) {
+      throw new ValidationError('Die Endzeit muss nach der Startzeit liegen');
+    }
+    if (!this.isValidDate(input.validFrom) || (input.validUntil && !this.isValidDate(input.validUntil))) {
+      throw new ValidationError('Ungültiges Gültigkeitsdatum');
+    }
+    if (input.validUntil && input.validUntil < input.validFrom) {
+      throw new ValidationError('Das Enddatum darf nicht vor dem Startdatum liegen');
     }
 
     // Prüfen ob bereits vorhanden
@@ -213,7 +222,15 @@ export class RecurringAvailabilityService {
 
   // Helper
   private isValidTime(time: string): boolean {
-    return /^\d{2}:\d{2}$/.test(time);
+    if (!/^\d{2}:\d{2}$/.test(time)) return false;
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
+  }
+
+  private isValidDate(value: string): boolean {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const parsed = new Date(`${value}T00:00:00Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
   }
 
   private parseTime(time: string): Date {
