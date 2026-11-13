@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { dashboardService, type DashboardStats, type TodayDeployment } from '../../services/dashboard.service';
+import { hasPermission } from '../../utils/authorization';
 
 export function DashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [todayDeployments, setTodayDeployments] = useState<TodayDeployment[]>([]);
+  const [isEmployeeDashboard, setIsEmployeeDashboard] = useState(false);
+  const [employeeRecordLinked, setEmployeeRecordLinked] = useState(true);
   const [loading, setLoading] = useState(true);
   const [systemStatus, setSystemStatus] = useState({
     backend: false,
@@ -27,14 +30,15 @@ export function DashboardPage() {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const [statsData, deploymentsData, statusData] = await Promise.all([
-        dashboardService.getStats(),
-        dashboardService.getTodayDeployments(),
+      const [dashboardData, statusData] = await Promise.all([
+        dashboardService.getDashboard(),
         dashboardService.getSystemStatus(),
       ]);
-      
-      setStats(statsData);
-      setTodayDeployments(deploymentsData);
+
+      setStats(dashboardData.stats);
+      setTodayDeployments(dashboardData.todayDeployments);
+      setIsEmployeeDashboard(dashboardData.isEmployee);
+      setEmployeeRecordLinked(dashboardData.employeeRecordLinked);
       setSystemStatus(statusData);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -53,32 +57,37 @@ export function DashboardPage() {
         <p className="text-gray-500 mt-1">{currentDate}</p>
       </div>
 
-      {/* Statistik-Karten */}
+      {!employeeRecordLinked && isEmployeeDashboard && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Dein Mitarbeiterprofil ist nicht eindeutig mit diesem Benutzerkonto verknüpft. Bitte wende dich an die Verwaltung.
+        </div>
+      )}
+
+      {/* Mitarbeitende sehen nur Kennzahlen zu ihrem eigenen Konto. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Aktive Mitarbeiter"
-          value={loading ? '...' : stats?.activeEmployees.toString() || '0'}
-          icon="👥"
-          color="blue"
-        />
-        <StatCard
-          title="Heutige Einsätze"
-          value={loading ? '...' : stats?.todayDeployments.toString() || '0'}
-          icon="📅"
-          color="green"
-        />
-        <StatCard
-          title="Krank heute"
-          value={loading ? '...' : stats?.sickToday.toString() || '0'}
-          icon="🤒"
-          color="red"
-        />
-        <StatCard
-          title="Offene Dienste"
-          value={loading ? '...' : stats?.openDeployments.toString() || '0'}
-          icon="⚠️"
-          color="yellow"
-        />
+        {isEmployeeDashboard ? (
+          <>
+            <StatCard
+              title="Meine Einsätze heute"
+              value={loading ? '...' : stats?.todayDeployments.toString() || '0'}
+              icon="📅"
+              color="green"
+            />
+            <StatCard
+              title="Meine Zeiterfassungen heute"
+              value={loading ? '...' : stats?.ownTimeRecordsToday.toString() || '0'}
+              icon="⏱️"
+              color="blue"
+            />
+          </>
+        ) : (
+          <>
+            <StatCard title="Aktive Mitarbeiter" value={loading ? '...' : stats?.activeEmployees.toString() || '0'} icon="👥" color="blue" />
+            <StatCard title="Heutige Einsätze" value={loading ? '...' : stats?.todayDeployments.toString() || '0'} icon="📅" color="green" />
+            <StatCard title="Krank heute" value={loading ? '...' : stats?.sickToday.toString() || '0'} icon="🤒" color="red" />
+            <StatCard title="Offene Dienste" value={loading ? '...' : stats?.openDeployments.toString() || '0'} icon="⚠️" color="yellow" />
+          </>
+        )}
       </div>
 
       {/* Hauptbereich */}
@@ -135,10 +144,10 @@ export function DashboardPage() {
         <div className="card">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Schnellzugriff</h2>
           <div className="space-y-2">
-            <QuickAction icon="👤" label="Mitarbeiter anlegen" href="/employees/new" />
-            <QuickAction icon="📅" label="Dienstplan öffnen" href="/scheduling" />
-            <QuickAction icon="🔍" label="Ersatz suchen" href="/scheduling/replacement" />
-            <QuickAction icon="📊" label="Berichte anzeigen" href="/reports" />
+            {hasPermission(user, ['employees:create']) && <QuickAction icon="👤" label="Mitarbeiter anlegen" href="/employees/new" />}
+            {hasPermission(user, ['scheduling:view']) && <QuickAction icon="📅" label={isEmployeeDashboard ? 'Meine Einsätze öffnen' : 'Dienstplan öffnen'} href="/scheduling" />}
+            {hasPermission(user, ['attendance:view', 'attendance:view_own']) && <QuickAction icon="⏱️" label="Zeiterfassung öffnen" href="/attendance" />}
+            {hasPermission(user, ['reports:view']) && <QuickAction icon="📊" label="Berichte anzeigen" href="/reports" />}
           </div>
         </div>
       </div>
