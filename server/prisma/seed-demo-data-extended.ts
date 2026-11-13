@@ -2,6 +2,7 @@
  * Erweiterte Demo-Daten für alle neuen Features
  * 
  * Dieses Script erweitert die Basis-Demo-Daten um:
+ * - Demo-Planungsgruppen mit Teamleitungen und Mitarbeiterzuordnungen
  * - Kontakt-Personen bei Kunden
  * - Kundendokumente mit Versionierung
  * - Schichtberichte
@@ -43,6 +44,80 @@ async function main() {
   }
 
   console.log(`📊 Bestehende Daten: ${users.length} User, ${employees.length} Mitarbeiter, ${customers.length} Kunden, ${objects.length} Objekte\n`);
+
+  // ═══════════════════════════════════════════════════════
+  // DEMO-PLANUNGSGRUPPEN (wird von seed:all mit ausgeführt)
+  // ═══════════════════════════════════════════════════════
+  console.log('👥 Erstelle Demo-Planungsgruppen...');
+
+  const dispatcherUser = users.find(user => user.username === 'dispo');
+  const teamleaderUser = users.find(user => user.username === 'teamlead');
+  const maxEmployee = employees.find(employee => employee.personnelNumber === 'MA-001');
+  const annaEmployee = employees.find(employee => employee.personnelNumber === 'MA-002');
+  const thomasEmployee = employees.find(employee => employee.personnelNumber === 'MA-003');
+
+  if (!dispatcherUser || !teamleaderUser || !maxEmployee || !annaEmployee || !thomasEmployee) {
+    throw new Error('Planungsgruppen benötigen die Demo-Benutzer dispo/teamlead sowie die Mitarbeiter MA-001 bis MA-003. Zuerst npm run seed:data ausführen.');
+  }
+
+  const teamNorth = await prisma.planningGroup.upsert({
+    where: { tenantId_name: { tenantId: tenant.id, name: 'Team Nord' } },
+    update: {
+      description: 'Zuständig für Objekte im Norden',
+      color: '#3B82F6',
+      leadUserId: teamleaderUser.id,
+      leadDeputies: [dispatcherUser.id],
+      isActive: true,
+    },
+    create: {
+      tenantId: tenant.id,
+      name: 'Team Nord',
+      description: 'Zuständig für Objekte im Norden',
+      color: '#3B82F6',
+      leadUserId: teamleaderUser.id,
+      leadDeputies: [dispatcherUser.id],
+      createdBy: dispatcherUser.id,
+    },
+  });
+
+  const teamSouth = await prisma.planningGroup.upsert({
+    where: { tenantId_name: { tenantId: tenant.id, name: 'Team Süd' } },
+    update: {
+      description: 'Zuständig für Objekte im Süden',
+      color: '#10B981',
+      leadUserId: dispatcherUser.id,
+      leadDeputies: [teamleaderUser.id],
+      isActive: true,
+    },
+    create: {
+      tenantId: tenant.id,
+      name: 'Team Süd',
+      description: 'Zuständig für Objekte im Süden',
+      color: '#10B981',
+      leadUserId: dispatcherUser.id,
+      leadDeputies: [teamleaderUser.id],
+      createdBy: dispatcherUser.id,
+    },
+  });
+
+  await Promise.all([
+    prisma.planningGroupEmployee.upsert({
+      where: { planningGroupId_employeeId: { planningGroupId: teamNorth.id, employeeId: maxEmployee.id } },
+      update: { isPrimary: true, sortOrder: 1 },
+      create: { planningGroupId: teamNorth.id, employeeId: maxEmployee.id, isPrimary: true, sortOrder: 1 },
+    }),
+    prisma.planningGroupEmployee.upsert({
+      where: { planningGroupId_employeeId: { planningGroupId: teamNorth.id, employeeId: annaEmployee.id } },
+      update: { isPrimary: false, sortOrder: 2 },
+      create: { planningGroupId: teamNorth.id, employeeId: annaEmployee.id, isPrimary: false, sortOrder: 2 },
+    }),
+    prisma.planningGroupEmployee.upsert({
+      where: { planningGroupId_employeeId: { planningGroupId: teamSouth.id, employeeId: thomasEmployee.id } },
+      update: { isPrimary: true, sortOrder: 1 },
+      create: { planningGroupId: teamSouth.id, employeeId: thomasEmployee.id, isPrimary: true, sortOrder: 1 },
+    }),
+  ]);
+  console.log('✅ 2 Planungsgruppen mit Teamleitungen und Demo-Mitarbeitern erstellt/aktualisiert\n');
 
   // ═══════════════════════════════════════════════════════
   // 1. KUNDEN-DATEN ERWEITERN (Verträge, Rechnungsadressen)
@@ -986,6 +1061,7 @@ async function main() {
   console.log('🎉 Erweiterte Demo-Daten erfolgreich erstellt!');
   console.log('═'.repeat(60));
   console.log('\n📊 Neue Daten:');
+  console.log('   👥 Planungsgruppen: Team Nord und Team Süd');
   console.log(`   📝 Kunden erweitert: ${customers.length} (mit Verträgen, Rechnungsdaten)`);
   console.log(`   👥 Kontakt-Personen: ${contactPersons.length}`);
   console.log(`   📄 Kunden-Dokumente: ${customerDocuments.length}`);
