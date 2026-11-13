@@ -38,8 +38,8 @@ async function main() {
   });
 
   // Finde wichtige User
-  const teamleaderUser = users.find(u => u.username === 'teamleader');
-  const dispatcherUser = users.find(u => u.username === 'dispatcher');
+  const teamleaderUser = users.find(u => u.username === 'teamlead');
+  const dispatcherUser = users.find(u => u.username === 'dispo');
   
   // Finde wichtige Mitarbeiter
   const maxEmployee = employees.find(e => e.personnelNumber === 'MA-001');
