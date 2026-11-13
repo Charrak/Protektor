@@ -66,6 +66,12 @@ jobs:
           JWT_REFRESH_SECRET: test-refresh-secret
         run: npm test
 
+      - name: Seed full demo dataset
+        working-directory: server
+        env:
+          DATABASE_URL: postgresql://${{ env.POSTGRES_USER }}:${{ env.POSTGRES_PASSWORD }}@localhost:5432/${{ env.POSTGRES_DB }}
+        run: npm run seed:all
+
   # Production image must include a successful TypeScript build.
   backend-image-build:
     name: Backend Production Image
