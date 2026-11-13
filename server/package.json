@@ -15,6 +15,7 @@
     "prisma:studio": "prisma studio",
     "seed": "tsx prisma/seed.ts",
     "seed:demo": "tsx prisma/seed-demo.ts",
+    "seed:time-tracking-demo": "tsx prisma/seed-time-tracking-demo.ts",
     "seed:data": "tsx prisma/seed-demo-data.ts",
     "seed:new-features": "tsx prisma/seed-new-features.ts",
     "lint": "eslint src --ext .ts",

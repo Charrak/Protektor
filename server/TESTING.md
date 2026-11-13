@@ -47,7 +47,20 @@ $COMPOSE up -d
 
 Der Test-Stack nutzt absichtlich `prisma db push` statt `migrate deploy`: Das vorhandene `0_init/migration.sql` ist leer, während spätere Migrationen bereits Tabellen wie `tenants` voraussetzen. Deshalb schlägt `migrate deploy` auf einer leeren Datenbank fehl. `db push` ist hier ausschließlich für die projektisolierte, entbehrliche Testdatenbank gedacht und **kein** Ersatz für eine reparierte Produktions-Migrationshistorie.
 
-Die Seed-Zugangsdaten sind nur für diese isolierte Testinstanz bestimmt: `admin@sms-platform.com` / `Admin123!` oder `demo@security-company.de` / `Demo123!`. Nicht öffentlich freigeben oder für produktive Instanzen verwenden.
+Nach dem Basis-Seed können die Zeiterfassungsfixtures angelegt werden:
+
+```bash
+$COMPOSE run --rm backend npm run seed:time-tracking-demo
+```
+
+Das Seed-Script verweigert Datenbanknamen ohne `_test`/`-test`-Suffix und legt idempotent zwei Objekte, Schichten, Zeiteinträge mit Status von offen bis storniert, Pausen, Korrekturen, Audit-Ereignisse sowie objektbezogene Disponentenrechte an.
+
+Nur für diese isolierte Testinstanz:
+- Admin: Mandant `DEMO-001`, Benutzer `demo`, Passwort `Demo123!`
+- Mitarbeiter: Mandant `DEMO-001`, Benutzer `max`, Passwort `Mitarbeiter123!`
+- Disponent: Mandant `DEMO-001`, Benutzer `disponent`, Passwort `Mitarbeiter123!` (nur Objekt `OBJ-DEMO-001`)
+
+Diese Seed-Zugangsdaten nicht öffentlich freigeben oder für produktive Instanzen verwenden.
 
 Für den Browser über SSH tunneln: `ssh -L 53000:127.0.0.1:53000 ubuntu@<server>` und dann lokal `http://localhost:53000` öffnen. Die Integrationstests laufen mit einer **zweiten, separaten** PostgreSQL-Datenbank:
 
