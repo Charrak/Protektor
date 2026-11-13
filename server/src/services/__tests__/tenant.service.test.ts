@@ -63,7 +63,7 @@ describe('TenantService', () => {
     it('sollte einen neuen Tenant erstellen', async () => {
       const input = {
         companyName: 'Test Security GmbH',
-        contactEmail: 'test@example.com',
+        contactEmail: `test-${testRunId}@example.com`,
         employeeLimit: 50,
       };
 
@@ -79,7 +79,7 @@ describe('TenantService', () => {
     it('sollte einen Tenant mit Trial erstellen', async () => {
       const input = {
         companyName: 'Trial Security GmbH',
-        contactEmail: 'trial@example.com',
+        contactEmail: `trial-${testRunId}@example.com`,
         employeeLimit: 25,
         trialDays: 30,
       };
@@ -95,7 +95,7 @@ describe('TenantService', () => {
       // Test-Tenant erstellen
       await createTestTenant({
         companyName: 'List Test GmbH',
-        contactEmail: 'list@example.com',
+        contactEmail: `list-${testRunId}@example.com`,
       });
 
       const result = await tenantService.list({});
@@ -117,7 +117,7 @@ describe('TenantService', () => {
     it('sollte nach Suchbegriff filtern', async () => {
       await createTestTenant({
         companyName: 'Unique Search Test GmbH',
-        contactEmail: 'search@example.com',
+        contactEmail: `search-${testRunId}@example.com`,
       });
 
       const result = await tenantService.list({ search: 'Unique Search' });
@@ -131,7 +131,7 @@ describe('TenantService', () => {
     it('sollte den Lizenzstatus aktualisieren', async () => {
       const tenant = await createTestTenant({
         companyName: 'Status Update Test GmbH',
-        contactEmail: 'status@example.com',
+        contactEmail: `status-${testRunId}@example.com`,
       });
 
       const updated = await tenantService.updateLicenseStatus(

@@ -25,13 +25,13 @@ export function AdminPage() {
           <p className="text-sm text-gray-500">Rollen definieren und Berechtigungen zuweisen</p>
         </Link>
 
-        <div className="card opacity-60 cursor-not-allowed">
+        <Link to="/attendance" className="card hover:shadow-md transition-shadow group">
           <div className="flex items-center gap-3 mb-3">
             <span className="text-2xl">📋</span>
-            <h3 className="font-semibold text-gray-900">Änderungsprotokoll</h3>
+            <h3 className="font-semibold text-gray-900 group-hover:text-primary-600">Zeiterfassungsprotokoll & Objekt-Zeitrechte</h3>
           </div>
-          <p className="text-sm text-gray-500">Alle Änderungen nachvollziehen (Phase 9)</p>
-        </div>
+          <p className="text-sm text-gray-500">Änderungsverlauf prüfen und objektbezogene Zeitrechte verwalten</p>
+        </Link>
 
         <div className="card opacity-60 cursor-not-allowed">
           <div className="flex items-center gap-3 mb-3">
