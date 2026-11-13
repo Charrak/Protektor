@@ -2,6 +2,7 @@ import { prisma } from '../config/database';
 import { logger } from '../config/logger';
 import { NotFoundError, ValidationError, ConflictError } from '../middleware/errorHandler';
 import { appendTimeRecordAuditEvent, systemActor, type TimeRecordActorContext } from './timeRecordAudit.service';
+import { assertTimesheetPeriodOpen } from './timesheetPeriodLock.service';
 
 interface CreateTimeRecordInput {
   employeeId: string;
@@ -203,6 +204,7 @@ export class TimeRecordService {
       recordObjectId = deployment.objectId;
     }
 
+    await assertTimesheetPeriodOpen(tenantId, { employeeId: input.employeeId, date: input.clockIn });
     const timeRecord = await prisma.$transaction(async (tx: any) => {
       const created = await tx.timeRecord.create({
         data: {
@@ -252,6 +254,7 @@ export class TimeRecordService {
     });
     
     if (!timeRecord) throw new NotFoundError('Offene Zeiterfassung');
+    await assertTimesheetPeriodOpen(tenantId, timeRecord);
 
     // Berechne Zuschläge
     const surcharges = await this.calculateSurcharges(
@@ -309,6 +312,7 @@ export class TimeRecordService {
     });
     
     if (!timeRecord) throw new NotFoundError('Offene Zeiterfassung');
+    await assertTimesheetPeriodOpen(tenantId, timeRecord);
 
     const break_ = await prisma.$transaction(async (tx: any) => {
       const created = await tx.break.create({ data: {
@@ -333,6 +337,7 @@ export class TimeRecordService {
     });
     
     if (!break_) throw new NotFoundError('Aktive Pause');
+    await assertTimesheetPeriodOpen(tenantId, break_.timeRecord);
 
     const breakEnd = input.breakEnd || new Date();
     const durationMinutes = Math.round(
@@ -359,6 +364,7 @@ export class TimeRecordService {
   async approve(tenantId: string, timeRecordId: string, userId: string, input?: ApproveInput, actor: TimeRecordActorContext = systemActor()) {
     const timeRecord = await prisma.timeRecord.findFirst({ where: { id: timeRecordId, tenantId, status: { in: ['completed', 'corrected'] } } });
     if (!timeRecord) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(tenantId, timeRecord);
     return prisma.$transaction(async (tx: any) => {
       const updated = await tx.timeRecord.update({ where: { id: timeRecordId }, data: { status: 'approved', approvedById: userId, approvedAt: new Date() } });
       await appendTimeRecordAuditEvent(tx, updated, actor, { action: 'approved', fieldChanged: 'status', oldValue: timeRecord.status, newValue: 'approved', comment: input?.comment });
@@ -370,6 +376,7 @@ export class TimeRecordService {
   async reject(tenantId: string, timeRecordId: string, userId: string, input: RejectInput, actor: TimeRecordActorContext = systemActor()) {
     const timeRecord = await prisma.timeRecord.findFirst({ where: { id: timeRecordId, tenantId, status: { in: ['completed', 'corrected'] } } });
     if (!timeRecord) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(tenantId, timeRecord);
     const reason = typeof input.reason === 'string' ? input.reason.trim() : '';
     if (reason.length < 10) throw new ValidationError('Der Ablehnungsgrund muss mindestens 10 Zeichen lang sein');
     return prisma.$transaction(async (tx: any) => {
@@ -383,6 +390,7 @@ export class TimeRecordService {
   async lock(tenantId: string, timeRecordId: string, userId: string, input: LockInput, actor: TimeRecordActorContext = systemActor()) {
     const timeRecord = await prisma.timeRecord.findFirst({ where: { id: timeRecordId, tenantId, status: 'approved' } });
     if (!timeRecord) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(tenantId, timeRecord);
     return prisma.$transaction(async (tx: any) => {
       const updated = await tx.timeRecord.update({ where: { id: timeRecordId }, data: { status: 'locked', isLocked: true, lockedById: userId, lockedAt: new Date(), lockReason: input.reason } });
       await appendTimeRecordAuditEvent(tx, updated, actor, { action: 'locked', fieldChanged: 'status', oldValue: 'approved', newValue: 'locked', comment: input.reason });
@@ -404,6 +412,7 @@ export class TimeRecordService {
   ) {
     const timeRecord = await prisma.timeRecord.findFirst({ where: { id: timeRecordId, tenantId } });
     if (!timeRecord) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(tenantId, timeRecord);
     if (timeRecord.isLocked || ['released', 'billed', 'locked', 'voided'].includes(timeRecord.status)) {
       throw new ConflictError('Diese Zeiterfassung ist gesperrt. Sie muss zuerst administrativ entsperrt werden.');
     }
@@ -437,6 +446,7 @@ export class TimeRecordService {
     const nextClockIn = (next.clockIn ?? timeRecord.clockIn) as Date;
     const nextClockOut = (Object.prototype.hasOwnProperty.call(next, 'clockOut') ? next.clockOut : timeRecord.clockOut) as Date | null;
     const nextBreakDuration = (next.breakDuration ?? timeRecord.breakDuration) as number;
+    await assertTimesheetPeriodOpen(tenantId, { employeeId: timeRecord.employeeId, date: nextClockIn });
     if (nextClockOut && nextClockOut <= nextClockIn) throw new ValidationError('Die Endzeit muss nach der Startzeit liegen');
 
     return prisma.$transaction(async (tx: any) => {

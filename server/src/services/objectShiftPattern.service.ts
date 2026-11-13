@@ -25,11 +25,17 @@ export class ObjectShiftPatternService {
     if (!input.weekdays || input.weekdays.length === 0) {
       throw new ValidationError('Mindestens ein Wochentag muss angegeben werden');
     }
-    if (input.weekdays.some(d => d < 1 || d > 7)) {
+    if (input.weekdays.some(d => !Number.isInteger(d) || d < 1 || d > 7)) {
       throw new ValidationError('Wochentage müssen zwischen 1 (Mo) und 7 (So) liegen');
     }
-    if (!input.startTime || !input.endTime) {
-      throw new ValidationError('Start- und Endzeit sind erforderlich');
+    if (!this.isValidTime(input.startTime) || !this.isValidTime(input.endTime)) {
+      throw new ValidationError('Start- und Endzeit müssen im Format HH:MM angegeben werden');
+    }
+    if ((input.breakMinutes ?? 0) < 0 || !Number.isInteger(input.breakMinutes ?? 0)) {
+      throw new ValidationError('Die Pausenzeit muss eine positive Minutenzahl sein');
+    }
+    if ((input.requiredPersonnel ?? 1) < 1 || !Number.isInteger(input.requiredPersonnel ?? 1)) {
+      throw new ValidationError('Mindestens eine Person muss eingeplant werden');
     }
 
     // Objekt prüfen
@@ -88,6 +94,14 @@ export class ObjectShiftPatternService {
       throw new NotFoundError('Schichtmuster');
     }
 
+    if (input.weekdays !== undefined && (!input.weekdays.length || input.weekdays.some(day => !Number.isInteger(day) || day < 1 || day > 7))) {
+      throw new ValidationError('Mindestens ein gültiger Wochentag (1–7) muss angegeben werden');
+    }
+    if (input.startTime !== undefined && !this.isValidTime(input.startTime)) throw new ValidationError('Ungültige Startzeit (HH:MM)');
+    if (input.endTime !== undefined && !this.isValidTime(input.endTime)) throw new ValidationError('Ungültige Endzeit (HH:MM)');
+    if (input.breakMinutes !== undefined && (!Number.isInteger(input.breakMinutes) || input.breakMinutes < 0)) throw new ValidationError('Die Pausenzeit muss eine positive Minutenzahl sein');
+    if (input.requiredPersonnel !== undefined && (!Number.isInteger(input.requiredPersonnel) || input.requiredPersonnel < 1)) throw new ValidationError('Mindestens eine Person muss eingeplant werden');
+
     const updateData: any = {};
     if (input.name !== undefined) updateData.name = input.name;
     if (input.weekdays !== undefined) updateData.weekdays = input.weekdays;
@@ -120,6 +134,12 @@ export class ObjectShiftPatternService {
     await prisma.objectShiftPattern.delete({ where: { id: patternId } });
     logger.info(`Schichtmuster gelöscht: ${patternId}`);
     return { success: true };
+  }
+
+  private isValidTime(value: string): boolean {
+    if (!/^\d{2}:\d{2}$/.test(value)) return false;
+    const [hours, minutes] = value.split(':').map(Number);
+    return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
   }
 
   /**

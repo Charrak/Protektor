@@ -5,6 +5,7 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { customerService } from '../../services/customer.service';
 import { objectService, type ObjectDetail, type SMSObject } from '../../services/object.service';
+import { ObjectOperationsPanel } from '../../components/objects/ObjectOperationsPanel';
 
 type ObjectForm = Partial<SMSObject>;
 
@@ -150,6 +151,7 @@ export function ObjectDetailPage() {
             <section className="card"><h2 className="mb-3 font-semibold text-gray-900">Zugang & Hinweise</h2><dl className="space-y-2 text-sm"><Info label="Alarmnummer" value={object.alarmNumber} /><Info label="Schlüsselverwahrung" value={object.keyDepot} /><Info label="Zugangscode" value={object.accessCode} /><Info label="Zutrittsregelungen" value={object.accessRegulations} /><Info label="Besondere Anweisungen" value={object.specialInstructions} /><Info label="Ausrüstung" value={object.equipmentRequirements} /><Info label="Alarmplan" value={object.alarmPlan} /></dl></section>
           </div>
           <section className="card"><h2 className="mb-2 font-semibold text-gray-900">Einsätze</h2><p className="text-sm text-gray-600">{object.deployments?.length || 0} Einsätze zugeordnet</p></section>
+          <ObjectOperationsPanel objectId={object.id} initialRequirements={object.requirements || []} />
         </>
       )}
     </div>

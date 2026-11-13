@@ -21,7 +21,7 @@ export class ObjectController {
   async getById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const id = req.params.id as string;
-      const obj = await objectService.getById(id);
+      const obj = await objectService.getById(id, req.user!.tenantId);
       res.json(obj);
     } catch (error) {
       next(error);
@@ -79,7 +79,7 @@ export class ObjectController {
         return;
       }
 
-      await objectService.setRequirements(id, requirements, req.user.id);
+      await objectService.setRequirements(id, requirements, req.user.tenantId, req.user.id);
       res.json({ message: 'Anforderungen aktualisiert' });
     } catch (error) {
       next(error);

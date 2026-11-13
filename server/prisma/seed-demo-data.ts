@@ -48,6 +48,53 @@ async function ensureDemoAvailability(data: any) {
   return prisma.availability.create({ data });
 }
 
+async function ensureRecurringDemoAvailability(data: any) {
+  const existing = await prisma.recurringAvailability.findFirst({
+    where: {
+      tenantId: data.tenantId,
+      employeeId: data.employeeId,
+      dayOfWeek: data.dayOfWeek,
+      startTime: data.startTime,
+      endTime: data.endTime,
+    },
+  });
+  if (existing) return prisma.recurringAvailability.update({ where: { id: existing.id }, data });
+  return prisma.recurringAvailability.create({ data });
+}
+
+async function ensureDemoShiftPattern(objectId: string, pattern: any) {
+  const data = {
+    objectId,
+    name: pattern.name,
+    weekdays: pattern.weekdays,
+    startTime: new Date(`1970-01-01T${pattern.startTime}:00.000Z`),
+    endTime: new Date(`1970-01-01T${pattern.endTime}:00.000Z`),
+    breakMinutes: pattern.breakMinutes ?? 30,
+    requiredPersonnel: pattern.requiredPersonnel ?? 1,
+    notes: pattern.notes,
+    isActive: true,
+  };
+  const existing = await prisma.objectShiftPattern.findFirst({ where: { objectId, name: pattern.name } });
+  if (existing) return prisma.objectShiftPattern.update({ where: { id: existing.id }, data });
+  return prisma.objectShiftPattern.create({ data });
+}
+
+async function ensureDemoObjectRequirement(objectId: string, qualificationId: string, isMandatory: boolean, notes?: string) {
+  const existing = await prisma.objectRequirement.findUnique({ where: { objectId_qualificationId: { objectId, qualificationId } } });
+  const data = { isMandatory, notes: notes || null };
+  if (existing) return prisma.objectRequirement.update({ where: { id: existing.id }, data });
+  return prisma.objectRequirement.create({ data: { objectId, qualificationId, ...data } });
+}
+
+async function ensureDemoEmployeeQualification(employeeId: string, qualificationId: string, today: Date) {
+  const existing = await prisma.employeeQualification.findUnique({ where: { employeeId_qualificationId: { employeeId, qualificationId } } });
+  const obtainedDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+  const expiryDate = new Date(today.getFullYear() + 2, today.getMonth(), today.getDate());
+  const data = { obtainedDate, expiryDate, isVerified: true, verifiedAt: today };
+  if (existing) return prisma.employeeQualification.update({ where: { id: existing.id }, data });
+  return prisma.employeeQualification.create({ data: { employeeId, qualificationId, ...data } });
+}
+
 async function main() {
   console.log('🌱 Starte Demo-Daten-Generierung...\n');
 
@@ -323,6 +370,107 @@ async function main() {
     }),
   ]);
   console.log(`✅ ${objects.length} Objekte erstellt`);
+
+  // ═══════════════════════════════════════════════════════
+  // 4a. OBJEKT-BESETZUNGSZEITEN & QUALIFIKATIONSANFORDERUNGEN
+  // ═══════════════════════════════════════════════════════
+  console.log('🕒 Hinterlege Besetzungszeiten und Objekt-Qualifikationen...');
+
+  const qualificationNames = [
+    'Bewachungserlaubnis §34a', 'Erste-Hilfe-Ausbildung', 'Brandschutzhelfer',
+    'Sachkundeprüfung §34a', 'Waffenbesitzkarte', 'Objektschutz-Zertifikat',
+  ];
+  const qualificationByName = new Map<string, any>();
+  for (const name of qualificationNames) {
+    let qualification = await prisma.qualification.findFirst({ where: { name } });
+    if (!qualification) qualification = await prisma.qualification.create({ data: { name, category: 'security', requiresRenewal: true } });
+    qualificationByName.set(name, qualification);
+  }
+
+  const objectRequirements = [
+    [objects[0], 'Bewachungserlaubnis §34a', true, 'Gültiger Nachweis erforderlich'],
+    [objects[0], 'Erste-Hilfe-Ausbildung', false, 'Aktueller Erste-Hilfe-Kurs erwünscht'],
+    [objects[1], 'Bewachungserlaubnis §34a', true, 'Einlass- und Sicherheitsdienst'],
+    [objects[1], 'Sachkundeprüfung §34a', false, 'Für verantwortliche Schichtleitung'],
+    [objects[2], 'Bewachungserlaubnis §34a', true, 'Zutrittskontrolle und Rundgänge'],
+    [objects[2], 'Erste-Hilfe-Ausbildung', true, 'Erste Hilfe vor Ort sicherstellen'],
+    [objects[4], 'Bewachungserlaubnis §34a', true, 'Veranstaltungsschutz'],
+    [objects[4], 'Brandschutzhelfer', true, 'Brandschutzunterstützung während Veranstaltungen'],
+    [objects[4], 'Sachkundeprüfung §34a', false, 'Für Teamleitung erforderlich'],
+  ] as const;
+  for (const [object, qualificationName, mandatory, notes] of objectRequirements) {
+    await ensureDemoObjectRequirement(object.id, qualificationByName.get(qualificationName).id, mandatory, notes);
+  }
+
+  const scheduleTemplates = [
+    [objects[0], [
+      { name: 'Frühdienst', weekdays: [1, 2, 3, 4, 5], startTime: '06:00', endTime: '14:00', breakMinutes: 30 },
+      { name: 'Spätdienst', weekdays: [1, 2, 3, 4, 5], startTime: '14:00', endTime: '22:00', breakMinutes: 30 },
+    ]],
+    [objects[1], [
+      { name: 'Einlass Abendveranstaltung', weekdays: [5, 6], startTime: '16:00', endTime: '23:00', breakMinutes: 30, requiredPersonnel: 2 },
+      { name: 'Tagesveranstaltung', weekdays: [6, 7], startTime: '10:00', endTime: '18:00', breakMinutes: 30, requiredPersonnel: 2 },
+    ]],
+    [objects[2], [
+      { name: 'Empfang Frühdienst', weekdays: [1, 2, 3, 4, 5], startTime: '06:00', endTime: '14:00', breakMinutes: 30 },
+      { name: 'Empfang Spätdienst', weekdays: [1, 2, 3, 4, 5], startTime: '14:00', endTime: '22:00', breakMinutes: 30 },
+    ]],
+    [objects[3], [
+      { name: 'Tagesrundgänge', weekdays: [1, 2, 3, 4, 5], startTime: '07:00', endTime: '19:00', breakMinutes: 45 },
+    ]],
+    [objects[4], [
+      { name: 'Veranstaltungsschutz', weekdays: [5, 6, 7], startTime: '14:00', endTime: '22:00', breakMinutes: 30, requiredPersonnel: 3 },
+    ]],
+  ] as const;
+  for (const [object, patterns] of scheduleTemplates) {
+    for (const pattern of patterns) await ensureDemoShiftPattern(object.id, pattern);
+  }
+  console.log(`✅ ${scheduleTemplates.reduce((count, [, patterns]) => count + patterns.length, 0)} Besetzungszeitmuster und ${objectRequirements.length} Qualifikationsanforderungen hinterlegt`);
+
+  // ═══════════════════════════════════════════════════════
+  // 4b. MITARBEITER-QUALIFIKATIONEN & WÖCHENTLICHE VERFÜGBARKEITEN
+  // ═══════════════════════════════════════════════════════
+  console.log('🧑‍✈️ Hinterlege Qualifikationen und Verfügbarkeitszeiten der Mitarbeiter...');
+  const employeeQualifications = [
+    [employees[0], ['Bewachungserlaubnis §34a', 'Erste-Hilfe-Ausbildung', 'Objektschutz-Zertifikat']],
+    [employees[1], ['Bewachungserlaubnis §34a', 'Erste-Hilfe-Ausbildung', 'Brandschutzhelfer', 'Sachkundeprüfung §34a']],
+    [employees[2], ['Bewachungserlaubnis §34a', 'Sachkundeprüfung §34a', 'Waffenbesitzkarte']],
+    [employees[3], ['Bewachungserlaubnis §34a', 'Erste-Hilfe-Ausbildung']],
+    [employees[4], ['Bewachungserlaubnis §34a', 'Erste-Hilfe-Ausbildung', 'Objektschutz-Zertifikat']],
+  ] as const;
+  for (const [employee, names] of employeeQualifications) {
+    for (const name of names) await ensureDemoEmployeeQualification(employee.id, qualificationByName.get(name).id, today);
+  }
+
+  const weekdayWindows = [1, 2, 3, 4, 5];
+  const recurringWindows = [
+    [employees[0], weekdayWindows, '06:00', '18:00', 'Vollzeit, Früh- und Spätdienst'],
+    [employees[1], weekdayWindows, '14:00', '22:00', 'Bevorzugt Spätdienst'],
+    [employees[1], [6], '08:00', '18:00', 'Samstags nach Absprache'],
+    [employees[2], weekdayWindows, '06:00', '14:00', 'Teilzeit, Frühdienst'],
+    [employees[3], [2, 3, 4, 5, 6], '08:00', '16:00', 'Verfügbarkeit Dienstag bis Samstag'],
+    [employees[4], [6, 7], '10:00', '22:00', 'Wochenend- und Veranstaltungsdienst'],
+  ] as const;
+  const recurringAvailability = [];
+  for (const [employee, days, start, end, notes] of recurringWindows) {
+    for (const dayOfWeek of days) {
+      recurringAvailability.push(await ensureRecurringDemoAvailability({
+        tenantId: tenant.id,
+        employeeId: employee.id,
+        dayOfWeek,
+        startTime: new Date(`1970-01-01T${start}:00.000Z`),
+        endTime: new Date(`1970-01-01T${end}:00.000Z`),
+        validFrom: new Date(today.getFullYear(), today.getMonth(), 1),
+        validUntil: null,
+        isActive: true,
+        notes,
+        status: 'approved',
+        approvedById: teamLeaderUser.id,
+        approvedAt: today,
+      }));
+    }
+  }
+  console.log(`✅ ${recurringAvailability.length} wöchentliche Mitarbeiter-Verfügbarkeiten hinterlegt`);
 
   // ═══════════════════════════════════════════════════════
   // 5. DIENSTPLÄNE (Deployments)

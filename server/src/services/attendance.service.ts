@@ -1,5 +1,6 @@
 import { prisma } from '../config/database';
 import { logger } from '../config/logger';
+import { assertTimesheetPeriodOpen } from './timesheetPeriodLock.service';
 import { NotFoundError, ConflictError } from '../middleware/errorHandler';
 
 export class AttendanceService {
@@ -79,13 +80,15 @@ export class AttendanceService {
       throw new ConflictError('Es existiert bereits eine offene Zeiterfassung. Bitte zuerst ausstempeln.');
     }
 
+    const now = new Date();
+    await assertTimesheetPeriodOpen(employee.tenantId, { employeeId, date: now });
     const record = await prisma.timeRecord.create({
       data: {
         tenantId: employee.tenantId,
         employeeId,
         deploymentId,
-        date: new Date(),
-        clockIn: new Date(),
+        date: now,
+        clockIn: now,
         status: 'open',
       },
     });
@@ -97,6 +100,7 @@ export class AttendanceService {
   async clockOut(recordId: string) {
     const record = await prisma.timeRecord.findUnique({ where: { id: recordId } });
     if (!record) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(record.tenantId, record);
     if (record.clockOut) throw new ConflictError('Zeiterfassung bereits abgeschlossen');
 
     const clockOut = new Date();
@@ -118,6 +122,9 @@ export class AttendanceService {
   }
 
   async approve(recordId: string, userId: string) {
+    const existing = await prisma.timeRecord.findUnique({ where: { id: recordId } });
+    if (!existing) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(existing.tenantId, existing);
     const record = await prisma.timeRecord.update({
       where: { id: recordId },
       data: {
@@ -134,6 +141,7 @@ export class AttendanceService {
   async correct(recordId: string, corrections: any, userId: string) {
     const existing = await prisma.timeRecord.findUnique({ where: { id: recordId } });
     if (!existing) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(existing.tenantId, existing);
 
     const record = await prisma.timeRecord.update({
       where: { id: recordId },

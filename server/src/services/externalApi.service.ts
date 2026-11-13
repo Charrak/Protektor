@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { auditService } from './audit.service';
 import { logger } from '../config/logger';
 import { generateSecureToken } from '../utils/encryption';
+import { assertTimesheetPeriodOpen } from './timesheetPeriodLock.service';
 
 const prisma = new PrismaClient();
 
@@ -202,6 +203,7 @@ export class ExternalApiService {
       ? new Date(`${data.date}T${value}`)
       : new Date(value);
 
+    await assertTimesheetPeriodOpen(tenantId, { employeeId: data.employeeId, date: entryDate });
     const entry = await prisma.timeRecord.create({
       data: {
         tenantId,

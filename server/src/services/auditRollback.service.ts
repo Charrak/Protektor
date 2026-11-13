@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { logger } from '../config/logger';
+import { assertTimesheetPeriodOpen } from './timesheetPeriodLock.service';
 
 const prisma = new PrismaClient();
 
@@ -195,9 +196,12 @@ export class AuditRollbackService {
       case 'Deployment':
         await prisma.deployment.delete({ where: { id: entityId } });
         break;
-      case 'TimeEntry':
+      case 'TimeEntry': {
+        const record = await prisma.timeRecord.findUnique({ where: { id: entityId } });
+        if (record) await assertTimesheetPeriodOpen(record.tenantId, record);
         await prisma.timeRecord.delete({ where: { id: entityId } });
         break;
+      }
       default:
         throw new Error(`Rollback für ${entityType} nicht implementiert`);
     }
@@ -236,12 +240,15 @@ export class AuditRollbackService {
           data: oldValue,
         });
         break;
-      case 'TimeEntry':
+      case 'TimeEntry': {
+        const record = await prisma.timeRecord.findUnique({ where: { id: entityId } });
+        if (record) await assertTimesheetPeriodOpen(record.tenantId, record);
         await prisma.timeRecord.update({
           where: { id: entityId },
           data: oldValue,
         });
         break;
+      }
       default:
         throw new Error(`Rollback für ${entityType} nicht implementiert`);
     }
@@ -271,9 +278,13 @@ export class AuditRollbackService {
       case 'Deployment':
         await prisma.deployment.create({ data: oldValue });
         break;
-      case 'TimeEntry':
+      case 'TimeEntry': {
+        if (oldValue.tenantId && oldValue.employeeId && oldValue.date) {
+          await assertTimesheetPeriodOpen(oldValue.tenantId, { employeeId: oldValue.employeeId, date: new Date(oldValue.date) });
+        }
         await prisma.timeRecord.create({ data: oldValue });
         break;
+      }
       default:
         throw new Error(`Rollback für ${entityType} nicht implementiert`);
     }

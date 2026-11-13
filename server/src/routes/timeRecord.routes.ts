@@ -5,6 +5,8 @@ import { prisma } from '../config/database';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/authorization';
 import { ConflictError, NotFoundError, ValidationError } from '../middleware/errorHandler';
+import { timesheetPeriodService } from '../services/timesheetPeriod.service';
+import { assertTimesheetPeriodOpen } from '../services/timesheetPeriodLock.service';
 import PDFDocument = require('pdfkit');
 
 const router = Router();
@@ -50,6 +52,75 @@ async function getAccessibleObjectIds(req: any) {
   });
   return entries.map((entry: any) => entry.objectId);
 }
+
+router.get('/timesheet-periods', authenticate, requirePermission('attendance:view_own', 'attendance:view_all', 'attendance:close_period'), async (req, res, next) => {
+  try {
+    const ownEmployeeId = await getOwnEmployeeId(req);
+    const requestedEmployeeId = req.query.employeeId ? String(req.query.employeeId) : undefined;
+    const canManage = req.user!.permissions.includes('attendance:close_period') || isAdmin(req);
+    if (ownEmployeeId && requestedEmployeeId && requestedEmployeeId !== ownEmployeeId) throw new NotFoundError('Monatsabschluss');
+    if (!ownEmployeeId && !canManage && !isAdmin(req) && !req.user!.permissions.includes('attendance:view_all')) throw new NotFoundError('Monatsabschlüsse');
+    if (!ownEmployeeId && canManage && !isAdmin(req) && !req.user!.permissions.includes('attendance:view_all') && !requestedEmployeeId) {
+      throw new ValidationError('Für die Abfrage eines Monatsabschlusses muss ein Mitarbeiter ausgewählt sein');
+    }
+    let periods = await timesheetPeriodService.list(req.user!.tenantId, ownEmployeeId || requestedEmployeeId);
+    if (!ownEmployeeId && canManage && !isAdmin(req) && !req.user!.permissions.includes('attendance:view_all')) {
+      const accessibleObjectIds = await getAccessibleObjectIds(req) || [];
+      const visiblePeriods = [];
+      for (const period of periods) {
+        const start = new Date(Date.UTC(period.year, period.month - 1, 1));
+        const end = new Date(Date.UTC(period.year, period.month, 1));
+        const records = await prisma.timeRecord.findMany({
+          where: { tenantId: req.user!.tenantId, employeeId: period.employeeId, date: { gte: start, lt: end }, status: { not: 'voided' } },
+          select: { objectId: true },
+        });
+        if (!records.length || records.some((record: { objectId: string | null }) => !record.objectId || !accessibleObjectIds.includes(record.objectId))) continue;
+        let canAccessAllRecords = true;
+        for (const record of records) {
+          try { await assertObjectAccess(req, record.objectId, 'approve'); }
+          catch { canAccessAllRecords = false; break; }
+        }
+        if (canAccessAllRecords) visiblePeriods.push(period);
+      }
+      periods = visiblePeriods;
+    }
+    res.json({ periods });
+  } catch (error) { next(error); }
+});
+
+router.post('/timesheet-periods/close', authenticate, requirePermission('attendance:close_period'), async (req, res, next) => {
+  try {
+    if (await getOwnEmployeeId(req)) throw new NotFoundError('Monatsabschluss');
+    const { employeeId, year, month } = req.body || {};
+    const numericYear = Number(year);
+    const numericMonth = Number(month);
+    if (!employeeId) throw new ValidationError('Mitarbeiter ist erforderlich');
+    const { start, end } = (() => {
+      if (!Number.isInteger(numericYear) || !Number.isInteger(numericMonth) || numericMonth < 1 || numericMonth > 12) throw new ValidationError('Monat oder Jahr ist ungültig');
+      return { start: new Date(Date.UTC(numericYear, numericMonth - 1, 1)), end: new Date(Date.UTC(numericYear, numericMonth, 1)) };
+    })();
+    const objectIds = await getAccessibleObjectIds(req);
+    if (objectIds) {
+      const records = await prisma.timeRecord.findMany({
+        where: { tenantId: req.user!.tenantId, employeeId: String(employeeId), date: { gte: start, lt: end }, status: { not: 'voided' } },
+        select: { objectId: true },
+      });
+      if (records.some((record: { objectId: string | null }) => !record.objectId || !objectIds.includes(record.objectId))) throw new NotFoundError('Monatsabschluss');
+      for (const record of records) await assertObjectAccess(req, record.objectId, 'approve');
+    }
+    const period = await timesheetPeriodService.close(req.user!.tenantId, String(employeeId), numericYear, numericMonth, req.user!.id, actor(req));
+    res.status(201).json(period);
+  } catch (error) { next(error); }
+});
+
+router.post('/timesheet-periods/:periodId/sign', authenticate, requirePermission('attendance:view_own'), async (req, res, next) => {
+  try {
+    const employeeId = await getOwnEmployeeId(req);
+    if (!employeeId) throw new NotFoundError('Eigene Mitarbeiterzuordnung');
+    const period = await timesheetPeriodService.sign(req.user!.tenantId, employeeId, req.params.periodId as string, req.user!.id, req.body?.signatureData, actor(req));
+    res.json(period);
+  } catch (error) { next(error); }
+});
 
 router.get('/summary', authenticate, requirePermission('attendance:view'), async (req, res, next) => {
   try {
@@ -182,6 +253,7 @@ router.post('/:id/correction-request', authenticate, requirePermission('attendan
   try {
     const record = await prisma.timeRecord.findFirst({ where: { id: req.params.id, tenantId: req.user!.tenantId }, include: { employee: { select: { email: true } } } });
     if (!record || !record.employee.email || record.employee.email.toLowerCase() !== req.user!.email.toLowerCase()) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(req.user!.tenantId, record);
     if (record.isLocked || ['released', 'billed', 'locked', 'voided'].includes(record.status)) throw new ConflictError('Für diese gesperrte Zeit kann kein Korrekturantrag gestellt werden');
     const comment = typeof req.body?.comment === 'string' ? req.body.comment.trim() : '';
     const requestedChanges = Array.isArray(req.body?.changes) ? req.body.changes : [];
@@ -235,6 +307,7 @@ router.put('/:id/correction-requests/:correctionId', authenticate, requirePermis
     if (decisionComment.length < 10) throw new ValidationError('Der Entscheidungskommentar muss mindestens 10 Zeichen lang sein');
     const request = await prisma.timeCorrection.findFirst({ where: { id: req.params.correctionId, tenantId: req.user!.tenantId, timeRecordId: req.params.id, requestStatus: 'pending' }, include: { timeRecord: true } });
     if (!request) throw new NotFoundError('Offener Korrekturantrag');
+    await assertTimesheetPeriodOpen(req.user!.tenantId, request.timeRecord);
     await assertObjectAccess(req, request.timeRecord.objectId, 'approve');
     if (req.body?.approve === true) {
       const changes = Array.isArray(request.proposedValues) ? request.proposedValues as any : [];
@@ -350,6 +423,7 @@ router.post('/clock-in', authenticate, requirePermission('attendance:create'), a
     const input = { ...req.body, clockIn: new Date(req.body.clockIn), clockOut: req.body.clockOut ? new Date(req.body.clockOut) : undefined, clockInLatitude: location.latitude, clockInLongitude: location.longitude };
     const ownEmployeeId = await getOwnEmployeeId(req);
     if (ownEmployeeId && input.employeeId !== ownEmployeeId) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(req.user!.tenantId, { employeeId: input.employeeId, date: input.clockIn });
     if (ownEmployeeId && (!['app', 'stamp'].includes(input.sourceType) || Math.abs(Date.now() - input.clockIn.getTime()) > 5 * 60 * 1000)) throw new ValidationError('Mitarbeiter können nur die eigene aktuelle Zeitstempelung starten.');
     if (!input.objectId && input.deploymentId) {
       const deployment = await prisma.deployment.findFirst({ where: { id: input.deploymentId, tenantId: req.user!.tenantId, employeeId: input.employeeId }, select: { objectId: true } });
@@ -365,6 +439,7 @@ router.post('/:id/clock-out', authenticate, requirePermission('attendance:create
   try {
     const existing = await prisma.timeRecord.findFirst({ where: { id: req.params.id, tenantId: req.user!.tenantId } });
     if (!existing) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(req.user!.tenantId, existing);
     const ownEmployeeId = await getOwnEmployeeId(req);
     if (ownEmployeeId && existing.employeeId !== ownEmployeeId) throw new NotFoundError('Zeiterfassung');
     if (!ownEmployeeId) await assertObjectAccess(req, existing.objectId, 'edit');
@@ -379,6 +454,7 @@ router.post('/:id/break/start', authenticate, requirePermission('attendance:crea
   try {
     const record = await prisma.timeRecord.findFirst({ where: { id: req.params.id, tenantId: req.user!.tenantId } });
     if (!record) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(req.user!.tenantId, record);
     const ownEmployeeId = await getOwnEmployeeId(req);
     if (ownEmployeeId && record.employeeId !== ownEmployeeId) throw new NotFoundError('Zeiterfassung');
     if (!ownEmployeeId) await assertObjectAccess(req, record.objectId, 'edit');
@@ -390,6 +466,7 @@ router.post('/break/:breakId/end', authenticate, requirePermission('attendance:c
   try {
     const breakRecord = await prisma.break.findFirst({ where: { id: req.params.breakId, tenantId: req.user!.tenantId }, include: { timeRecord: true } });
     if (!breakRecord) throw new NotFoundError('Pause');
+    await assertTimesheetPeriodOpen(req.user!.tenantId, breakRecord.timeRecord);
     const ownEmployeeId = await getOwnEmployeeId(req);
     if (ownEmployeeId && breakRecord.timeRecord.employeeId !== ownEmployeeId) throw new NotFoundError('Pause');
     if (!ownEmployeeId) await assertObjectAccess(req, breakRecord.timeRecord.objectId, 'edit');
@@ -402,6 +479,7 @@ router.post('/:id/approve', authenticate, requirePermission('attendance:approve'
   try {
     const existing = await prisma.timeRecord.findFirst({ where: { id: req.params.id, tenantId: req.user!.tenantId } });
     if (!existing) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(req.user!.tenantId, existing);
     await assertObjectAccess(req, existing.objectId, 'approve');
     const result = await timeRecordService.approve(req.user!.tenantId, existing.id, req.user!.id, req.body, actor(req));
     res.json(result);
@@ -411,6 +489,7 @@ router.post('/:id/reject', authenticate, requirePermission('attendance:approve')
   try {
     const existing = await prisma.timeRecord.findFirst({ where: { id: req.params.id, tenantId: req.user!.tenantId } });
     if (!existing) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(req.user!.tenantId, existing);
     await assertObjectAccess(req, existing.objectId, 'approve');
     const result = await timeRecordService.reject(req.user!.tenantId, existing.id, req.user!.id, req.body, actor(req));
     res.json(result);
@@ -420,6 +499,7 @@ router.post('/:id/lock', authenticate, requirePermission('attendance:approve'), 
   try {
     const existing = await prisma.timeRecord.findFirst({ where: { id: req.params.id, tenantId: req.user!.tenantId } });
     if (!existing) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(req.user!.tenantId, existing);
     await assertObjectAccess(req, existing.objectId, 'approve');
     const result = await timeRecordService.lock(req.user!.tenantId, existing.id, req.user!.id, req.body, actor(req));
     res.json(result);
@@ -429,6 +509,7 @@ router.post('/:id/correct', authenticate, requirePermission('attendance:edit'), 
   try {
     const existing = await prisma.timeRecord.findFirst({ where: { id: req.params.id, tenantId: req.user!.tenantId } });
     if (!existing) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(req.user!.tenantId, existing);
     await assertObjectAccess(req, existing.objectId, 'edit');
     const result = await timeRecordService.correct(req.user!.tenantId, existing.id, req.user!.id, req.body, actor(req));
     res.json(result);
@@ -439,6 +520,7 @@ router.post('/:id/release', authenticate, requirePermission('attendance:release'
   try {
     const record = await prisma.timeRecord.findFirst({ where: { id: req.params.id, tenantId: req.user!.tenantId } });
     if (!record) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(req.user!.tenantId, record);
     await assertObjectAccess(req, record.objectId, 'approve');
     if (record.status !== 'approved' && record.status !== 'corrected') throw new ConflictError('Nur geprüfte oder korrigierte Zeiten können freigegeben werden');
     const result = await prisma.$transaction(async (tx: any) => {
@@ -457,6 +539,7 @@ router.post('/:id/unlock', authenticate, requirePermission('attendance:unlock'),
     if (comment.length < 10) throw new ValidationError('Für die Entsperrung ist ein Kommentar mit mindestens 10 Zeichen erforderlich');
     const record = await prisma.timeRecord.findFirst({ where: { id: req.params.id, tenantId: req.user!.tenantId } });
     if (!record) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(req.user!.tenantId, record);
     if (!record.isLocked && !['locked', 'released', 'billed'].includes(record.status)) throw new ConflictError('Diese Zeiterfassung ist nicht gesperrt');
     const result = await prisma.$transaction(async (tx: any) => {
       const reopeningBilled = record.status === 'billed';
@@ -483,6 +566,7 @@ router.post('/:id/void', authenticate, requirePermission('attendance:void'), asy
     if (comment.length < 10) throw new ValidationError('Der Stornierungsgrund muss mindestens 10 Zeichen lang sein');
     const record = await prisma.timeRecord.findFirst({ where: { id: req.params.id, tenantId: req.user!.tenantId } });
     if (!record) throw new NotFoundError('Zeiterfassung');
+    await assertTimesheetPeriodOpen(req.user!.tenantId, record);
     if ((record.isLocked || ['locked', 'released', 'billed'].includes(record.status)) && !isAdmin(req)) throw new NotFoundError('Zeiterfassung');
     await assertObjectAccess(req, record.objectId, 'approve');
     const result = await prisma.$transaction(async (tx: any) => {

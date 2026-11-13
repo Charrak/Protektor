@@ -65,6 +65,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { slug: 'attendance:create', name: 'Zeiterfassung erstellen', module: 'attendance', description: 'Zeiten erfassen' },
   { slug: 'attendance:edit', name: 'Zeiterfassung bearbeiten', module: 'attendance', description: 'Zeiten ändern' },
   { slug: 'attendance:approve', name: 'Zeiterfassung genehmigen', module: 'attendance', description: 'Zeiten genehmigen' },
+  { slug: 'attendance:close_period', name: 'Monatsabschluss durchführen', module: 'attendance', description: 'Geprüfte Stundenzettel abschließen' },
   { slug: 'attendance:view_all', name: 'Alle Zeiterfassungen anzeigen', module: 'attendance', description: 'Zeiten aller Mitarbeiter einsehen' },
   { slug: 'attendance:request_correction', name: 'Korrektur beantragen', module: 'attendance', description: 'Eigene Zeiten korrigieren lassen' },
   { slug: 'attendance:release', name: 'Zeiten freigeben', module: 'attendance', description: 'Zeiterfassungen freigeben' },
@@ -118,7 +119,7 @@ export const DEFAULT_ROLES: RoleDef[] = [
       'objects:view',
       'scheduling:view', 'scheduling:create', 'scheduling:edit', 'scheduling:delete', 'scheduling:auto_plan',
       'planning_groups:read', 'planning_groups:create', 'planning_groups:update',
-      'attendance:view', 'attendance:edit', 'attendance:approve',
+      'attendance:view', 'attendance:edit', 'attendance:approve', 'attendance:close_period',
     ],
   },
   {
@@ -152,6 +153,7 @@ export const DEFAULT_ROLES: RoleDef[] = [
       'employees:view',
       'billing.read', 'billing.create', 'billing:invoices', 'billing:payroll',
       'reports:view',
+      'attendance:view', 'attendance:view_all', 'attendance:close_period',
     ],
   },
 ];

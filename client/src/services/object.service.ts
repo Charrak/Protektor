@@ -50,14 +50,17 @@ export interface ObjectListResponse {
 }
 
 export interface ObjectRequirement {
+  id?: string;
   qualificationId: string;
   isMandatory: boolean;
+  notes?: string | null;
+  qualification?: { id: string; name: string; category?: string | null; color?: string | null };
 }
 
 export interface ObjectDetail extends SMSObject {
   customer: any;
   contactPerson?: any;
-  requirements: any[];
+  requirements: ObjectRequirement[];
   deployments?: any[];
 }
 

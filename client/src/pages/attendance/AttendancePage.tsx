@@ -9,6 +9,7 @@ import { AttendanceCorrectionRequests } from './AttendanceCorrectionRequests';
 import { AttendanceObjectAccess } from './AttendanceObjectAccess';
 import { formatBerlinDate, formatBerlinTime } from '../../utils/dateFormat';
 import { useAuth } from '../../contexts/AuthContext';
+import { TimesheetPeriodPanel } from './TimesheetPeriodPanel';
 
 export function AttendancePage() {
   const { user } = useAuth();
@@ -32,13 +33,23 @@ export function AttendancePage() {
   const [showAudit, setShowAudit] = useState(false);
   const [showCorrectionRequests, setShowCorrectionRequests] = useState(false);
   const [showObjectAccess, setShowObjectAccess] = useState(false);
+  const [showVariance, setShowVariance] = useState(false);
+  const [printReport, setPrintReport] = useState<null | { employeeName: string; personnelNumber: string; dateFrom: string; dateTo: string; records: TimeRecord[]; signatureData?: string | null; signedAt?: string | null }>(null);
+
+  useEffect(() => {
+    if (!printReport) return;
+    const timer = window.setTimeout(() => window.print(), 150);
+    const clearReport = () => setPrintReport(null);
+    window.addEventListener('afterprint', clearReport);
+    return () => { window.clearTimeout(timer); window.removeEventListener('afterprint', clearReport); };
+  }, [printReport]);
 
   const loadRecords = useCallback(async () => {
     setLoading(true);
     try {
       const [result, overview] = await Promise.all([
         attendanceService.list({ status: statusFilter || undefined, startDate: startDate || undefined, endDate: endDate || undefined, employeeId: employeeFilter || undefined, objectId: objectFilter || undefined, page, limit: 20 }),
-        attendanceService.summary({ startDate: startDate || undefined, endDate: endDate || undefined }),
+        attendanceService.summary({ startDate: startDate || undefined, endDate: endDate || undefined, employeeId: employeeFilter || undefined, objectId: objectFilter || undefined }),
       ]);
       setSummary(overview);
       setRecords(result.records);
@@ -63,6 +74,42 @@ export function AttendancePage() {
     }
   };
 
+  const printTimesheet = async () => {
+    if (!employeeFilter) { alert('Bitte zuerst einen Mitarbeiter auswählen.'); return; }
+    if (!startDate || !endDate) { alert('Bitte einen Von- und Bis-Zeitraum auswählen.'); return; }
+    if (startDate > endDate) { alert('Das Von-Datum darf nicht nach dem Bis-Datum liegen.'); return; }
+    try {
+      const firstPage = await attendanceService.list({ employeeId: employeeFilter, startDate, endDate, page: 1, limit: 200 });
+      const allRecords = [...firstPage.records];
+      for (let nextPage = 2; nextPage <= firstPage.totalPages; nextPage += 1) {
+        const next = await attendanceService.list({ employeeId: employeeFilter, startDate, endDate, page: nextPage, limit: 200 });
+        allRecords.push(...next.records);
+      }
+      const finalStatuses = ['approved', 'released', 'locked', 'billed'];
+      const activeRecords = allRecords.filter(record => record.status !== 'voided');
+      if (activeRecords.some(record => !finalStatuses.includes(record.status))) {
+        alert('Der Zeitraum enthält noch nicht freigegebene Zeiteinträge. Bitte erst alle Zeiten prüfen und freigeben.');
+        return;
+      }
+      const reportRecords = activeRecords;
+      if (!reportRecords.length) { alert('Im ausgewählten Zeitraum gibt es keine freigegebenen Zeiteinträge für diesen Mitarbeiter.'); return; }
+      const employee = reportRecords[0].employee;
+      let signedPeriod: Awaited<ReturnType<typeof attendanceService.listTimesheetPeriods>>[number] | undefined;
+      try {
+        const periods = await attendanceService.listTimesheetPeriods(employeeFilter);
+        const [reportYear, reportMonth] = startDate.split('-').map(Number);
+        const monthLastDay = new Date(reportYear, reportMonth, 0).getDate();
+        const isFullSignedMonth = startDate === `${reportYear}-${String(reportMonth).padStart(2, '0')}-01` && endDate === `${reportYear}-${String(reportMonth).padStart(2, '0')}-${String(monthLastDay).padStart(2, '0')}`;
+        signedPeriod = isFullSignedMonth ? periods.find(period => period.year === reportYear && period.month === reportMonth && period.status === 'signed') : undefined;
+      } catch {
+        // A user with access to records but not period management can still print the unsigned paper form.
+      }
+      setPrintReport({ employeeName: `${employee.firstName} ${employee.lastName}`, personnelNumber: employee.personnelNumber, dateFrom: startDate, dateTo: endDate, records: reportRecords, signatureData: signedPeriod?.signatureData, signedAt: signedPeriod?.signedAt });
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Stundenzettel konnte nicht erstellt werden.');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'success' | 'warning' | 'danger' | 'gray' | 'info'> = {
       open: 'warning', completed: 'info', corrected: 'warning', approved: 'success', released: 'success', billed: 'gray', rejected: 'danger', voided: 'gray', locked: 'gray',
@@ -80,39 +127,31 @@ export function AttendancePage() {
         description={`${total} Zeiterfassungen insgesamt`}
       />
 
-      <div className="card mb-4">
-        <div className="flex gap-3">
-          <input type="date" aria-label="Von Datum" value={startDate} onChange={event => { setStartDate(event.target.value); setPage(1); }} className="input-field w-auto" />
-          <input type="date" aria-label="Bis Datum" value={endDate} onChange={event => { setEndDate(event.target.value); setPage(1); }} className="input-field w-auto" />
-          <select aria-label="Mitarbeiter filtern" value={employeeFilter} onChange={event => { setEmployeeFilter(event.target.value); setPage(1); }} className="input-field w-auto"><option value="">Alle Mitarbeiter</option>{summary?.employeeHours.map(employee => <option key={employee.employeeId} value={employee.employeeId}>{employee.employeeName}</option>)}</select>
-          <select aria-label="Objekt filtern" value={objectFilter} onChange={event => { setObjectFilter(event.target.value); setPage(1); }} className="input-field w-auto"><option value="">Alle Objekte</option>{summary?.objects.map(object => <option key={object.id} value={object.id}>{object.name}</option>)}</select>
-          <select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="input-field w-auto"
-          >
-            <option value="">Alle Status</option>
-            <option value="open">Offen</option>
-            <option value="completed">Abgeschlossen</option>
-            <option value="corrected">Korrigiert</option>
-            <option value="approved">Geprüft</option>
-            <option value="released">Freigegeben</option>
-            <option value="billed">Abgerechnet</option>
-            <option value="rejected">Abgelehnt</option>
-            <option value="voided">Storniert</option>
-          </select>
-          {hasPermission('attendance:export') && <><button type="button" onClick={async () => { if (!startDate || !endDate) { alert('Für einen Stundenexport bitte Von- und Bis-Datum wählen.'); return; } try { await attendanceService.exportHours({ dateFrom: startDate, dateTo: endDate, groupBy: 'employee', format: 'csv', employeeId: employeeFilter || undefined, objectId: objectFilter || undefined }); } catch (err: any) { alert(err.response?.data?.message || 'Export nicht möglich.'); } }} className="btn-secondary">Stunden CSV (Mitarbeiter)</button>
-          <button type="button" onClick={async () => { if (!startDate || !endDate) { alert('Für einen Stundenexport bitte Von- und Bis-Datum wählen.'); return; } try { await attendanceService.exportHours({ dateFrom: startDate, dateTo: endDate, groupBy: 'object', format: 'csv', employeeId: employeeFilter || undefined, objectId: objectFilter || undefined }); } catch (err: any) { alert(err.response?.data?.message || 'Export nicht möglich.'); } }} className="btn-secondary">Stunden CSV (Objekt)</button></>}
-          {canEdit && <button type="button" onClick={() => setShowCorrectionRequests(value => !value)} className="btn-secondary">{showCorrectionRequests ? 'Anträge ausblenden' : 'Korrekturanträge'}</button>}
-          {hasPermission('attendance:access_manage') && <button type="button" onClick={() => setShowObjectAccess(value => !value)} className="btn-secondary">{showObjectAccess ? 'Zugriffe ausblenden' : 'Objekt-Zeitrechte'}</button>}
-          {hasPermission('attendance:audit_log') && <button type="button" onClick={() => setShowAudit(value => !value)} className="btn-secondary">{showAudit ? 'Protokoll ausblenden' : 'Änderungsprotokoll'}</button>}
+      <div className="card mb-4 min-w-0">
+        <div className="flex min-w-0 flex-wrap items-end gap-3">
+          <label className="w-full min-w-0 text-xs font-medium text-gray-500 sm:w-40">Von<input type="date" aria-label="Von Datum" value={startDate} onChange={event => { setStartDate(event.target.value); setPage(1); }} className="input-field mt-1 w-full min-w-0" /></label>
+          <label className="w-full min-w-0 text-xs font-medium text-gray-500 sm:w-40">Bis<input type="date" aria-label="Bis Datum" value={endDate} onChange={event => { setEndDate(event.target.value); setPage(1); }} className="input-field mt-1 w-full min-w-0" /></label>
+          <label className="w-full min-w-0 text-xs font-medium text-gray-500 sm:w-52">Mitarbeiter<select aria-label="Mitarbeiter filtern" value={employeeFilter} onChange={event => { setEmployeeFilter(event.target.value); setPage(1); }} className="input-field mt-1 w-full min-w-0"><option value="">Alle Mitarbeiter</option>{summary?.employeeHours.map(employee => <option key={employee.employeeId} value={employee.employeeId}>{employee.employeeName}</option>)}</select></label>
+          <label className="w-full min-w-0 text-xs font-medium text-gray-500 sm:w-52">Objekt<select aria-label="Objekt filtern" value={objectFilter} onChange={event => { setObjectFilter(event.target.value); setPage(1); }} className="input-field mt-1 w-full min-w-0"><option value="">Alle Objekte</option>{summary?.objects.map(object => <option key={object.id} value={object.id}>{object.name}</option>)}</select></label>
+          <label className="w-full min-w-0 text-xs font-medium text-gray-500 sm:w-40">Status<select value={statusFilter} onChange={event => { setStatusFilter(event.target.value); setPage(1); }} className="input-field mt-1 w-full min-w-0"><option value="">Alle Status</option><option value="open">Offen</option><option value="completed">Abgeschlossen</option><option value="corrected">Korrigiert</option><option value="approved">Geprüft</option><option value="released">Freigegeben</option><option value="billed">Abgerechnet</option><option value="rejected">Abgelehnt</option><option value="voided">Storniert</option></select></label>
+          <div className="flex min-w-0 flex-wrap gap-2">
+            {hasPermission('attendance:export') && <><button type="button" onClick={async () => { if (!startDate || !endDate) { alert('Für einen Stundenexport bitte Von- und Bis-Datum wählen.'); return; } try { await attendanceService.exportHours({ dateFrom: startDate, dateTo: endDate, groupBy: 'employee', format: 'csv', employeeId: employeeFilter || undefined, objectId: objectFilter || undefined }); } catch (err: any) { alert(err.response?.data?.message || 'Export nicht möglich.'); } }} className="btn-secondary max-w-full text-sm">Stunden CSV (Mitarbeiter)</button>
+            <button type="button" onClick={async () => { if (!startDate || !endDate) { alert('Für einen Stundenexport bitte Von- und Bis-Datum wählen.'); return; } try { await attendanceService.exportHours({ dateFrom: startDate, dateTo: endDate, groupBy: 'object', format: 'csv', employeeId: employeeFilter || undefined, objectId: objectFilter || undefined }); } catch (err: any) { alert(err.response?.data?.message || 'Export nicht möglich.'); } }} className="btn-secondary max-w-full text-sm">Stunden CSV (Objekt)</button>
+            </>}
+            {(hasPermission('attendance:export') || hasPermission('attendance:view_own') || hasPermission('attendance:view_all')) && <button type="button" onClick={printTimesheet} className="btn-primary max-w-full text-sm">Stundenzettel drucken</button>}
+            {canEdit && <button type="button" onClick={() => setShowCorrectionRequests(value => !value)} className="btn-secondary max-w-full text-sm">{showCorrectionRequests ? 'Anträge ausblenden' : 'Korrekturanträge'}</button>}
+            {hasPermission('attendance:access_manage') && <button type="button" onClick={() => setShowObjectAccess(value => !value)} className="btn-secondary max-w-full text-sm">{showObjectAccess ? 'Zugriffe ausblenden' : 'Objekt-Zeitrechte'}</button>}
+            {hasPermission('attendance:audit_log') && <button type="button" onClick={() => setShowAudit(value => !value)} className="btn-secondary max-w-full text-sm">{showAudit ? 'Protokoll ausblenden' : 'Änderungsprotokoll'}</button>}
+          </div>
         </div>
       </div>
 
-      {summary && <div className="my-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"><SummaryCard title="Erfasste Stunden" value={`${summary.totalHours.toFixed(1)} h`} /><SummaryCard title="Offene Zeiterfassungen" value={String(summary.byStatus.open || 0)} /><SummaryCard title="ArbZG-Hinweise" value={String(summary.warnings.length)} tone={summary.warnings.length ? 'warning' : 'normal'} /><SummaryCard title="Soll-Ist-Abweichung" value={`${summary.employeeHours.reduce((sum, employee) => sum + employee.varianceHours, 0).toFixed(1)} h`} tone={Math.abs(summary.employeeHours.reduce((sum, employee) => sum + employee.varianceHours, 0)) > 2 ? 'warning' : 'normal'} /></div>}
-      {summary?.employeeHours.length ? <div className="card mb-4 overflow-x-auto"><h3 className="mb-3 font-semibold">Mitarbeiterstunden und Soll-Ist-Abweichung</h3><table className="w-full text-sm"><thead className="text-left text-xs uppercase text-gray-500"><tr><th className="pb-2">Mitarbeiter</th><th className="pb-2">Ist-Stunden</th><th className="pb-2">Plan-Stunden</th><th className="pb-2">Abweichung</th></tr></thead><tbody className="divide-y">{summary.employeeHours.map(employee => <tr key={employee.employeeId}><td className="py-2">{employee.employeeName}</td><td className="py-2">{employee.hours.toFixed(2)} h</td><td className="py-2">{employee.plannedHours.toFixed(2)} h</td><td className={`py-2 font-medium ${Math.abs(employee.varianceHours) > 2 ? 'text-amber-700' : 'text-gray-700'}`}>{employee.varianceHours > 0 ? '+' : ''}{employee.varianceHours.toFixed(2)} h</td></tr>)}</tbody></table></div> : null}
+      {summary && <div className="my-4 flex flex-wrap items-center justify-end gap-3"><button type="button" aria-pressed={showVariance} onClick={() => setShowVariance(value => !value)} className="btn-secondary text-sm">{showVariance ? 'Soll-Ist-Abweichungen ausblenden' : 'Soll-Ist-Abweichungen anzeigen'}</button></div>}
+      {summary && <div className="my-4 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"><SummaryCard title="Erfasste Stunden" value={`${summary.totalHours.toFixed(1)} h`} /><SummaryCard title="Offene Zeiterfassungen" value={String(summary.byStatus.open || 0)} /><SummaryCard title="ArbZG-Hinweise" value={String(summary.warnings.length)} tone={summary.warnings.length ? 'warning' : 'normal'} />{showVariance && <SummaryCard title="Soll-Ist-Abweichung" value={`${summary.employeeHours.reduce((sum, employee) => sum + employee.varianceHours, 0).toFixed(1)} h`} tone={Math.abs(summary.employeeHours.reduce((sum, employee) => sum + employee.varianceHours, 0)) > 2 ? 'warning' : 'normal'} />}</div>}
+      {showVariance && summary?.employeeHours.length ? <div className="card mb-4 min-w-0 overflow-x-auto"><h3 className="mb-3 font-semibold">Mitarbeiterstunden und Soll-Ist-Abweichung</h3><table className="w-full text-sm"><thead className="text-left text-xs uppercase text-gray-500"><tr><th className="pb-2">Mitarbeiter</th><th className="pb-2">Ist-Stunden</th><th className="pb-2">Plan-Stunden</th><th className="pb-2">Abweichung</th></tr></thead><tbody className="divide-y">{summary.employeeHours.map(employee => <tr key={employee.employeeId}><td className="py-2">{employee.employeeName}</td><td className="py-2">{employee.hours.toFixed(2)} h</td><td className="py-2">{employee.plannedHours.toFixed(2)} h</td><td className={`py-2 font-medium ${Math.abs(employee.varianceHours) > 2 ? 'text-amber-700' : 'text-gray-700'}`}>{employee.varianceHours > 0 ? '+' : ''}{employee.varianceHours.toFixed(2)} h</td></tr>)}</tbody></table></div> : null}
       {summary?.warnings.length ? <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4"><h3 className="font-semibold text-amber-900">Prüfhinweise</h3><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-800">{summary.warnings.slice(0, 5).map((warning, index) => <li key={`${warning.employeeName}-${warning.type}-${index}`}>{warning.employeeName}: {warning.message}</li>)}</ul>{summary.warnings.length > 5 && <p className="mt-2 text-xs text-amber-800">Weitere {summary.warnings.length - 5} Hinweise in diesem Zeitraum.</p>}</div> : null}
 
+      <TimesheetPeriodPanel employeeId={employeeFilter || undefined} employeeName={summary?.employeeHours.find(employee => employee.employeeId === employeeFilter)?.employeeName} dateFrom={startDate} dateTo={endDate} />
       {showCorrectionRequests && <AttendanceCorrectionRequests />}
       {showObjectAccess && <AttendanceObjectAccess />}
       {showAudit && <AttendanceAuditLog />}
@@ -188,6 +227,22 @@ export function AttendancePage() {
           </div>
         </div>
       )}
+
+      {printReport && <article id="timesheet-print" className="hidden">
+        <header className="mb-8 border-b-2 border-black pb-4">
+          <h1 className="text-2xl font-bold">Stundennachweis</h1>
+          <p className="mt-2 text-sm">Abrechnungszeitraum: <strong>{formatBerlinDate(printReport.dateFrom)} bis {formatBerlinDate(printReport.dateTo)}</strong></p>
+          <p className="mt-1 text-sm">Mitarbeiter: <strong>{printReport.employeeName}</strong> · Personalnummer: <strong>{printReport.personnelNumber}</strong></p>
+        </header>
+        <table className="w-full border-collapse text-sm">
+          <thead><tr><th>Datum</th><th>Von</th><th>Bis</th><th>Pause</th><th>Objekt</th><th>Stunden</th></tr></thead>
+          <tbody>{printReport.records.map(record => <tr key={record.id}><td>{formatBerlinDate(record.date)}</td><td>{formatBerlinTime(record.clockIn)}</td><td>{record.clockOut ? formatBerlinTime(record.clockOut) : '—'}</td><td>{record.breakDuration || 0} Min.</td><td>{record.object?.name || '—'}</td><td>{record.totalHours != null ? Number(record.totalHours).toFixed(2) : '—'}</td></tr>)}</tbody>
+          <tfoot><tr><th colSpan={5} className="text-right">Summe Ist-Stunden</th><th>{printReport.records.reduce((sum, record) => sum + Number(record.totalHours || 0), 0).toFixed(2)} h</th></tr></tfoot>
+        </table>
+        <p className="mt-5 text-xs">Ich bestätige die Richtigkeit der aufgeführten Arbeitszeiten. Abweichungen bitte vor der Unterschrift vermerken.</p>
+        <div className="mt-16 grid grid-cols-2 gap-16 text-sm"><div>{printReport.signatureData ? <><img src={printReport.signatureData} alt="Digitale Mitarbeiterunterschrift" className="mb-1 h-14 max-w-56 object-contain" /><p className="mb-2 text-xs">Digital bestätigt am {printReport.signedAt ? formatBerlinDate(printReport.signedAt) : '–'}</p></> : <div className="h-14 border-b border-black" />}<div className="border-t border-black pt-2">Ort, Datum und Unterschrift Mitarbeiter/in</div></div><div className="border-t border-black pt-2">Ort, Datum und Unterschrift Arbeitgeber</div></div>
+        <p className="mt-10 text-xs text-gray-500">Erstellt am {new Date().toLocaleDateString('de-DE')} · Dieser Ausdruck enthält nur geprüfte, freigegebene, gesperrte oder abgerechnete Zeiteinträge.</p>
+      </article>}
     </div>
   );
 }
