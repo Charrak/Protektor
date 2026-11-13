@@ -40,10 +40,12 @@ git clone --single-branch --branch arena/0230ac3a-protektor \
 cd ~/Protektor-verify
 COMPOSE='docker compose -p protektor-verify -f docker-compose.test.yml'
 $COMPOSE build
-$COMPOSE run --rm backend npm run prisma:deploy
+$COMPOSE run --rm backend npx prisma db push
 $COMPOSE run --rm backend npm run seed
 $COMPOSE up -d
 ```
+
+Der Test-Stack nutzt absichtlich `prisma db push` statt `migrate deploy`: Das vorhandene `0_init/migration.sql` ist leer, während spätere Migrationen bereits Tabellen wie `tenants` voraussetzen. Deshalb schlägt `migrate deploy` auf einer leeren Datenbank fehl. `db push` ist hier ausschließlich für die projektisolierte, entbehrliche Testdatenbank gedacht und **kein** Ersatz für eine reparierte Produktions-Migrationshistorie.
 
 Die Seed-Zugangsdaten sind nur für diese isolierte Testinstanz bestimmt: `admin@sms-platform.com` / `Admin123!` oder `demo@security-company.de` / `Demo123!`. Nicht öffentlich freigeben oder für produktive Instanzen verwenden.
 

@@ -85,7 +85,7 @@ services:
     depends_on:
       test-postgres:
         condition: service_healthy
-    command: ["sh", "-lc", "npx prisma migrate deploy && npm test"]
+    command: ["sh", "-lc", "npx prisma db push && npm test"]
 
 volumes:
   test_app_postgres_data:
