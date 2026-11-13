@@ -841,6 +841,80 @@ async function main() {
   console.log(`✅ ${customers1Data.length} Kunden mit ${customers1Data.reduce((sum, c) => sum + c.objects.length, 0)} Objekten erstellt\n`);
 
   // ═══════════════════════════════════════════════════════
+  // 10a. PLANUNGSGRUPPEN für Security Nord GmbH
+  // ═══════════════════════════════════════════════════════
+  console.log('👥 Erstelle Planungsgruppen für Security Nord GmbH...');
+
+  const securityNorthGroup = await prisma.planningGroup.upsert({
+    where: { tenantId_name: { tenantId: tenant1.id, name: 'Team Nord' } },
+    update: {
+      description: 'Zuständig für Objekte im Norden',
+      color: '#3B82F6',
+      leadUserId: tenant1User.id,
+      leadDeputies: [],
+      isActive: true,
+    },
+    create: {
+      tenantId: tenant1.id,
+      name: 'Team Nord',
+      description: 'Zuständig für Objekte im Norden',
+      color: '#3B82F6',
+      leadUserId: tenant1User.id,
+      leadDeputies: [],
+      createdBy: tenant1User.id,
+    },
+  });
+  const securitySouthGroup = await prisma.planningGroup.upsert({
+    where: { tenantId_name: { tenantId: tenant1.id, name: 'Team Süd' } },
+    update: {
+      description: 'Zuständig für Objekte im Süden',
+      color: '#10B981',
+      leadUserId: tenant1User.id,
+      leadDeputies: [],
+      isActive: true,
+    },
+    create: {
+      tenantId: tenant1.id,
+      name: 'Team Süd',
+      description: 'Zuständig für Objekte im Süden',
+      color: '#10B981',
+      leadUserId: tenant1User.id,
+      leadDeputies: [],
+      createdBy: tenant1User.id,
+    },
+  });
+
+  const northEmployeeCount = Math.ceil(employees1.length / 2);
+  const securityNorthObjects = await prisma.sMSObject.findMany({
+    where: { tenantId: tenant1.id },
+    orderBy: { objectNumber: 'asc' },
+    select: { id: true },
+  });
+  await Promise.all([
+    ...employees1.slice(0, northEmployeeCount).map((employee: any, index: number) => prisma.planningGroupEmployee.upsert({
+      where: { planningGroupId_employeeId: { planningGroupId: securityNorthGroup.id, employeeId: employee.id } },
+      update: { isPrimary: index === 0, sortOrder: index + 1 },
+      create: { planningGroupId: securityNorthGroup.id, employeeId: employee.id, isPrimary: index === 0, sortOrder: index + 1 },
+    })),
+    ...employees1.slice(northEmployeeCount).map((employee: any, index: number) => prisma.planningGroupEmployee.upsert({
+      where: { planningGroupId_employeeId: { planningGroupId: securitySouthGroup.id, employeeId: employee.id } },
+      update: { isPrimary: index === 0, sortOrder: index + 1 },
+      create: { planningGroupId: securitySouthGroup.id, employeeId: employee.id, isPrimary: index === 0, sortOrder: index + 1 },
+    })),
+    ...securityNorthObjects.filter((_, index) => index % 2 === 0).map((object, index: number) => prisma.planningGroupObject.upsert({
+      where: { planningGroupId_objectId: { planningGroupId: securityNorthGroup.id, objectId: object.id } },
+      update: { sortOrder: index + 1 },
+      create: { planningGroupId: securityNorthGroup.id, objectId: object.id, sortOrder: index + 1 },
+    })),
+    ...securityNorthObjects.filter((_, index) => index % 2 === 1).map((object, index: number) => prisma.planningGroupObject.upsert({
+      where: { planningGroupId_objectId: { planningGroupId: securitySouthGroup.id, objectId: object.id } },
+      update: { sortOrder: index + 1 },
+      create: { planningGroupId: securitySouthGroup.id, objectId: object.id, sortOrder: index + 1 },
+    })),
+  ]);
+  console.log(`✅ Team Nord und Team Süd mit ${employees1.length} Mitarbeitern und ${securityNorthObjects.length} Objekten erstellt/aktualisiert\n`);
+
+  // ═══════════════════════════════════════════════════════
   // 11. KUNDEN & OBJEKTE für Tenant 2 (vollständig)
   // ═══════════════════════════════════════════════════════
   console.log('🏭 Erstelle Kunden und Objekte für Schutz & Dienstleistungen AG...');
