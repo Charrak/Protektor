@@ -9,6 +9,7 @@ import { AttendanceCorrectionRequests } from './AttendanceCorrectionRequests';
 import { AttendanceObjectAccess } from './AttendanceObjectAccess';
 import { formatBerlinDate, formatBerlinTime } from '../../utils/dateFormat';
 import { useAuth } from '../../contexts/AuthContext';
+import { TimesheetPeriodPanel } from './TimesheetPeriodPanel';
 
 export function AttendancePage() {
   const { user } = useAuth();
@@ -33,7 +34,7 @@ export function AttendancePage() {
   const [showCorrectionRequests, setShowCorrectionRequests] = useState(false);
   const [showObjectAccess, setShowObjectAccess] = useState(false);
   const [showVariance, setShowVariance] = useState(false);
-  const [printReport, setPrintReport] = useState<null | { employeeName: string; personnelNumber: string; dateFrom: string; dateTo: string; records: TimeRecord[] }>(null);
+  const [printReport, setPrintReport] = useState<null | { employeeName: string; personnelNumber: string; dateFrom: string; dateTo: string; records: TimeRecord[]; signatureData?: string | null; signedAt?: string | null }>(null);
 
   useEffect(() => {
     if (!printReport) return;
@@ -93,7 +94,17 @@ export function AttendancePage() {
       const reportRecords = activeRecords;
       if (!reportRecords.length) { alert('Im ausgewählten Zeitraum gibt es keine freigegebenen Zeiteinträge für diesen Mitarbeiter.'); return; }
       const employee = reportRecords[0].employee;
-      setPrintReport({ employeeName: `${employee.firstName} ${employee.lastName}`, personnelNumber: employee.personnelNumber, dateFrom: startDate, dateTo: endDate, records: reportRecords });
+      let signedPeriod: Awaited<ReturnType<typeof attendanceService.listTimesheetPeriods>>[number] | undefined;
+      try {
+        const periods = await attendanceService.listTimesheetPeriods(employeeFilter);
+        const [reportYear, reportMonth] = startDate.split('-').map(Number);
+        const monthLastDay = new Date(reportYear, reportMonth, 0).getDate();
+        const isFullSignedMonth = startDate === `${reportYear}-${String(reportMonth).padStart(2, '0')}-01` && endDate === `${reportYear}-${String(reportMonth).padStart(2, '0')}-${String(monthLastDay).padStart(2, '0')}`;
+        signedPeriod = isFullSignedMonth ? periods.find(period => period.year === reportYear && period.month === reportMonth && period.status === 'signed') : undefined;
+      } catch {
+        // A user with access to records but not period management can still print the unsigned paper form.
+      }
+      setPrintReport({ employeeName: `${employee.firstName} ${employee.lastName}`, personnelNumber: employee.personnelNumber, dateFrom: startDate, dateTo: endDate, records: reportRecords, signatureData: signedPeriod?.signatureData, signedAt: signedPeriod?.signedAt });
     } catch (err: any) {
       alert(err.response?.data?.error || 'Stundenzettel konnte nicht erstellt werden.');
     }
@@ -140,6 +151,7 @@ export function AttendancePage() {
       {showVariance && summary?.employeeHours.length ? <div className="card mb-4 min-w-0 overflow-x-auto"><h3 className="mb-3 font-semibold">Mitarbeiterstunden und Soll-Ist-Abweichung</h3><table className="w-full text-sm"><thead className="text-left text-xs uppercase text-gray-500"><tr><th className="pb-2">Mitarbeiter</th><th className="pb-2">Ist-Stunden</th><th className="pb-2">Plan-Stunden</th><th className="pb-2">Abweichung</th></tr></thead><tbody className="divide-y">{summary.employeeHours.map(employee => <tr key={employee.employeeId}><td className="py-2">{employee.employeeName}</td><td className="py-2">{employee.hours.toFixed(2)} h</td><td className="py-2">{employee.plannedHours.toFixed(2)} h</td><td className={`py-2 font-medium ${Math.abs(employee.varianceHours) > 2 ? 'text-amber-700' : 'text-gray-700'}`}>{employee.varianceHours > 0 ? '+' : ''}{employee.varianceHours.toFixed(2)} h</td></tr>)}</tbody></table></div> : null}
       {summary?.warnings.length ? <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4"><h3 className="font-semibold text-amber-900">Prüfhinweise</h3><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-800">{summary.warnings.slice(0, 5).map((warning, index) => <li key={`${warning.employeeName}-${warning.type}-${index}`}>{warning.employeeName}: {warning.message}</li>)}</ul>{summary.warnings.length > 5 && <p className="mt-2 text-xs text-amber-800">Weitere {summary.warnings.length - 5} Hinweise in diesem Zeitraum.</p>}</div> : null}
 
+      <TimesheetPeriodPanel employeeId={employeeFilter || undefined} employeeName={summary?.employeeHours.find(employee => employee.employeeId === employeeFilter)?.employeeName} dateFrom={startDate} dateTo={endDate} />
       {showCorrectionRequests && <AttendanceCorrectionRequests />}
       {showObjectAccess && <AttendanceObjectAccess />}
       {showAudit && <AttendanceAuditLog />}
@@ -228,7 +240,7 @@ export function AttendancePage() {
           <tfoot><tr><th colSpan={5} className="text-right">Summe Ist-Stunden</th><th>{printReport.records.reduce((sum, record) => sum + Number(record.totalHours || 0), 0).toFixed(2)} h</th></tr></tfoot>
         </table>
         <p className="mt-5 text-xs">Ich bestätige die Richtigkeit der aufgeführten Arbeitszeiten. Abweichungen bitte vor der Unterschrift vermerken.</p>
-        <div className="mt-16 grid grid-cols-2 gap-16 text-sm"><div className="border-t border-black pt-2">Ort, Datum und Unterschrift Mitarbeiter/in</div><div className="border-t border-black pt-2">Ort, Datum und Unterschrift Arbeitgeber</div></div>
+        <div className="mt-16 grid grid-cols-2 gap-16 text-sm"><div>{printReport.signatureData ? <><img src={printReport.signatureData} alt="Digitale Mitarbeiterunterschrift" className="mb-1 h-14 max-w-56 object-contain" /><p className="mb-2 text-xs">Digital bestätigt am {printReport.signedAt ? formatBerlinDate(printReport.signedAt) : '–'}</p></> : <div className="h-14 border-b border-black" />}<div className="border-t border-black pt-2">Ort, Datum und Unterschrift Mitarbeiter/in</div></div><div className="border-t border-black pt-2">Ort, Datum und Unterschrift Arbeitgeber</div></div>
         <p className="mt-10 text-xs text-gray-500">Erstellt am {new Date().toLocaleDateString('de-DE')} · Dieser Ausdruck enthält nur geprüfte, freigegebene, gesperrte oder abgerechnete Zeiteinträge.</p>
       </article>}
     </div>

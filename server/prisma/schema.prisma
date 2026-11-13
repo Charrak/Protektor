@@ -136,6 +136,7 @@ model Tenant {
   timeRecords      TimeRecord[]
   timeRecordAuditEvents TimeRecordAuditEvent[]
   timeRecordAccesses TimeRecordAccess[]
+  timesheetPeriods TimesheetPeriod[]
   invoices         CustomerInvoice[]
   addons           TenantAddon[]
   features         TenantFeature[]
@@ -356,6 +357,8 @@ model User {
   changedTimeRecords TimeRecord[] @relation("timeChangedBy")
   timeRecordAuditEvents TimeRecordAuditEvent[]
   timeRecordAccesses TimeRecordAccess[]
+  closedTimesheetPeriods TimesheetPeriod[] @relation("timesheetClosedBy")
+  signedTimesheetPeriods TimesheetPeriod[] @relation("timesheetSignedBy")
   approvedDeployments Deployment[] @relation("confirmedByEmployee")
   
   // Kunden-Dokumente & Mahnwesen
@@ -564,6 +567,7 @@ model Employee {
   deployments          Deployment[]
   timeRecords          TimeRecord[]
   timeRecordAuditEvents TimeRecordAuditEvent[]
+  timesheetPeriods     TimesheetPeriod[]
   rates                EmployeeRate[]
   originalReplacements ReplacementRequest[] @relation("originalEmployee")
   replacementEmployee  ReplacementRequest[] @relation("replacementEmployee")
@@ -1455,6 +1459,38 @@ enum TimeRecordStatus {
   released
   billed
   voided
+}
+
+model TimesheetPeriod {
+  id              String                 @id @default(uuid())
+  tenantId        String                 @db.VarChar(36)
+  employeeId      String                 @db.VarChar(36)
+  year            Int
+  month           Int
+  status          TimesheetPeriodStatus  @default(closed)
+  reportHash      String                 @db.VarChar(64)
+  closedById      String                 @db.VarChar(36)
+  closedAt        DateTime               @default(now())
+  signatureData   String?                @db.Text
+  signatureHash   String?                @db.VarChar(64)
+  signedById      String?                @db.VarChar(36)
+  signedAt        DateTime?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  closedBy        User     @relation("timesheetClosedBy", fields: [closedById], references: [id])
+  signedBy        User?    @relation("timesheetSignedBy", fields: [signedById], references: [id])
+
+  @@unique([tenantId, employeeId, year, month])
+  @@index([tenantId, year, month, status])
+  @@map("timesheet_periods")
+}
+
+enum TimesheetPeriodStatus {
+  closed
+  signed
 }
 
 enum TimeRecordSource {

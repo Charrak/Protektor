@@ -35,6 +35,22 @@ export interface TimeRecordListResponse {
   totalPages: number;
 }
 
+export interface TimesheetPeriod {
+  id: string;
+  employeeId: string;
+  year: number;
+  month: number;
+  status: 'closed' | 'signed';
+  reportHash: string;
+  signatureData?: string | null;
+  signatureHash?: string | null;
+  closedAt: string;
+  signedAt?: string | null;
+  employee: { id: string; firstName: string; lastName: string; personnelNumber: string };
+  closedBy?: { firstName: string; lastName: string };
+  signedBy?: { firstName: string; lastName: string } | null;
+}
+
 async function getStampLocation(direction: 'in' | 'out'): Promise<{ clockInLatitude?: number; clockInLongitude?: number; clockOutLatitude?: number; clockOutLongitude?: number }> {
   if (!navigator.geolocation) return {};
   const position = await new Promise<GeolocationPosition | null>(resolve => {
@@ -65,6 +81,22 @@ export const attendanceService = {
     if (params?.objectId) search.set('objectId', params.objectId);
     const { data } = await api.get(`/time-records/summary?${search.toString()}`);
     return data as { total: number; totalHours: number; byStatus: Record<string, number>; employeeHours: Array<{ employeeId: string; employeeName: string; hours: number; plannedHours: number; varianceHours: number; records: number }>; objects: Array<{ id: string; name: string }>; warnings: Array<{ recordId: string; employeeName: string; date: string; type: string; message: string }> };
+  },
+
+  async listTimesheetPeriods(employeeId?: string): Promise<TimesheetPeriod[]> {
+    const search = employeeId ? `?employeeId=${encodeURIComponent(employeeId)}` : '';
+    const { data } = await api.get<{ periods: TimesheetPeriod[] }>(`/time-records/timesheet-periods${search}`);
+    return data.periods;
+  },
+
+  async closeTimesheetPeriod(input: { employeeId: string; year: number; month: number }): Promise<TimesheetPeriod> {
+    const { data } = await api.post<TimesheetPeriod>('/time-records/timesheet-periods/close', input);
+    return data;
+  },
+
+  async signTimesheetPeriod(periodId: string, signatureData: string): Promise<TimesheetPeriod> {
+    const { data } = await api.post<TimesheetPeriod>(`/time-records/timesheet-periods/${periodId}/sign`, { signatureData });
+    return data;
   },
 
   async list(params?: {

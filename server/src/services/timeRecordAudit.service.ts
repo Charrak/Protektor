@@ -7,7 +7,7 @@ export interface TimeRecordActorContext {
 }
 
 export interface TimeRecordAuditChange {
-  action: 'created' | 'backfilled' | 'stamped_out' | 'corrected' | 'correction_requested' | 'correction_approved' | 'correction_rejected' | 'approved' | 'released' | 'unlocked' | 'billing_exported' | 'locked' | 'billed' | 'voided' | 'break_started' | 'break_ended';
+  action: 'created' | 'backfilled' | 'stamped_out' | 'corrected' | 'correction_requested' | 'correction_approved' | 'correction_rejected' | 'approved' | 'released' | 'unlocked' | 'billing_exported' | 'locked' | 'billed' | 'voided' | 'break_started' | 'break_ended' | 'timesheet_closed' | 'timesheet_signed';
   fieldChanged?: string;
   oldValue?: unknown;
   newValue?: unknown;
