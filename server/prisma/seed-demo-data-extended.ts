@@ -54,6 +54,16 @@ async function main() {
   const techPark = customers.find(c => c.customerNumber === 'KD-003');
   const eventCompany = customers.find(c => c.customerNumber === 'KD-004');
 
+  const missingDemoCustomers = [
+    !mullerGmbh && 'KD-001',
+    !kulturamt && 'KD-002',
+    !techPark && 'KD-003',
+    !eventCompany && 'KD-004',
+  ].filter(Boolean);
+  if (missingDemoCustomers.length > 0) {
+    throw new Error(`Erweiterte Demo-Kunden fehlen (${missingDemoCustomers.join(', ')}). Zuerst "npm run seed:data" ausführen.`);
+  }
+
   if (mullerGmbh) {
     await prisma.customer.update({
       where: { id: mullerGmbh.id },

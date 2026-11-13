@@ -3,6 +3,51 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+async function ensureDemoDeployment(data: any) {
+  const existing = await prisma.deployment.findFirst({
+    where: {
+      tenantId: data.tenantId,
+      employeeId: data.employeeId,
+      objectId: data.objectId,
+      date: data.date,
+      startTime: data.startTime,
+      endTime: data.endTime,
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+  if (existing) return prisma.deployment.update({ where: { id: existing.id }, data });
+  return prisma.deployment.create({ data });
+}
+
+async function ensureDemoTimeRecord(data: any) {
+  const existing = await prisma.timeRecord.findFirst({
+    where: {
+      tenantId: data.tenantId,
+      deploymentId: data.deploymentId,
+      date: data.date,
+      clockIn: data.clockIn,
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+  if (existing) return prisma.timeRecord.update({ where: { id: existing.id }, data });
+  return prisma.timeRecord.create({ data });
+}
+
+async function ensureDemoAvailability(data: any) {
+  const existing = await prisma.availability.findFirst({
+    where: {
+      tenantId: data.tenantId,
+      employeeId: data.employeeId,
+      type: data.type,
+      startDate: data.startDate,
+      endDate: data.endDate,
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+  if (existing) return prisma.availability.update({ where: { id: existing.id }, data });
+  return prisma.availability.create({ data });
+}
+
 async function main() {
   console.log('🌱 Starte Demo-Daten-Generierung...\n');
 
@@ -88,9 +133,9 @@ async function main() {
   // Mitarbeiter
   const employeeUser = await prisma.user.upsert({
     where: { tenantId_username: { tenantId: tenant.id, username: 'max' } },
-    update: { roleId: employeeRole.id, firstName: 'Max', lastName: 'Mustermann', email: 'max@demo.de', isActive: true },
+    update: { roleId: employeeRole.id, firstName: 'Max', lastName: 'Mustermann', email: 'max.mustermann@demo.de', isActive: true },
     create: {
-      tenantId: tenant.id, username: 'max', email: 'max@demo.de', passwordHash: pwdHash,
+      tenantId: tenant.id, username: 'max', email: 'max.mustermann@demo.de', passwordHash: pwdHash,
       firstName: 'Max', lastName: 'Mustermann', roleId: employeeRole.id, isActive: true,
     },
   });
@@ -294,43 +339,35 @@ async function main() {
   };
 
   const deployments = await Promise.all([
-    prisma.deployment.create({
-      data: {
-        tenantId: tenant.id, objectId: objects[0].id, employeeId: employees[0].id,
-        date: startDate, startTime: makeTime(8, 0), endTime: makeTime(16, 0),
-        breakMinutes: 30, isNightShift: false, status: 'confirmed',
-        plannedById: dispatcherUser.id,
-        notes: 'Reguläre Schicht Hauptgebäude',
-      },
+    ensureDemoDeployment({
+      tenantId: tenant.id, objectId: objects[0].id, employeeId: employees[0].id,
+      date: startDate, startTime: makeTime(8, 0), endTime: makeTime(16, 0),
+      breakMinutes: 30, isNightShift: false, status: 'confirmed',
+      plannedById: dispatcherUser.id,
+      notes: 'Reguläre Schicht Hauptgebäude',
     }),
-    prisma.deployment.create({
-      data: {
-        tenantId: tenant.id, objectId: objects[2].id, employeeId: employees[2].id,
-        date: startDate, startTime: makeTime(6, 0), endTime: makeTime(14, 0),
-        breakMinutes: 30, isNightShift: false, status: 'confirmed',
-        plannedById: dispatcherUser.id,
-        notes: 'TechPark Gebäude A - Frühschicht',
-      },
+    ensureDemoDeployment({
+      tenantId: tenant.id, objectId: objects[2].id, employeeId: employees[2].id,
+      date: startDate, startTime: makeTime(6, 0), endTime: makeTime(14, 0),
+      breakMinutes: 30, isNightShift: false, status: 'confirmed',
+      plannedById: dispatcherUser.id,
+      notes: 'TechPark Gebäude A - Frühschicht',
     }),
-    prisma.deployment.create({
-      data: {
-        tenantId: tenant.id, objectId: objects[1].id, employeeId: employees[1].id,
-        date: new Date(today.getFullYear(), today.getMonth() + 1, 15),
-        startTime: makeTime(18, 0), endTime: makeTime(2, 0),
-        breakMinutes: 60, isNightShift: true, status: 'planned',
-        plannedById: dispatcherUser.id,
-        notes: 'Kulturveranstaltung - Abend/Nacht',
-      },
+    ensureDemoDeployment({
+      tenantId: tenant.id, objectId: objects[1].id, employeeId: employees[1].id,
+      date: new Date(today.getFullYear(), today.getMonth() + 1, 15),
+      startTime: makeTime(18, 0), endTime: makeTime(2, 0),
+      breakMinutes: 60, isNightShift: true, status: 'planned',
+      plannedById: dispatcherUser.id,
+      notes: 'Kulturveranstaltung - Abend/Nacht',
     }),
-    prisma.deployment.create({
-      data: {
-        tenantId: tenant.id, objectId: objects[4].id, employeeId: employees[4].id,
-        date: new Date(today.getFullYear(), today.getMonth() + 1, 20),
-        startTime: makeTime(9, 0), endTime: makeTime(23, 0),
-        breakMinutes: 60, status: 'planned',
-        plannedById: dispatcherUser.id,
-        notes: 'Messeveranstaltung - Ganztags',
-      },
+    ensureDemoDeployment({
+      tenantId: tenant.id, objectId: objects[4].id, employeeId: employees[4].id,
+      date: new Date(today.getFullYear(), today.getMonth() + 1, 20),
+      startTime: makeTime(9, 0), endTime: makeTime(23, 0),
+      breakMinutes: 60, status: 'planned',
+      plannedById: dispatcherUser.id,
+      notes: 'Messeveranstaltung - Ganztags',
     }),
   ]);
   console.log(`✅ ${deployments.length} Dienstpläne erstellt`);
@@ -344,39 +381,31 @@ async function main() {
   lastWeek.setDate(lastWeek.getDate() - 7);
 
   const timeRecords = await Promise.all([
-    prisma.timeRecord.create({
-      data: {
-        tenantId: tenant.id, employeeId: employees[0].id, deploymentId: deployments[0].id,
-        date: lastWeek, clockIn: new Date(lastWeek.getFullYear(), lastWeek.getMonth(), lastWeek.getDate(), 8, 0),
-        clockOut: new Date(lastWeek.getFullYear(), lastWeek.getMonth(), lastWeek.getDate(), 16, 0),
-        breakDuration: 30, totalHours: 7.5, status: 'approved',
-        approvedById: teamLeaderUser.id, approvedAt: new Date(),
-      },
+    ensureDemoTimeRecord({
+      tenantId: tenant.id, employeeId: employees[0].id, deploymentId: deployments[0].id,
+      date: lastWeek, clockIn: new Date(lastWeek.getFullYear(), lastWeek.getMonth(), lastWeek.getDate(), 8, 0),
+      clockOut: new Date(lastWeek.getFullYear(), lastWeek.getMonth(), lastWeek.getDate(), 16, 0),
+      breakDuration: 30, totalHours: 7.5, status: 'approved',
+      approvedById: teamLeaderUser.id, approvedAt: new Date(),
     }),
-    prisma.timeRecord.create({
-      data: {
-        tenantId: tenant.id, employeeId: employees[2].id, deploymentId: deployments[1].id,
-        date: lastWeek, clockIn: new Date(lastWeek.getFullYear(), lastWeek.getMonth(), lastWeek.getDate(), 6, 0),
-        clockOut: new Date(lastWeek.getFullYear(), lastWeek.getMonth(), lastWeek.getDate(), 14, 0),
-        breakDuration: 30, totalHours: 7.5, status: 'approved',
-        approvedById: teamLeaderUser.id, approvedAt: new Date(),
-      },
+    ensureDemoTimeRecord({
+      tenantId: tenant.id, employeeId: employees[2].id, deploymentId: deployments[1].id,
+      date: lastWeek, clockIn: new Date(lastWeek.getFullYear(), lastWeek.getMonth(), lastWeek.getDate(), 6, 0),
+      clockOut: new Date(lastWeek.getFullYear(), lastWeek.getMonth(), lastWeek.getDate(), 14, 0),
+      breakDuration: 30, totalHours: 7.5, status: 'approved',
+      approvedById: teamLeaderUser.id, approvedAt: new Date(),
     }),
-    prisma.timeRecord.create({
-      data: {
-        tenantId: tenant.id, employeeId: employees[0].id, deploymentId: deployments[0].id,
-        date: startDate, clockIn: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 8, 0),
-        clockOut: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 16, 0),
-        breakDuration: 30, totalHours: 7.5, status: 'completed',
-      },
+    ensureDemoTimeRecord({
+      tenantId: tenant.id, employeeId: employees[0].id, deploymentId: deployments[0].id,
+      date: startDate, clockIn: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 8, 0),
+      clockOut: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 16, 0),
+      breakDuration: 30, totalHours: 7.5, status: 'completed',
     }),
-    prisma.timeRecord.create({
-      data: {
-        tenantId: tenant.id, employeeId: employees[4].id, deploymentId: deployments[3].id,
-        date: startDate, clockIn: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0),
-        clockOut: null,
-        breakDuration: 0, status: 'open',
-      },
+    ensureDemoTimeRecord({
+      tenantId: tenant.id, employeeId: employees[4].id, deploymentId: deployments[3].id,
+      date: startDate, clockIn: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0),
+      clockOut: null,
+      breakDuration: 0, status: 'open',
     }),
   ]);
   console.log(`✅ ${timeRecords.length} Zeiteinträge erstellt`);
@@ -444,14 +473,14 @@ async function main() {
   weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Montag
 
   const availabilities = await Promise.all([
-    prisma.availability.create({
-      data: { tenantId: tenant.id, employeeId: employees[0].id, type: 'available', startDate: weekStart, endDate: new Date(weekStart.getTime() + 4 * 86400000), allDay: true, status: 'approved', approvedById: teamLeaderUser.id },
+    ensureDemoAvailability({
+      tenantId: tenant.id, employeeId: employees[0].id, type: 'available', startDate: weekStart, endDate: new Date(weekStart.getTime() + 4 * 86400000), allDay: true, status: 'approved', approvedById: teamLeaderUser.id,
     }),
-    prisma.availability.create({
-      data: { tenantId: tenant.id, employeeId: employees[2].id, type: 'available', startDate: weekStart, endDate: new Date(weekStart.getTime() + 4 * 86400000), allDay: true, status: 'approved', approvedById: teamLeaderUser.id },
+    ensureDemoAvailability({
+      tenantId: tenant.id, employeeId: employees[2].id, type: 'available', startDate: weekStart, endDate: new Date(weekStart.getTime() + 4 * 86400000), allDay: true, status: 'approved', approvedById: teamLeaderUser.id,
     }),
-    prisma.availability.create({
-      data: { tenantId: tenant.id, employeeId: employees[3].id, type: 'vacation', startDate: new Date(today.getFullYear(), today.getMonth() + 1, 1), endDate: new Date(today.getFullYear(), today.getMonth() + 1, 14), allDay: true, reason: 'Urlaub', status: 'pending' },
+    ensureDemoAvailability({
+      tenantId: tenant.id, employeeId: employees[3].id, type: 'vacation', startDate: new Date(today.getFullYear(), today.getMonth() + 1, 1), endDate: new Date(today.getFullYear(), today.getMonth() + 1, 14), allDay: true, reason: 'Urlaub', status: 'pending',
     }),
   ]);
   console.log(`✅ ${availabilities.length} Verfügbarkeiten erstellt`);

@@ -23,7 +23,7 @@
     "test:watch": "vitest",
     "seed:addon-customer-portal": "tsx prisma/seed-addon-customer-portal.ts",
     "seed:extended": "tsx prisma/seed-demo-data-extended.ts",
-    "seed:all": "npm run seed && npm run seed:demo && npm run seed:extended",
+    "seed:all": "npm run seed && npm run seed:demo && npm run seed:data && npm run seed:extended",
     "ai:train": "tsx src/ml/trainWithDemoData.ts"
   },
   "dependencies": {
