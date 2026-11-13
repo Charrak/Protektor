@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { brandingService, BrandingSettings } from '../../services/branding.service';
 import { NotificationBell } from '../common/NotificationBell';
+import { hasPermission, ROUTE_PERMISSIONS } from '../../utils/authorization';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: '📊' },
@@ -36,6 +37,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
     await logout();
     navigate('/login');
   };
+
+  const visibleNavigation = navigation.filter((item) =>
+    hasPermission(user, ROUTE_PERMISSIONS[item.href] ?? []),
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -76,7 +81,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="mt-6 px-3 flex-1 overflow-y-auto">
-          {navigation.map((item) => {
+          {visibleNavigation.map((item) => {
             const isActive = item.href === '/'
               ? location.pathname === '/'
               : location.pathname.startsWith(item.href);

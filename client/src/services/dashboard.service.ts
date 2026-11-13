@@ -5,6 +5,16 @@ export interface DashboardStats {
   todayDeployments: number;
   sickToday: number;
   openDeployments: number;
+  ownTimeRecordsToday: number;
+  monthHoursToDate: number;
+  projectedMonthHours: number;
+}
+
+export interface DashboardData {
+  isEmployee: boolean;
+  employeeRecordLinked: boolean;
+  stats: DashboardStats;
+  todayDeployments: TodayDeployment[];
 }
 
 export interface TodayDeployment {
@@ -40,47 +50,10 @@ export interface RecentActivity {
 }
 
 export const dashboardService = {
-  /**
-   * Lädt Dashboard-Statistiken
-   */
-  async getStats(): Promise<DashboardStats> {
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Parallele Anfragen für alle Statistiken
-    const [employeesResponse, deploymentsResponse, attendancesResponse] = await Promise.all([
-      api.get('/employees', { params: { status: 'active', limit: 1000 } }),
-      api.get('/deployments', { params: { from: today, to: today } }),
-      api.get('/attendance', { params: { date: today, type: 'sick' } }),
-    ]);
-
-    const employees = employeesResponse.data?.data || employeesResponse.data || [];
-    const deployments = deploymentsResponse.data?.data || deploymentsResponse.data || [];
-    const sickAttendances = attendancesResponse.data?.data || attendancesResponse.data || [];
-
-    return {
-      activeEmployees: Array.isArray(employees) ? employees.length : 0,
-      todayDeployments: Array.isArray(deployments) ? deployments.length : 0,
-      sickToday: Array.isArray(sickAttendances) ? sickAttendances.length : 0,
-      openDeployments: Array.isArray(deployments) 
-        ? deployments.filter((d: any) => d.status === 'planned' || d.status === 'released').length 
-        : 0,
-    };
-  },
-
-  /**
-   * Lädt heutige Einsätze
-   */
-  async getTodayDeployments(): Promise<TodayDeployment[]> {
-    const today = new Date().toISOString().split('T')[0];
-    const response = await api.get('/deployments', {
-      params: { 
-        from: today, 
-        to: today,
-        include: 'object,employee,customer'
-      },
-    });
-    
-    return response.data?.data || response.data || [];
+  /** Lädt ausschließlich serverseitig nach Rolle und Mitarbeiterkonto gefilterte Dashboard-Daten. */
+  async getDashboard(): Promise<DashboardData> {
+    const response = await api.get('/dashboard');
+    return response.data;
   },
 
   /**

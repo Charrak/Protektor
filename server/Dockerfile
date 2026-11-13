@@ -25,11 +25,11 @@ COPY . .
 # Step 3: Prisma Client generieren
 RUN npm run prisma:generate
 
-# TEMPORÄR: Dev-Mode (Build übersprungen wegen TypeScript-Fehlern)
-# TODO: TypeScript-Fehler fixen und zurück zu Production Build wechseln
+# Build the server in the image so a successful image build also verifies TypeScript.
+RUN npm run build
 
 # Port 5000 freigeben
 EXPOSE 5000
 
-# Dev-Mode Start (ohne Build)
-CMD ["npm", "run", "dev"]
+# Run the compiled production server.
+CMD ["node", "dist/index.js"]

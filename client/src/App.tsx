@@ -33,6 +33,7 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { ShiftSwapManagement } from './pages/scheduling/ShiftSwapManagement';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { ModalSafetyGuard } from './components/common/ModalSafetyGuard';
+import { getDefaultPath, hasPermission, ROUTE_PERMISSIONS } from './utils/authorization';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -46,6 +47,17 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   return <>{children}</>;
+}
+
+function PermissionRoute({ path, children }: { path: string; children: React.ReactNode }) {
+  const { user } = useAuth();
+  const required = ROUTE_PERMISSIONS[path] ?? [];
+
+  if (hasPermission(user, required)) return <>{children}</>;
+
+  const defaultPath = getDefaultPath(user);
+  if (defaultPath && defaultPath !== path) return <Navigate to={defaultPath} replace />;
+  return <div className="rounded-lg bg-white p-6 text-gray-700">Sie haben keine Berechtigung, diesen Bereich aufzurufen.</div>;
 }
 
 function PlatformProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -85,28 +97,28 @@ function AppRoutes() {
               <Layout>
                 <Routes>
                   {/* Dashboard */}
-                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/" element={<PermissionRoute path="/"><DashboardPage /></PermissionRoute>} />
 
                   {/* Module (Phase 2+ Inhalte) */}
-                  <Route path="/employees" element={<EmployeesPage />} />
-                  <Route path="/employees/:id" element={<EmployeeDetailPage />} />
-                  <Route path="/customers" element={<CustomersPage />} />
-                  <Route path="/customers/:id" element={<CustomerDetailPage />} />
-                  <Route path="/objects" element={<ObjectsPage />} />
-                  <Route path="/objects/:id" element={<ObjectDetailPage />} />
-                  <Route path="/scheduling" element={<SchedulingPage />} />
-                  <Route path="/planning-groups" element={<PlanningGroupManager />} />
-                  <Route path="/attendance" element={<AttendancePage />} />
-                  <Route path="/billing" element={<BillingPage />} />
-                  <Route path="/reports" element={<ReportsPage />} />
+                  <Route path="/employees" element={<PermissionRoute path="/employees"><EmployeesPage /></PermissionRoute>} />
+                  <Route path="/employees/:id" element={<PermissionRoute path="/employees"><EmployeeDetailPage /></PermissionRoute>} />
+                  <Route path="/customers" element={<PermissionRoute path="/customers"><CustomersPage /></PermissionRoute>} />
+                  <Route path="/customers/:id" element={<PermissionRoute path="/customers"><CustomerDetailPage /></PermissionRoute>} />
+                  <Route path="/objects" element={<PermissionRoute path="/objects"><ObjectsPage /></PermissionRoute>} />
+                  <Route path="/objects/:id" element={<PermissionRoute path="/objects"><ObjectDetailPage /></PermissionRoute>} />
+                  <Route path="/scheduling" element={<PermissionRoute path="/scheduling"><SchedulingPage /></PermissionRoute>} />
+                  <Route path="/planning-groups" element={<PermissionRoute path="/planning-groups"><PlanningGroupManager /></PermissionRoute>} />
+                  <Route path="/attendance" element={<PermissionRoute path="/attendance"><AttendancePage /></PermissionRoute>} />
+                  <Route path="/billing" element={<PermissionRoute path="/billing"><BillingPage /></PermissionRoute>} />
+                  <Route path="/reports" element={<PermissionRoute path="/reports"><ReportsPage /></PermissionRoute>} />
 
                   {/* Administration */}
-                  <Route path="/admin" element={<AdminPage />} />
-                  <Route path="/admin/users" element={<UsersPage />} />
-                  <Route path="/admin/roles" element={<RolesPage />} />
-                  <Route path="/admin/branding" element={<BrandingSettingsPage />} />
+                  <Route path="/admin" element={<PermissionRoute path="/admin"><AdminPage /></PermissionRoute>} />
+                  <Route path="/admin/users" element={<PermissionRoute path="/admin/users"><UsersPage /></PermissionRoute>} />
+                  <Route path="/admin/roles" element={<PermissionRoute path="/admin/roles"><RolesPage /></PermissionRoute>} />
+                  <Route path="/admin/branding" element={<PermissionRoute path="/admin/branding"><BrandingSettingsPage /></PermissionRoute>} />
                   <Route path="/notifications" element={<NotificationsPage />} />
-                  <Route path="/shift-swaps" element={<ShiftSwapManagement />} />
+                  <Route path="/shift-swaps" element={<PermissionRoute path="/shift-swaps"><ShiftSwapManagement /></PermissionRoute>} />
 
                   {/* Fallback */}
                   <Route path="*" element={<Navigate to="/" replace />} />

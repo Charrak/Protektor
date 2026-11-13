@@ -33,6 +33,7 @@ import employeeTimePreferenceRoutes from './employeeTimePreference.routes';
 import shiftSwapRoutes from './shiftSwap.routes';
 import conflictRoutes from './conflict.routes';
 import testRoutes from './test.routes';
+import dashboardRoutes from './dashboard.routes';
 
 const router = Router();
 
@@ -53,6 +54,9 @@ router.use('/auth', authRoutes);
 // ─── Usage Tracking Middleware (für alle folgenden Routen) ───
 import { trackApiUsage } from '../middleware/usageTracker';
 router.use(trackApiUsage);
+
+// ─── Dashboard (rollen- und mitarbeiterspezifische Daten) ───
+router.use('/dashboard', dashboardRoutes);
 
 // ─── Phase 1: Benutzer, Rollen, Sperren ───
 router.use('/users', userRoutes);

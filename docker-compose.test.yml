@@ -1,0 +1,92 @@
+# Isolated server-side acceptance-test stack.
+# Start with: docker compose -p protektor-verify -f docker-compose.test.yml up -d
+# All host ports bind to loopback; use an SSH tunnel for browser access.
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: protektor_test
+      POSTGRES_PASSWORD: local_test_only
+      POSTGRES_DB: sms_test
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - test_app_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U protektor_test -d sms_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:56379:6379"
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://protektor_test:local_test_only@postgres:5432/sms_test
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: protektor-test-only-jwt-secret-not-for-production-0123456789
+      JWT_REFRESH_SECRET: protektor-test-only-refresh-secret-not-for-production-0123456789
+      CORS_ORIGIN: http://localhost:53000
+      APP_URL: http://localhost:53000
+      SMTP_HOST: ""
+      SMTP_USER: ""
+      SMTP_PASS: ""
+    ports:
+      - "127.0.0.1:55000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:53000:3000"
+    depends_on:
+      - backend
+
+  test-postgres:
+    image: postgres:15-alpine
+    profiles: ["integration"]
+    environment:
+      POSTGRES_USER: protektor_test
+      POSTGRES_PASSWORD: local_test_only
+      POSTGRES_DB: sms_test_suite
+    volumes:
+      - integration_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U protektor_test -d sms_test_suite"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  integration-tests:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    profiles: ["integration"]
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://protektor_test:local_test_only@test-postgres:5432/sms_test_suite
+      TEST_DATABASE_URL: postgresql://protektor_test:local_test_only@test-postgres:5432/sms_test_suite
+      JWT_SECRET: protektor-test-only-jwt-secret-not-for-production-0123456789
+      JWT_REFRESH_SECRET: protektor-test-only-refresh-secret-not-for-production-0123456789
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+    command: ["sh", "-lc", "npx prisma db push && npm test"]
+
+volumes:
+  test_app_postgres_data:
+  integration_postgres_data:

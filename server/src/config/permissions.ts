@@ -61,10 +61,18 @@ export const PERMISSIONS: PermissionDef[] = [
 
   // Zeiterfassung
   { slug: 'attendance:view', name: 'Zeiterfassung anzeigen', module: 'attendance', description: 'Zeiten einsehen' },
+  { slug: 'attendance:view_own', name: 'Eigene Zeiterfassungen anzeigen', module: 'attendance', description: 'Nur eigene Zeiten einsehen und Korrekturen beantragen' },
   { slug: 'attendance:create', name: 'Zeiterfassung erstellen', module: 'attendance', description: 'Zeiten erfassen' },
   { slug: 'attendance:edit', name: 'Zeiterfassung bearbeiten', module: 'attendance', description: 'Zeiten ändern' },
   { slug: 'attendance:approve', name: 'Zeiterfassung genehmigen', module: 'attendance', description: 'Zeiten genehmigen' },
   { slug: 'attendance:view_all', name: 'Alle Zeiterfassungen anzeigen', module: 'attendance', description: 'Zeiten aller Mitarbeiter einsehen' },
+  { slug: 'attendance:request_correction', name: 'Korrektur beantragen', module: 'attendance', description: 'Eigene Zeiten korrigieren lassen' },
+  { slug: 'attendance:release', name: 'Zeiten freigeben', module: 'attendance', description: 'Zeiterfassungen freigeben' },
+  { slug: 'attendance:unlock', name: 'Zeiten entsperren', module: 'attendance', description: 'Gesperrte Zeiten administrativ entsperren' },
+  { slug: 'attendance:void', name: 'Zeiten stornieren', module: 'attendance', description: 'Zeiterfassungen mit Begründung stornieren' },
+  { slug: 'attendance:audit_log', name: 'Zeiterfassungsprotokoll einsehen', module: 'attendance', description: 'Unveränderbares Änderungsprotokoll einsehen' },
+  { slug: 'attendance:access_manage', name: 'Objekt-Zugriff verwalten', module: 'attendance', description: 'Zeitrechte für Objekte zuweisen' },
+  { slug: 'attendance:export', name: 'Zeiterfassung exportieren', module: 'attendance', description: 'Stundenzettel exportieren' },
 
   // Abrechnung
   { slug: 'billing.create', name: 'Abrechnung erstellen', module: 'billing', description: 'Rechnungen/Gehälter erstellen' },
@@ -131,7 +139,7 @@ export const DEFAULT_ROLES: RoleDef[] = [
     description: 'Eigene Daten einsehen',
     perms: [
       'dashboard:view',
-      'attendance:view', 'attendance:create',
+      'attendance:view', 'attendance:view_own', 'attendance:create', 'attendance:request_correction',
       'scheduling:view',
     ],
   },
